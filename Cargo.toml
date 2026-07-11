@@ -1,0 +1,32 @@
+[package]
+name = "bevy-town-crew"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# Keep M0 lean: windowing, basic 3D rendering, and mesh picking only.
+bevy = { version = "0.19", default-features = false, features = [
+    "async_executor",
+    "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_log",
+    "bevy_pbr",
+    "bevy_picking",
+    "bevy_render",
+    "bevy_winit",
+    "mesh_picking",
+    "multi_threaded",
+    "std",
+    "webgl2",
+] }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
