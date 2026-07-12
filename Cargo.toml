@@ -17,6 +17,7 @@ bevy = { version = "0.19", default-features = false, features = [
     "bevy_winit",
     "mesh_picking",
     "multi_threaded",
+    "png",
     "std",
     "webgl2",
 ] }
