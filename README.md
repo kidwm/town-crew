@@ -6,11 +6,14 @@ The first mission follows a construction crew as they repair a pothole using an 
 
 ## Development
 
-Run the native app:
+Run the native app with Bevy dynamic linking for faster iterative compiles:
 
 ```sh
-cargo run
+cargo run --features bevy/dynamic_linking
 ```
+
+The first build still compiles the dynamic Bevy library. Use this command only
+for native development; WebAssembly and release builds remain statically linked.
 
 Run the browser build:
 
