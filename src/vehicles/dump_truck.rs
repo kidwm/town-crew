@@ -70,17 +70,22 @@ pub(crate) fn spawn_dump_truck(
         parent
             .spawn((
                 DumpBed,
-                Pickable::default(),
-                Mesh3d(meshes.add(Cuboid::new(3.5, 1.9, 2.25))),
-                MeshMaterial3d(transparent_hitbox),
                 Transform::from_translation(DUMP_BED_HOME),
+                Visibility::default(),
             ))
-            .observe(on_dump_bed_clicked)
-            .observe(on_dump_bed_drag_start)
-            .observe(on_dump_bed_drag)
-            .observe(on_dump_bed_drag_end)
-            .observe(on_dump_bed_pointer_cancel)
             .with_children(|bed| {
+                bed.spawn((
+                    DumpBedHitbox,
+                    Pickable::default(),
+                    Mesh3d(meshes.add(Cuboid::new(2.4, 1.9, 2.25))),
+                    MeshMaterial3d(transparent_hitbox.clone()),
+                    Transform::from_xyz(-1.70, 0.05, 0.0),
+                ))
+                .observe(on_dump_bed_clicked)
+                .observe(on_dump_bed_drag_start)
+                .observe(on_dump_bed_drag)
+                .observe(on_dump_bed_drag_end)
+                .observe(on_dump_bed_pointer_cancel);
                 bed.spawn((
                     Mesh3d(meshes.add(Cuboid::new(2.8, 0.24, 1.65))),
                     MeshMaterial3d(bed_orange.clone()),
@@ -98,6 +103,28 @@ pub(crate) fn spawn_dump_truck(
                     MeshMaterial3d(bed_orange.clone()),
                     Transform::from_xyz(-2.62, 0.15, 0.0),
                 ));
+
+                let hint = bed
+                    .spawn((
+                        DumpBedHint,
+                        Transform::from_xyz(-1.25, 1.15, 0.88),
+                        Visibility::Hidden,
+                    ))
+                    .id();
+                bed.commands().entity(hint).with_children(|hint_parent| {
+                    let hint_mesh = meshes.add(Cuboid::new(0.62, 0.13, 0.12));
+                    let hint_material = unlit_material(materials, Color::srgb(1.0, 0.94, 0.25));
+                    for y in [0.0, 0.42] {
+                        for (x, rotation) in [(-0.20, 0.72), (0.20, -0.72)] {
+                            hint_parent.spawn((
+                                Mesh3d(hint_mesh.clone()),
+                                MeshMaterial3d(hint_material.clone()),
+                                Transform::from_xyz(x, y, 0.0)
+                                    .with_rotation(Quat::from_rotation_z(rotation)),
+                            ));
+                        }
+                    }
+                });
             });
     });
 }
@@ -143,10 +170,10 @@ pub(crate) fn on_dump_bed_clicked(
         && mission.phase == MissionPhase::DumpTruck
         && stage.action == DumpBedAction::Ready
     {
-        stage.action = DumpBedAction::Dumping;
+        stage.action = DumpBedAction::Resetting;
         stage.animation_elapsed = 0.0;
-        stage.preview_tilt = 0.0;
-        info!("Dump bed clicked; automatic dump started");
+        stage.preview_tilt = DUMP_BED_TAP_TILT;
+        info!("Dump bed tapped; lift hint played");
     }
 }
 
@@ -178,18 +205,19 @@ pub(crate) fn on_dump_bed_drag(
     }
 
     let upward_distance = (-event.distance.y).max(0.0);
-    stage.preview_tilt = -(upward_distance / 80.0).clamp(0.0, 0.34);
-    if upward_distance >= 28.0 {
+    let drag_progress = (upward_distance / DUMP_BED_DRAG_THRESHOLD).clamp(0.0, 1.0);
+    stage.preview_tilt = DUMP_BED_DRAG_TILT * drag_progress;
+    if drag_progress >= 1.0 {
         stage.action = DumpBedAction::Dumping;
         stage.animation_elapsed = 0.0;
-        info!("Dump bed lifted; automatic dump started");
+        info!("Dump bed fully lifted by drag; automatic dump started");
     }
 }
 
 pub(crate) fn on_dump_bed_drag_end(event: On<Pointer<DragEnd>>, mut stage: ResMut<DumpTruckStage>) {
     if event.button == PointerButton::Primary && stage.action == DumpBedAction::Dragging {
-        stage.action = DumpBedAction::Ready;
-        stage.preview_tilt = 0.0;
+        stage.action = DumpBedAction::Resetting;
+        stage.animation_elapsed = 0.0;
         info!("Dump bed drag missed; ready for another try");
     }
 }
@@ -199,8 +227,8 @@ pub(crate) fn on_dump_bed_pointer_cancel(
     mut stage: ResMut<DumpTruckStage>,
 ) {
     if stage.action == DumpBedAction::Dragging {
-        stage.action = DumpBedAction::Ready;
-        stage.preview_tilt = 0.0;
+        stage.action = DumpBedAction::Resetting;
+        stage.animation_elapsed = 0.0;
         info!("Dump bed pointer canceled; ready for another try");
     }
 }
@@ -266,6 +294,18 @@ pub(crate) fn animate_dump_truck(
         DumpBedAction::Dragging => {
             visuals.bed.rotation = Quat::from_rotation_z(stage.preview_tilt);
         }
+        DumpBedAction::Resetting => {
+            stage.animation_elapsed += time.delta_secs();
+            let t = (stage.animation_elapsed / 0.28).clamp(0.0, 1.0);
+            let eased = t * t * (3.0 - 2.0 * t);
+            visuals.bed.rotation = Quat::from_rotation_z(stage.preview_tilt * (1.0 - eased));
+            if t >= 1.0 {
+                visuals.bed.rotation = Quat::IDENTITY;
+                stage.preview_tilt = 0.0;
+                stage.action = DumpBedAction::Ready;
+                stage.animation_elapsed = 0.0;
+            }
+        }
         DumpBedAction::Dumping => {
             stage.animation_elapsed += time.delta_secs();
             let t = (stage.animation_elapsed / 1.70).clamp(0.0, 1.0);
@@ -330,15 +370,18 @@ pub(crate) fn pulse_dump_bed(
     time: Res<Time>,
     mission: Res<Mission>,
     stage: Res<DumpTruckStage>,
-    mut bed: Single<&mut Transform, With<DumpBed>>,
+    mut hint: Single<(&mut Transform, &mut Visibility), With<DumpBedHint>>,
 ) {
-    bed.scale = Vec3::ONE;
-    if mission.phase == MissionPhase::DumpTruck && stage.action == DumpBedAction::Ready {
-        let bounce = ((time.elapsed_secs() * 5.0).sin() * 0.5 + 0.5) * 0.14;
-        bed.translation = DUMP_BED_HOME + Vec3::Y * bounce;
+    let ready = mission.phase == MissionPhase::DumpTruck && stage.action == DumpBedAction::Ready;
+    let wave = hint_wave(&time, 5.0, 0.0);
+    let (transform, visibility) = &mut *hint;
+    **visibility = if ready {
+        Visibility::Visible
     } else {
-        bed.translation = DUMP_BED_HOME;
-    }
+        Visibility::Hidden
+    };
+    transform.translation = Vec3::new(-1.25, 1.15 + wave * 0.28, 0.88);
+    transform.scale = Vec3::splat(0.92 + wave * 0.14);
 }
 
 pub(crate) fn reset_dump_truck(

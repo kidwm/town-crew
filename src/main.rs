@@ -1,3 +1,4 @@
+use bevy::asset::{embedded_asset, load_embedded_asset};
 use bevy::camera::ScalingMode;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
@@ -20,6 +21,9 @@ const DUMP_TRUCK_START_X: f32 = -9.0;
 const DUMP_TRUCK_PARKED_X: f32 = -1.3;
 const DUMP_BED_HOME: Vec3 = Vec3::new(1.25, 1.60, 0.0);
 const DUMP_BED_MAX_TILT: f32 = -0.92;
+const DUMP_BED_DRAG_THRESHOLD: f32 = 60.0;
+const DUMP_BED_DRAG_TILT: f32 = -0.62;
+const DUMP_BED_TAP_TILT: f32 = -0.14;
 const ROAD_ROLLER_START_X: f32 = -9.0;
 const ROAD_ROLLER_LEFT_X: f32 = -1.2;
 const ROAD_ROLLER_RIGHT_X: f32 = 5.4;
@@ -108,6 +112,7 @@ enum DumpBedAction {
     Entering,
     Ready,
     Dragging,
+    Resetting,
     Dumping,
     Returning,
     Complete,
@@ -208,6 +213,20 @@ struct DumpTruckVehicle;
 struct DumpBed;
 
 #[derive(Component)]
+struct BucketDragHint;
+
+#[derive(Component)]
+struct BucketDragTrail {
+    offset: f32,
+}
+
+#[derive(Component)]
+struct DumpBedHint;
+
+#[derive(Component)]
+struct DumpBedHitbox;
+
+#[derive(Component)]
 struct PitHole;
 
 #[derive(Component)]
@@ -223,6 +242,12 @@ struct GravelStream {
 
 #[derive(Component)]
 struct RoadRollerVehicle;
+
+#[derive(Component)]
+struct RollerDirectionHint {
+    required_pass: u8,
+    direction: f32,
+}
 
 #[derive(Component)]
 struct RepairedRoad;
@@ -365,23 +390,26 @@ type CompletionSequenceData = (
     Has<PassingCar>,
     Has<HornFeedback>,
     Option<&'static CelebrationSpark>,
-    Has<RestartButton>,
     Has<CompletionFeedback>,
 );
-type CompletionSequenceFilter = Or<(
-    With<RoadBarrier>,
-    With<PassingCar>,
-    With<HornFeedback>,
-    With<CelebrationSpark>,
-    With<RestartButton>,
-    With<CompletionFeedback>,
-)>;
+type CompletionSequenceFilter = (
+    Or<(
+        With<RoadBarrier>,
+        With<PassingCar>,
+        With<HornFeedback>,
+        With<CelebrationSpark>,
+        With<CompletionFeedback>,
+    )>,
+    Without<RestartButton>,
+);
 type RollerToTrafficFilter = (With<RoadRollerVehicle>, Without<CompletionFeedback>);
 type TrafficCompletionFilter = (With<CompletionFeedback>, Without<RoadRollerVehicle>);
 
 #[derive(bevy::ecs::system::SystemParam)]
 struct CompletionSequenceVisuals<'w, 's> {
     all: Query<'w, 's, CompletionSequenceData, CompletionSequenceFilter>,
+    restart:
+        Single<'w, 's, (&'static mut Visibility, &'static mut UiTransform), With<RestartButton>>,
 }
 
 type ResetExcavatorFilter = (With<ExcavatorVisual>, Without<Rock>, Without<TargetHalo>);
@@ -394,9 +422,17 @@ struct ExcavatorMaterials {
     rock_active: Handle<StandardMaterial>,
 }
 
+struct RestartIconPlugin;
+
+impl Plugin for RestartIconPlugin {
+    fn build(&self, app: &mut App) {
+        embedded_asset!(app, "../assets/restart-icon.png");
+    }
+}
+
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, MeshPickingPlugin))
+        .add_plugins((DefaultPlugins, MeshPickingPlugin, RestartIconPlugin))
         .insert_resource(MeshPickingSettings {
             require_markers: true,
             ..default()
@@ -446,6 +482,14 @@ fn unlit_material(
         unlit: true,
         ..default()
     })
+}
+
+fn hint_wave(time: &Time, speed: f32, phase: f32) -> f32 {
+    (time.elapsed_secs() * speed + phase).sin() * 0.5 + 0.5
+}
+
+fn smooth_follow(current: Vec3, target: Vec3, speed: f32, delta_secs: f32) -> Vec3 {
+    current.lerp(target, 1.0 - (-speed * delta_secs).exp())
 }
 
 fn setup_scene(
@@ -536,13 +580,6 @@ fn spawn_completion_sequence(
     let car_window = unlit_material(materials, Color::srgb(0.35, 0.75, 0.88));
     let tire = unlit_material(materials, Color::srgb(0.07, 0.08, 0.09));
     let horn_yellow = unlit_material(materials, Color::srgb(1.0, 0.84, 0.10));
-    let restart_blue = unlit_material(materials, Color::srgb(0.05, 0.60, 0.92));
-    let restart_icon = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("restart-icon.png")),
-        alpha_mode: AlphaMode::Blend,
-        unlit: true,
-        ..default()
-    });
 
     for (home, cleared_z) in [
         (Vec3::new(6.25, 0.45, -1.20), -4.6),
@@ -645,34 +682,39 @@ fn spawn_completion_sequence(
         ));
     }
 
-    let transparent_hitbox = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.1, 0.75, 1.0, 0.0),
-        alpha_mode: AlphaMode::Blend,
-        unlit: true,
-        ..default()
-    });
-    let restart = commands
+    commands
         .spawn((
             RestartButton,
             Pickable::default(),
-            Mesh3d(meshes.add(Cylinder::new(1.45, 0.35).mesh().resolution(20))),
-            MeshMaterial3d(transparent_hitbox),
-            Transform::from_xyz(6.25, 0.55, -3.35),
+            Node {
+                position_type: PositionType::Absolute,
+                right: Val::Px(24.0),
+                bottom: Val::Px(24.0),
+                width: Val::Px(88.0),
+                height: Val::Px(88.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                border_radius: BorderRadius::all(Val::Percent(50.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.05, 0.60, 0.92)),
             Visibility::Hidden,
         ))
         .observe(on_restart_clicked)
-        .id();
-    commands.entity(restart).with_children(|parent| {
-        parent.spawn((
-            Mesh3d(meshes.add(Cylinder::new(1.02, 0.18).mesh().resolution(20))),
-            MeshMaterial3d(restart_blue),
-        ));
-        parent.spawn((
-            Mesh3d(meshes.add(Plane3d::default().mesh().size(1.55, 1.55))),
-            MeshMaterial3d(restart_icon),
-            Transform::from_xyz(0.0, 0.16, 0.0),
-        ));
-    });
+        .with_children(|parent| {
+            parent.spawn((
+                ImageNode::new(load_embedded_asset!(
+                    asset_server,
+                    "../assets/restart-icon.png"
+                )),
+                Node {
+                    width: Val::Px(54.0),
+                    height: Val::Px(54.0),
+                    ..default()
+                },
+                Pickable::IGNORE,
+            ));
+        });
 }
 
 fn spawn_completion_feedback(
@@ -777,7 +819,7 @@ fn animate_completion_sequence(
             stage.animation_elapsed += time.delta_secs();
             let t = (stage.animation_elapsed / 0.85).clamp(0.0, 1.0);
             let eased = t * t * (3.0 - 2.0 * t);
-            for (mut transform, _, barrier, _, _, _, _, _) in &mut visuals.all {
+            for (mut transform, _, barrier, _, _, _, _) in &mut visuals.all {
                 if let Some(barrier) = barrier {
                     transform.translation = barrier.home;
                     transform.translation.z =
@@ -796,7 +838,7 @@ fn animate_completion_sequence(
             let eased = t * t * (3.0 - 2.0 * t);
             let car_x = PASSING_CAR_START_X + (PASSING_CAR_END_X - PASSING_CAR_START_X) * eased;
             let horn_visible = (0.42..=0.62).contains(&t);
-            for (mut transform, mut visibility, _, is_car, is_horn, _, _, _) in &mut visuals.all {
+            for (mut transform, mut visibility, _, is_car, is_horn, _, _) in &mut visuals.all {
                 if is_car {
                     *visibility = Visibility::Visible;
                     transform.translation.x = car_x;
@@ -821,16 +863,8 @@ fn animate_completion_sequence(
         CompletionAction::Celebrating => {
             stage.animation_elapsed += time.delta_secs();
             let t = (stage.animation_elapsed / 0.90).clamp(0.0, 1.0);
-            for (
-                mut transform,
-                mut visibility,
-                _,
-                is_car,
-                is_horn,
-                spark,
-                is_restart,
-                is_completion,
-            ) in &mut visuals.all
+            for (mut transform, mut visibility, _, is_car, is_horn, spark, is_completion) in
+                &mut visuals.all
             {
                 if is_car || is_horn {
                     *visibility = Visibility::Hidden;
@@ -840,16 +874,17 @@ fn animate_completion_sequence(
                     transform.translation = Vec3::new(2.25, 1.1, 0.0) + direction * (0.8 + t * 1.8);
                     transform.rotation = Quat::from_rotation_y(-spark.angle);
                     transform.scale = Vec3::splat(0.7 + t * 0.5);
-                } else if is_restart {
-                    *visibility = if t >= 0.55 {
-                        Visibility::Visible
-                    } else {
-                        Visibility::Hidden
-                    };
                 } else if is_completion {
                     *visibility = Visibility::Visible;
                 }
             }
+            let (restart_visibility, restart_transform) = &mut *visuals.restart;
+            **restart_visibility = if t >= 0.55 {
+                Visibility::Visible
+            } else {
+                Visibility::Hidden
+            };
+            restart_transform.scale = Vec2::ONE;
             if t >= 1.0 {
                 stage.action = CompletionAction::Complete;
                 stage.animation_elapsed = 0.0;
@@ -858,15 +893,16 @@ fn animate_completion_sequence(
             }
         }
         CompletionAction::Complete => {
-            for (mut transform, _, _, _, _, spark, is_restart, _) in &mut visuals.all {
+            for (mut transform, _, _, _, _, spark, _) in &mut visuals.all {
                 if let Some(spark) = spark {
                     let pulse = 1.0 + (time.elapsed_secs() * 4.0 + spark.angle).sin() * 0.16;
                     transform.scale = Vec3::splat(pulse);
-                } else if is_restart {
-                    let pulse = 1.0 + (time.elapsed_secs() * 4.5).sin() * 0.06;
-                    transform.scale = Vec3::splat(pulse);
                 }
             }
+            let (restart_visibility, restart_transform) = &mut *visuals.restart;
+            **restart_visibility = Visibility::Visible;
+            let pulse = 1.0 + (time.elapsed_secs() * 4.5).sin() * 0.06;
+            restart_transform.scale = Vec2::splat(pulse);
         }
         CompletionAction::Waiting => {}
     }
@@ -889,16 +925,8 @@ fn reset_completion_sequence(restart: Res<RestartRequest>, mut visuals: Completi
         return;
     }
 
-    for (
-        mut transform,
-        mut visibility,
-        barrier,
-        is_car,
-        is_horn,
-        spark,
-        is_restart,
-        is_completion,
-    ) in &mut visuals.all
+    for (mut transform, mut visibility, barrier, is_car, is_horn, spark, is_completion) in
+        &mut visuals.all
     {
         transform.rotation = Quat::IDENTITY;
         transform.scale = Vec3::ONE;
@@ -914,14 +942,14 @@ fn reset_completion_sequence(restart: Res<RestartRequest>, mut visuals: Completi
         } else if spark.is_some() {
             transform.translation = Vec3::new(2.25, 1.1, 0.0);
             *visibility = Visibility::Hidden;
-        } else if is_restart {
-            transform.translation = Vec3::new(6.25, 0.55, -3.35);
-            *visibility = Visibility::Hidden;
         } else if is_completion {
             transform.translation = Vec3::new(2.25, 0.55, 0.0);
             *visibility = Visibility::Hidden;
         }
     }
+    let (restart_visibility, restart_transform) = &mut *visuals.restart;
+    **restart_visibility = Visibility::Hidden;
+    **restart_transform = UiTransform::IDENTITY;
 }
 
 fn reset_resources(

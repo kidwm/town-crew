@@ -14,11 +14,14 @@ bevy = { version = "0.19", default-features = false, features = [
     "bevy_pbr",
     "bevy_picking",
     "bevy_render",
+    "bevy_ui",
+    "bevy_ui_render",
     "bevy_winit",
     "mesh_picking",
     "multi_threaded",
     "png",
     "std",
+    "ui_picking",
     "webgl2",
 ] }
 

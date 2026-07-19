@@ -90,18 +90,23 @@ pub(crate) fn spawn_excavator(
         .id();
 
     commands.entity(bucket).with_children(|parent| {
-        parent.spawn((
-            Mesh3d(meshes.add(Cuboid::new(1.05, 0.55, 1.0))),
-            MeshMaterial3d(bucket_material.clone()),
-            Transform::from_xyz(0.15, -0.20, 0.0).with_rotation(Quat::from_rotation_z(-0.24)),
-        ));
-        for z in [-0.34, 0.0, 0.34] {
-            parent.spawn((
-                Mesh3d(meshes.add(Cuboid::new(0.40, 0.16, 0.16))),
-                MeshMaterial3d(bucket_material.clone()),
-                Transform::from_xyz(0.65, -0.43, z),
-            ));
-        }
+        parent
+            .spawn((BucketDragHint, Transform::default(), Visibility::Visible))
+            .with_children(|visual| {
+                visual.spawn((
+                    Mesh3d(meshes.add(Cuboid::new(1.05, 0.55, 1.0))),
+                    MeshMaterial3d(bucket_material.clone()),
+                    Transform::from_xyz(0.15, -0.20, 0.0)
+                        .with_rotation(Quat::from_rotation_z(-0.24)),
+                ));
+                for z in [-0.34, 0.0, 0.34] {
+                    visual.spawn((
+                        Mesh3d(meshes.add(Cuboid::new(0.40, 0.16, 0.16))),
+                        MeshMaterial3d(bucket_material.clone()),
+                        Transform::from_xyz(0.65, -0.43, z),
+                    ));
+                }
+            });
     });
 }
 
@@ -140,6 +145,19 @@ pub(crate) fn spawn_rocks(
             } else {
                 Visibility::Hidden
             },
+        ));
+    }
+
+    let trail_mesh = meshes.add(Cuboid::new(0.28, 0.28, 0.28));
+    for index in 0..4 {
+        commands.spawn((
+            BucketDragTrail {
+                offset: index as f32 / 4.0,
+            },
+            Mesh3d(trail_mesh.clone()),
+            MeshMaterial3d(halo_material.clone()),
+            Transform::default(),
+            Visibility::Visible,
         ));
     }
 
@@ -317,10 +335,13 @@ pub(crate) fn animate_scoop_and_return(
             }
         }
         BucketAction::Returning => {
-            let difference = BUCKET_HOME - bucket.translation;
-            let distance = difference.length();
-            let step = time.delta_secs() * 7.0;
-            if distance <= step {
+            bucket.translation = project_bucket_target_to_arm_reach(smooth_follow(
+                bucket.translation,
+                BUCKET_HOME,
+                7.0,
+                time.delta_secs(),
+            ));
+            if bucket.translation.distance(BUCKET_HOME) <= 0.035 {
                 bucket.translation = project_bucket_target_to_arm_reach(BUCKET_HOME);
                 if stage.cleared_rocks == ROCK_COUNT {
                     stage.action = BucketAction::Complete;
@@ -329,9 +350,6 @@ pub(crate) fn animate_scoop_and_return(
                 } else {
                     stage.action = BucketAction::Idle;
                 }
-            } else {
-                let return_target = bucket.translation + difference / distance * step;
-                bucket.translation = project_bucket_target_to_arm_reach(return_target);
             }
         }
         BucketAction::Idle | BucketAction::Dragging | BucketAction::Complete => {}
@@ -403,12 +421,57 @@ pub(crate) fn update_arm(
 
 pub(crate) fn pulse_active_target(
     time: Res<Time>,
+    mission: Res<Mission>,
     stage: Res<ExcavatorStage>,
     excavator_materials: Res<ExcavatorMaterials>,
     mut rocks: Query<(&Rock, &mut Transform, &mut MeshMaterial3d<StandardMaterial>)>,
     mut halos: Query<(&TargetHalo, &mut Transform, &mut Visibility), Without<Rock>>,
+    mut bucket_hint: Single<
+        (&mut Transform, &mut Visibility),
+        (
+            With<BucketDragHint>,
+            Without<Rock>,
+            Without<TargetHalo>,
+            Without<BucketDragTrail>,
+        ),
+    >,
+    mut trail: Query<
+        (&BucketDragTrail, &mut Transform, &mut Visibility),
+        (Without<Rock>, Without<TargetHalo>, Without<BucketDragHint>),
+    >,
 ) {
-    let pulse = 1.0 + (time.elapsed_secs() * 5.0).sin() * 0.12;
+    let wave = hint_wave(&time, 5.0, 0.0);
+    let pulse = 0.88 + wave * 0.24;
+    let excavator_active = mission.phase == MissionPhase::Excavator;
+    let hint_active = excavator_active && stage.action == BucketAction::Idle;
+    let (hint_transform, hint_visibility) = &mut *bucket_hint;
+    **hint_visibility = if excavator_active {
+        Visibility::Visible
+    } else {
+        Visibility::Hidden
+    };
+    if hint_active {
+        hint_transform.translation = Vec3::Y * wave * 0.18;
+        hint_transform.scale = Vec3::splat(1.0 + wave * 0.16);
+    } else {
+        hint_transform.translation = Vec3::ZERO;
+        hint_transform.scale = Vec3::ONE;
+    }
+
+    let trail_start = BUCKET_HOME + Vec3::new(0.35, 0.45, 0.0);
+    let trail_end = rock_position(stage.cleared_rocks) + Vec3::Y * 0.45;
+    for (trail_point, mut transform, mut visibility) in &mut trail {
+        *visibility = if hint_active {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        let progress = (time.elapsed_secs() * 0.55 + trail_point.offset).fract();
+        transform.translation = trail_start.lerp(trail_end, progress);
+        let fade = (progress * std::f32::consts::PI).sin();
+        transform.scale = Vec3::splat(0.65 + fade * 0.45);
+        transform.rotation = Quat::from_rotation_y(progress * std::f32::consts::TAU);
+    }
     for (rock, mut transform, mut material) in &mut rocks {
         if stage.carried_rock.is_some() && rock.order == stage.cleared_rocks {
             continue;
@@ -443,6 +506,15 @@ pub(crate) fn reset_excavator(
     >,
     mut rocks: Query<(&Rock, &mut Transform, &mut Visibility), ResetRockFilter>,
     mut halos: Query<(&TargetHalo, &mut Transform, &mut Visibility), ResetHaloFilter>,
+    mut trail: Query<
+        (&mut Transform, &mut Visibility),
+        (
+            With<BucketDragTrail>,
+            Without<ExcavatorVisual>,
+            Without<Rock>,
+            Without<TargetHalo>,
+        ),
+    >,
 ) {
     if !restart.0 {
         return;
@@ -468,5 +540,9 @@ pub(crate) fn reset_excavator(
         } else {
             Visibility::Hidden
         };
+    }
+    for (mut transform, mut visibility) in &mut trail {
+        *transform = Transform::default();
+        *visibility = Visibility::Visible;
     }
 }

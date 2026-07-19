@@ -74,6 +74,32 @@ pub(crate) fn spawn_road_roller(
                 Transform::from_xyz(-1.10, -0.58, z).with_rotation(cylinder_rotation),
             ));
         }
+
+        let hint_mesh = meshes.add(Cuboid::new(0.72, 0.14, 0.12));
+        let hint_material = unlit_material(materials, Color::srgb(1.0, 0.94, 0.25));
+        for (required_pass, direction, height) in [(0, 1.0, 1.42), (1, -1.0, 0.88)] {
+            parent
+                .spawn((
+                    RollerDirectionHint {
+                        required_pass,
+                        direction,
+                    },
+                    Transform::from_xyz(direction * 2.30, height, 0.82),
+                    Visibility::Hidden,
+                ))
+                .with_children(|hint_parent| {
+                    for x in [-0.45, 0.45] {
+                        for (y, rotation) in [(0.20, -0.72), (-0.20, 0.72)] {
+                            hint_parent.spawn((
+                                Mesh3d(hint_mesh.clone()),
+                                MeshMaterial3d(hint_material.clone()),
+                                Transform::from_xyz(x, y, 0.0)
+                                    .with_rotation(Quat::from_rotation_z(rotation)),
+                            ));
+                        }
+                    }
+                });
+        }
     });
 
     commands.spawn((
@@ -279,14 +305,28 @@ pub(crate) fn pulse_road_roller(
     time: Res<Time>,
     mission: Res<Mission>,
     stage: Res<RoadRollerStage>,
-    mut roller: Single<&mut Transform, With<RoadRollerVehicle>>,
+    mut hints: Query<(&RollerDirectionHint, &mut Transform, &mut Visibility)>,
 ) {
-    roller.scale = Vec3::ONE;
-    if mission.phase == MissionPhase::RoadRoller && stage.action == RoadRollerAction::Ready {
-        let bounce = ((time.elapsed_secs() * 5.0).sin() * 0.5 + 0.5) * 0.10;
-        roller.translation.y = ROAD_ROLLER_HOME_Y + bounce;
-    } else {
-        roller.translation.y = ROAD_ROLLER_HOME_Y;
+    let ready = mission.phase == MissionPhase::RoadRoller
+        && stage.action == RoadRollerAction::Ready
+        && stage.passes < 2;
+    let wave = hint_wave(&time, 4.5, 0.0);
+    for (hint, mut transform, mut visibility) in &mut hints {
+        let remaining = hint.required_pass >= stage.passes;
+        *visibility = if ready && remaining {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+        let active = hint.required_pass == stage.passes;
+        let motion = if active { wave * 0.34 } else { 0.0 };
+        transform.translation.x = hint.direction * (2.30 + motion);
+        transform.rotation = if hint.direction > 0.0 {
+            Quat::IDENTITY
+        } else {
+            Quat::from_rotation_z(std::f32::consts::PI)
+        };
+        transform.scale = Vec3::splat(if active { 0.94 + wave * 0.10 } else { 0.68 });
     }
 }
 
