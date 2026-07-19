@@ -1,5 +1,18 @@
 use super::super::*;
 
+const DUMP_TRUCK_WHEEL_RADIUS: f32 = 0.48;
+
+#[derive(Component)]
+pub(crate) struct DumpTruckRolling {
+    previous_x: f32,
+}
+
+#[derive(Component)]
+pub(crate) struct DumpTruckWheel {
+    base_rotation: Quat,
+    angle: f32,
+}
+
 pub(crate) fn spawn_dump_truck(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
@@ -21,6 +34,9 @@ pub(crate) fn spawn_dump_truck(
     let truck = commands
         .spawn((
             DumpTruckVehicle,
+            DumpTruckRolling {
+                previous_x: DUMP_TRUCK_START_X,
+            },
             Transform::from_xyz(DUMP_TRUCK_START_X, 0.0, 0.0),
             Visibility::Hidden,
         ))
@@ -48,22 +64,38 @@ pub(crate) fn spawn_dump_truck(
             Transform::from_xyz(-1.18, 1.08, 0.0),
         ));
 
-        let wheel_mesh = meshes.add(Cylinder::new(0.48, 0.30).mesh().resolution(14));
+        let wheel_mesh = meshes.add(
+            Cylinder::new(DUMP_TRUCK_WHEEL_RADIUS, 0.30)
+                .mesh()
+                .resolution(14),
+        );
         let hub_mesh = meshes.add(Cylinder::new(0.24, 0.32).mesh().resolution(14));
+        let wheel_marker_mesh = meshes.add(Cuboid::new(0.12, 0.04, 0.62));
+        let cylinder_rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
         for x in [-2.10, 0.10] {
             for z in [-0.91, 0.91] {
-                parent.spawn((
-                    Mesh3d(wheel_mesh.clone()),
-                    MeshMaterial3d(tire.clone()),
-                    Transform::from_xyz(x, 0.58, z)
-                        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-                ));
-                parent.spawn((
-                    Mesh3d(hub_mesh.clone()),
-                    MeshMaterial3d(hub.clone()),
-                    Transform::from_xyz(x, 0.58, z * 1.01)
-                        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-                ));
+                parent
+                    .spawn((
+                        DumpTruckWheel {
+                            base_rotation: cylinder_rotation,
+                            angle: 0.0,
+                        },
+                        Transform::from_xyz(x, 0.58, z).with_rotation(cylinder_rotation),
+                        Visibility::default(),
+                    ))
+                    .with_children(|wheel| {
+                        wheel.spawn((Mesh3d(wheel_mesh.clone()), MeshMaterial3d(tire.clone())));
+                        wheel.spawn((
+                            Mesh3d(hub_mesh.clone()),
+                            MeshMaterial3d(hub.clone()),
+                            Transform::from_xyz(0.0, z * 0.01, 0.0),
+                        ));
+                        wheel.spawn((
+                            Mesh3d(wheel_marker_mesh.clone()),
+                            MeshMaterial3d(hub.clone()),
+                            Transform::from_xyz(0.0, z.signum() * 0.18, 0.0),
+                        ));
+                    });
             }
         }
 
@@ -366,6 +398,28 @@ pub(crate) fn animate_dump_truck(
     }
 }
 
+pub(crate) fn animate_dump_truck_wheels(
+    mut truck: Single<
+        (&Transform, &mut DumpTruckRolling),
+        (With<DumpTruckVehicle>, Without<DumpTruckWheel>),
+    >,
+    mut wheels: Query<(&mut Transform, &mut DumpTruckWheel), Without<DumpTruckVehicle>>,
+) {
+    let (truck_transform, rolling) = &mut *truck;
+    let distance = truck_transform.translation.x - rolling.previous_x;
+    rolling.previous_x = truck_transform.translation.x;
+
+    if distance == 0.0 {
+        return;
+    }
+
+    for (mut transform, mut wheel) in &mut wheels {
+        wheel.angle =
+            (wheel.angle - distance / DUMP_TRUCK_WHEEL_RADIUS).rem_euclid(std::f32::consts::TAU);
+        transform.rotation = wheel.base_rotation * Quat::from_rotation_y(wheel.angle);
+    }
+}
+
 pub(crate) fn pulse_dump_bed(
     time: Res<Time>,
     mission: Res<Mission>,
@@ -389,6 +443,16 @@ pub(crate) fn reset_dump_truck(
     mut commands: Commands,
     truck_entity: Single<Entity, With<DumpTruckVehicle>>,
     mut visuals: DumpTruckVisuals,
+    mut rolling: Single<&mut DumpTruckRolling, With<DumpTruckVehicle>>,
+    mut wheels: Query<
+        (&mut Transform, &mut DumpTruckWheel),
+        (
+            Without<DumpTruckVehicle>,
+            Without<DumpBed>,
+            Without<PitFill>,
+            Without<GravelStream>,
+        ),
+    >,
 ) {
     if !restart.0 {
         return;
@@ -397,6 +461,11 @@ pub(crate) fn reset_dump_truck(
     commands.entity(*truck_entity).insert(Visibility::Hidden);
     **visuals.truck = Transform::from_xyz(DUMP_TRUCK_START_X, 0.0, 0.0);
     **visuals.bed = Transform::from_translation(DUMP_BED_HOME);
+    rolling.previous_x = DUMP_TRUCK_START_X;
+    for (mut transform, mut wheel) in &mut wheels {
+        wheel.angle = 0.0;
+        transform.rotation = wheel.base_rotation;
+    }
     for (_, mut transform, mut visibility) in &mut visuals.gravel {
         *transform = Transform::default();
         *visibility = Visibility::Hidden;

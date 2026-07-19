@@ -30,6 +30,7 @@ const ROAD_ROLLER_RIGHT_X: f32 = 5.4;
 const ROAD_ROLLER_HOME_Y: f32 = 1.2;
 const PASSING_CAR_START_X: f32 = -9.0;
 const PASSING_CAR_END_X: f32 = 9.0;
+const PASSING_CAR_WHEEL_RADIUS: f32 = 0.34;
 
 #[derive(Resource)]
 struct Mission {
@@ -262,6 +263,18 @@ struct RoadBarrier {
 struct PassingCar;
 
 #[derive(Component)]
+struct PassingCarRolling {
+    previous_x: f32,
+}
+
+#[derive(Component)]
+struct PassingCarWheel {
+    radius: f32,
+    base_rotation: Quat,
+    angle: f32,
+}
+
+#[derive(Component)]
 struct HornFeedback;
 
 #[derive(Component)]
@@ -404,6 +417,15 @@ type CompletionSequenceFilter = (
 );
 type RollerToTrafficFilter = (With<RoadRollerVehicle>, Without<CompletionFeedback>);
 type TrafficCompletionFilter = (With<CompletionFeedback>, Without<RoadRollerVehicle>);
+type PassingCarWheelFilter = (
+    With<PassingCarWheel>,
+    Without<RoadBarrier>,
+    Without<PassingCar>,
+    Without<HornFeedback>,
+    Without<CelebrationSpark>,
+    Without<CompletionFeedback>,
+    Without<RestartButton>,
+);
 
 #[derive(bevy::ecs::system::SystemParam)]
 struct CompletionSequenceVisuals<'w, 's> {
@@ -469,6 +491,20 @@ fn main() {
                 reset_resources,
             )
                 .chain(),
+        )
+        .add_systems(
+            Update,
+            (
+                animate_dump_truck_wheels
+                    .after(animate_dump_truck)
+                    .before(pulse_dump_bed),
+                animate_road_roller_rolling_visuals
+                    .after(animate_road_roller)
+                    .before(pulse_road_roller),
+                animate_passing_car_wheels
+                    .after(animate_completion_sequence)
+                    .before(animate_completion_feedback),
+            ),
         )
         .run();
 }
@@ -579,6 +615,7 @@ fn spawn_completion_sequence(
     let car_red = unlit_material(materials, Color::srgb(0.90, 0.08, 0.08));
     let car_window = unlit_material(materials, Color::srgb(0.35, 0.75, 0.88));
     let tire = unlit_material(materials, Color::srgb(0.07, 0.08, 0.09));
+    let wheel_marker = unlit_material(materials, Color::srgb(0.72, 0.75, 0.78));
     let horn_yellow = unlit_material(materials, Color::srgb(1.0, 0.84, 0.10));
 
     for (home, cleared_z) in [
@@ -623,6 +660,9 @@ fn spawn_completion_sequence(
     let car = commands
         .spawn((
             PassingCar,
+            PassingCarRolling {
+                previous_x: PASSING_CAR_START_X,
+            },
             Transform::from_xyz(PASSING_CAR_START_X, 0.72, 0.0),
             Visibility::Hidden,
         ))
@@ -642,15 +682,33 @@ fn spawn_completion_sequence(
             MeshMaterial3d(car_window),
             Transform::from_xyz(0.02, 0.58, 0.63),
         ));
-        let wheel_mesh = meshes.add(Cylinder::new(0.34, 0.22).mesh().resolution(14));
+        let wheel_mesh = meshes.add(
+            Cylinder::new(PASSING_CAR_WHEEL_RADIUS, 0.22)
+                .mesh()
+                .resolution(14),
+        );
+        let wheel_marker_mesh = meshes.add(Cuboid::new(0.09, 0.04, 0.45));
+        let cylinder_rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
         for x in [-0.85, 0.85] {
             for z in [-0.73, 0.73] {
-                parent.spawn((
-                    Mesh3d(wheel_mesh.clone()),
-                    MeshMaterial3d(tire.clone()),
-                    Transform::from_xyz(x, -0.25, z)
-                        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
-                ));
+                parent
+                    .spawn((
+                        PassingCarWheel {
+                            radius: PASSING_CAR_WHEEL_RADIUS,
+                            base_rotation: cylinder_rotation,
+                            angle: 0.0,
+                        },
+                        Transform::from_xyz(x, -0.25, z).with_rotation(cylinder_rotation),
+                        Visibility::default(),
+                    ))
+                    .with_children(|wheel| {
+                        wheel.spawn((Mesh3d(wheel_mesh.clone()), MeshMaterial3d(tire.clone())));
+                        wheel.spawn((
+                            Mesh3d(wheel_marker_mesh.clone()),
+                            MeshMaterial3d(wheel_marker.clone()),
+                            Transform::from_xyz(0.0, z.signum() * 0.13, 0.0),
+                        ));
+                    });
             }
         }
     });
@@ -920,7 +978,33 @@ fn animate_completion_feedback(
     }
 }
 
-fn reset_completion_sequence(restart: Res<RestartRequest>, mut visuals: CompletionSequenceVisuals) {
+fn animate_passing_car_wheels(
+    mut car: Single<
+        (&Transform, &mut PassingCarRolling),
+        (With<PassingCar>, Without<PassingCarWheel>),
+    >,
+    mut wheels: Query<(&mut Transform, &mut PassingCarWheel), Without<PassingCar>>,
+) {
+    let (car_transform, rolling) = &mut *car;
+    let distance = car_transform.translation.x - rolling.previous_x;
+    rolling.previous_x = car_transform.translation.x;
+
+    if distance == 0.0 {
+        return;
+    }
+
+    for (mut transform, mut wheel) in &mut wheels {
+        wheel.angle = (wheel.angle - distance / wheel.radius).rem_euclid(std::f32::consts::TAU);
+        transform.rotation = wheel.base_rotation * Quat::from_rotation_y(wheel.angle);
+    }
+}
+
+fn reset_completion_sequence(
+    restart: Res<RestartRequest>,
+    mut visuals: CompletionSequenceVisuals,
+    mut car_rolling: Single<&mut PassingCarRolling, With<PassingCar>>,
+    mut car_wheels: Query<(&mut Transform, &mut PassingCarWheel), PassingCarWheelFilter>,
+) {
     if !restart.0 {
         return;
     }
@@ -950,6 +1034,12 @@ fn reset_completion_sequence(restart: Res<RestartRequest>, mut visuals: Completi
     let (restart_visibility, restart_transform) = &mut *visuals.restart;
     **restart_visibility = Visibility::Hidden;
     **restart_transform = UiTransform::IDENTITY;
+
+    car_rolling.previous_x = PASSING_CAR_START_X;
+    for (mut transform, mut wheel) in &mut car_wheels {
+        wheel.angle = 0.0;
+        transform.rotation = wheel.base_rotation;
+    }
 }
 
 fn reset_resources(

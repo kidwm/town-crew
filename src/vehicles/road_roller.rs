@@ -1,5 +1,20 @@
 use super::super::*;
 
+const ROAD_ROLLER_DRUM_RADIUS: f32 = 0.72;
+const ROAD_ROLLER_WHEEL_RADIUS: f32 = 0.55;
+
+#[derive(Component)]
+pub(crate) struct RoadRollerRolling {
+    previous_x: f32,
+}
+
+#[derive(Component)]
+pub(crate) struct RoadRollerRollingVisual {
+    radius: f32,
+    base_rotation: Quat,
+    angle: f32,
+}
+
 pub(crate) fn spawn_road_roller(
     commands: &mut Commands,
     meshes: &mut Assets<Mesh>,
@@ -21,6 +36,9 @@ pub(crate) fn spawn_road_roller(
     let roller = commands
         .spawn((
             RoadRollerVehicle,
+            RoadRollerRolling {
+                previous_x: ROAD_ROLLER_START_X,
+            },
             Pickable::default(),
             Mesh3d(meshes.add(Cuboid::new(3.8, 2.7, 2.5))),
             MeshMaterial3d(transparent_hitbox),
@@ -61,18 +79,55 @@ pub(crate) fn spawn_road_roller(
         ));
 
         let cylinder_rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
-        parent.spawn((
-            Mesh3d(meshes.add(Cylinder::new(0.72, 1.85).mesh().resolution(16))),
-            MeshMaterial3d(drum),
-            Transform::from_xyz(1.20, -0.26, 0.0).with_rotation(cylinder_rotation),
-        ));
-        let wheel_mesh = meshes.add(Cylinder::new(0.55, 0.30).mesh().resolution(14));
+        let drum_mesh = meshes.add(
+            Cylinder::new(ROAD_ROLLER_DRUM_RADIUS, 1.85)
+                .mesh()
+                .resolution(16),
+        );
+        let drum_marker_mesh = meshes.add(Cuboid::new(0.14, 0.04, 0.98));
+        parent
+            .spawn((
+                RoadRollerRollingVisual {
+                    radius: ROAD_ROLLER_DRUM_RADIUS,
+                    base_rotation: cylinder_rotation,
+                    angle: 0.0,
+                },
+                Transform::from_xyz(1.20, -0.26, 0.0).with_rotation(cylinder_rotation),
+                Visibility::default(),
+            ))
+            .with_children(|rolling_drum| {
+                rolling_drum.spawn((Mesh3d(drum_mesh), MeshMaterial3d(drum)));
+                rolling_drum.spawn((
+                    Mesh3d(drum_marker_mesh),
+                    MeshMaterial3d(roller_dark.clone()),
+                    Transform::from_xyz(0.0, 0.95, 0.0),
+                ));
+            });
+        let wheel_mesh = meshes.add(
+            Cylinder::new(ROAD_ROLLER_WHEEL_RADIUS, 0.30)
+                .mesh()
+                .resolution(14),
+        );
+        let wheel_marker_mesh = meshes.add(Cuboid::new(0.12, 0.04, 0.68));
         for z in [-0.88, 0.88] {
-            parent.spawn((
-                Mesh3d(wheel_mesh.clone()),
-                MeshMaterial3d(tire.clone()),
-                Transform::from_xyz(-1.10, -0.58, z).with_rotation(cylinder_rotation),
-            ));
+            parent
+                .spawn((
+                    RoadRollerRollingVisual {
+                        radius: ROAD_ROLLER_WHEEL_RADIUS,
+                        base_rotation: cylinder_rotation,
+                        angle: 0.0,
+                    },
+                    Transform::from_xyz(-1.10, -0.58, z).with_rotation(cylinder_rotation),
+                    Visibility::default(),
+                ))
+                .with_children(|wheel| {
+                    wheel.spawn((Mesh3d(wheel_mesh.clone()), MeshMaterial3d(tire.clone())));
+                    wheel.spawn((
+                        Mesh3d(wheel_marker_mesh.clone()),
+                        MeshMaterial3d(roller_yellow.clone()),
+                        Transform::from_xyz(0.0, z.signum() * 0.17, 0.0),
+                    ));
+                });
         }
 
         let hint_mesh = meshes.add(Cuboid::new(0.72, 0.14, 0.12));
@@ -301,6 +356,30 @@ pub(crate) fn animate_road_roller(
     }
 }
 
+pub(crate) fn animate_road_roller_rolling_visuals(
+    mut roller: Single<
+        (&Transform, &mut RoadRollerRolling),
+        (With<RoadRollerVehicle>, Without<RoadRollerRollingVisual>),
+    >,
+    mut rolling_visuals: Query<
+        (&mut Transform, &mut RoadRollerRollingVisual),
+        Without<RoadRollerVehicle>,
+    >,
+) {
+    let (roller_transform, rolling) = &mut *roller;
+    let distance = roller_transform.translation.x - rolling.previous_x;
+    rolling.previous_x = roller_transform.translation.x;
+
+    if distance == 0.0 {
+        return;
+    }
+
+    for (mut transform, mut visual) in &mut rolling_visuals {
+        visual.angle = (visual.angle - distance / visual.radius).rem_euclid(std::f32::consts::TAU);
+        transform.rotation = visual.base_rotation * Quat::from_rotation_y(visual.angle);
+    }
+}
+
 pub(crate) fn pulse_road_roller(
     time: Res<Time>,
     mission: Res<Mission>,
@@ -336,6 +415,16 @@ pub(crate) fn reset_road_roller(
     roller_entity: Single<Entity, With<RoadRollerVehicle>>,
     pit_holes: Query<Entity, With<PitHole>>,
     mut visuals: RoadRollerVisuals,
+    mut rolling: Single<&mut RoadRollerRolling, With<RoadRollerVehicle>>,
+    mut rolling_visuals: Query<
+        (&mut Transform, &mut RoadRollerRollingVisual),
+        (
+            Without<RoadRollerVehicle>,
+            Without<PitFill>,
+            Without<RepairedRoad>,
+            Without<CompletionFeedback>,
+        ),
+    >,
 ) {
     if !restart.0 {
         return;
@@ -343,6 +432,11 @@ pub(crate) fn reset_road_roller(
 
     commands.entity(*roller_entity).insert(Visibility::Hidden);
     **visuals.roller = Transform::from_xyz(ROAD_ROLLER_START_X, ROAD_ROLLER_HOME_Y, 0.0);
+    rolling.previous_x = ROAD_ROLLER_START_X;
+    for (mut transform, mut visual) in &mut rolling_visuals {
+        visual.angle = 0.0;
+        transform.rotation = visual.base_rotation;
+    }
     for entity in &pit_holes {
         commands.entity(entity).insert(Visibility::Visible);
     }
