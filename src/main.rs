@@ -1,7 +1,9 @@
 use bevy::asset::{embedded_asset, load_embedded_asset};
+use bevy::audio::Volume;
 use bevy::camera::ScalingMode;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
+use std::time::Duration;
 
 mod vehicles;
 use vehicles::*;
@@ -175,6 +177,36 @@ enum CompletionAction {
 
 #[derive(Resource, Default)]
 struct RestartRequest(bool);
+
+#[derive(Resource)]
+struct SoundEffects {
+    rock_cleared: [Handle<Pitch>; 3],
+    dump_started: Handle<Pitch>,
+    roller_passed: [Handle<Pitch>; 2],
+    horn: [Handle<Pitch>; 2],
+    mission_complete: [Handle<Pitch>; 3],
+}
+
+#[derive(Resource)]
+struct SoundCueTracker {
+    cleared_rocks: u8,
+    dump_action: DumpBedAction,
+    roller_passes: u8,
+    completion_action: CompletionAction,
+    horn_played: bool,
+}
+
+impl Default for SoundCueTracker {
+    fn default() -> Self {
+        Self {
+            cleared_rocks: 0,
+            dump_action: DumpBedAction::Waiting,
+            roller_passes: 0,
+            completion_action: CompletionAction::Waiting,
+            horn_played: false,
+        }
+    }
+}
 
 #[derive(Component)]
 struct DraggableBucket;
@@ -466,7 +498,8 @@ fn main() {
         .init_resource::<RoadRollerStage>()
         .init_resource::<CompletionStage>()
         .init_resource::<RestartRequest>()
-        .add_systems(Startup, setup_scene)
+        .init_resource::<SoundCueTracker>()
+        .add_systems(Startup, (setup_scene, setup_sound_effects))
         .add_systems(
             Update,
             (
@@ -502,6 +535,9 @@ fn main() {
                     .after(animate_road_roller)
                     .before(pulse_road_roller),
                 animate_passing_car_wheels
+                    .after(animate_completion_sequence)
+                    .before(animate_completion_feedback),
+                play_sound_effects
                     .after(animate_completion_sequence)
                     .before(animate_completion_feedback),
             ),
@@ -602,6 +638,82 @@ fn setup_scene(
     spawn_road_roller(&mut commands, &mut meshes, &mut materials);
     spawn_completion_sequence(&mut commands, &mut meshes, &mut materials, &asset_server);
     spawn_completion_feedback(&mut commands, &mut meshes, &mut materials);
+}
+
+fn setup_sound_effects(mut commands: Commands, mut pitches: ResMut<Assets<Pitch>>) {
+    let mut pitch = |frequency, milliseconds| {
+        pitches.add(Pitch::new(frequency, Duration::from_millis(milliseconds)))
+    };
+
+    commands.insert_resource(SoundEffects {
+        rock_cleared: [pitch(392.0, 120), pitch(493.88, 120), pitch(587.33, 140)],
+        dump_started: pitch(146.83, 260),
+        roller_passed: [pitch(164.81, 180), pitch(220.0, 220)],
+        horn: [pitch(392.0, 240), pitch(523.25, 240)],
+        mission_complete: [pitch(523.25, 420), pitch(659.25, 420), pitch(783.99, 420)],
+    });
+}
+
+fn play_pitch(commands: &mut Commands, pitch: &Handle<Pitch>, volume: f32) {
+    commands.spawn((
+        AudioPlayer(pitch.clone()),
+        PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume)),
+    ));
+}
+
+fn play_sound_effects(
+    mut commands: Commands,
+    sounds: Res<SoundEffects>,
+    restart: Res<RestartRequest>,
+    excavator: Res<ExcavatorStage>,
+    dump_truck: Res<DumpTruckStage>,
+    road_roller: Res<RoadRollerStage>,
+    completion: Res<CompletionStage>,
+    mut tracker: ResMut<SoundCueTracker>,
+) {
+    if restart.0 {
+        *tracker = SoundCueTracker::default();
+        return;
+    }
+
+    if excavator.cleared_rocks > tracker.cleared_rocks {
+        let index = usize::from(excavator.cleared_rocks.saturating_sub(1))
+            .min(sounds.rock_cleared.len() - 1);
+        play_pitch(&mut commands, &sounds.rock_cleared[index], 0.14);
+    }
+    tracker.cleared_rocks = excavator.cleared_rocks;
+
+    if dump_truck.action == DumpBedAction::Dumping && tracker.dump_action != DumpBedAction::Dumping
+    {
+        play_pitch(&mut commands, &sounds.dump_started, 0.12);
+    }
+    tracker.dump_action = dump_truck.action;
+
+    if road_roller.passes > tracker.roller_passes {
+        let index =
+            usize::from(road_roller.passes.saturating_sub(1)).min(sounds.roller_passed.len() - 1);
+        play_pitch(&mut commands, &sounds.roller_passed[index], 0.15);
+    }
+    tracker.roller_passes = road_roller.passes;
+
+    if completion.action == CompletionAction::Driving
+        && completion.animation_elapsed >= 2.45 * 0.42
+        && !tracker.horn_played
+    {
+        for pitch in &sounds.horn {
+            play_pitch(&mut commands, pitch, 0.10);
+        }
+        tracker.horn_played = true;
+    }
+
+    if completion.action == CompletionAction::Celebrating
+        && tracker.completion_action != CompletionAction::Celebrating
+    {
+        for pitch in &sounds.mission_complete {
+            play_pitch(&mut commands, pitch, 0.08);
+        }
+    }
+    tracker.completion_action = completion.action;
 }
 
 fn spawn_completion_sequence(

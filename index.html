@@ -4,6 +4,57 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Town Crew</title>
+    <script>
+      (() => {
+        const AudioContextConstructor = globalThis.AudioContext;
+        if (!AudioContextConstructor) return;
+
+        const contexts = new Set();
+        globalThis.AudioContext = new Proxy(AudioContextConstructor, {
+          construct(target, args, newTarget) {
+            const context = Reflect.construct(target, args, newTarget);
+            contexts.add(context);
+            return context;
+          },
+        });
+
+        const inputEvents = [
+          "pointerdown",
+          "pointerup",
+          "touchstart",
+          "touchend",
+          "mousedown",
+          "keydown",
+        ];
+
+        const stopListening = () => {
+          for (const eventName of inputEvents) {
+            document.removeEventListener(eventName, resumeAudio);
+          }
+        };
+
+        function resumeAudio() {
+          if (contexts.size === 0) return;
+
+          const attempts = [];
+          for (const context of contexts) {
+            if (context.state !== "running") {
+              attempts.push(context.resume());
+            }
+          }
+
+          void Promise.allSettled(attempts).then(() => {
+            if ([...contexts].every((context) => context.state === "running")) {
+              stopListening();
+            }
+          });
+        }
+
+        for (const eventName of inputEvents) {
+          document.addEventListener(eventName, resumeAudio, { passive: true });
+        }
+      })();
+    </script>
     <link data-trunk rel="rust" data-wasm-opt="0" />
     <link data-trunk rel="copy-dir" href="assets" />
     <style>
