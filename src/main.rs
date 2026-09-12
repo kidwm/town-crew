@@ -33,6 +33,8 @@ const ROAD_ROLLER_HOME_Y: f32 = 1.2;
 const PASSING_CAR_START_X: f32 = -9.0;
 const PASSING_CAR_END_X: f32 = 9.0;
 const PASSING_CAR_WHEEL_RADIUS: f32 = 0.34;
+const ROCK_CHIP_POOL_SIZE: u8 = 8;
+const DUST_PUFF_POOL_SIZE: u8 = 10;
 
 #[derive(Resource)]
 struct Mission {
@@ -206,6 +208,43 @@ impl Default for SoundCueTracker {
             horn_played: false,
         }
     }
+}
+
+#[derive(Resource)]
+struct ConstructionFeedbackTracker {
+    bucket_action: BucketAction,
+    dump_action: DumpBedAction,
+    dump_impact_played: bool,
+    roller_passes: u8,
+}
+
+impl Default for ConstructionFeedbackTracker {
+    fn default() -> Self {
+        Self {
+            bucket_action: BucketAction::Idle,
+            dump_action: DumpBedAction::Waiting,
+            dump_impact_played: false,
+            roller_passes: 0,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ConstructionParticleKind {
+    RockChip,
+    DustPuff,
+}
+
+#[derive(Component)]
+struct ConstructionParticle {
+    kind: ConstructionParticleKind,
+    slot: u8,
+    active: bool,
+    elapsed: f32,
+    lifetime: f32,
+    velocity: Vec3,
+    angular_velocity: Vec3,
+    base_scale: f32,
 }
 
 #[derive(Component)]
@@ -499,6 +538,7 @@ fn main() {
         .init_resource::<CompletionStage>()
         .init_resource::<RestartRequest>()
         .init_resource::<SoundCueTracker>()
+        .init_resource::<ConstructionFeedbackTracker>()
         .add_systems(Startup, (setup_scene, setup_sound_effects))
         .add_systems(
             Update,
@@ -536,6 +576,11 @@ fn main() {
                     .before(pulse_road_roller),
                 animate_passing_car_wheels
                     .after(animate_completion_sequence)
+                    .before(animate_completion_feedback),
+                update_construction_feedback
+                    .after(animate_scoop_and_return)
+                    .after(animate_dump_truck)
+                    .after(animate_road_roller)
                     .before(animate_completion_feedback),
                 play_sound_effects
                     .after(animate_completion_sequence)
@@ -636,8 +681,217 @@ fn setup_scene(
     spawn_dump_truck(&mut commands, &mut meshes, &mut materials);
     spawn_pit_fill(&mut commands, &mut meshes, &mut materials);
     spawn_road_roller(&mut commands, &mut meshes, &mut materials);
+    spawn_construction_feedback(&mut commands, &mut meshes, &mut materials);
     spawn_completion_sequence(&mut commands, &mut meshes, &mut materials, &asset_server);
     spawn_completion_feedback(&mut commands, &mut meshes, &mut materials);
+}
+
+fn spawn_construction_feedback(
+    commands: &mut Commands,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    let rock_chip_mesh = meshes.add(Cuboid::new(0.26, 0.20, 0.24));
+    let rock_chip_material = unlit_material(materials, Color::srgb(0.46, 0.43, 0.39));
+    for slot in 0..ROCK_CHIP_POOL_SIZE {
+        commands.spawn((
+            ConstructionParticle {
+                kind: ConstructionParticleKind::RockChip,
+                slot,
+                active: false,
+                elapsed: 0.0,
+                lifetime: 0.0,
+                velocity: Vec3::ZERO,
+                angular_velocity: Vec3::ZERO,
+                base_scale: 1.0,
+            },
+            Mesh3d(rock_chip_mesh.clone()),
+            MeshMaterial3d(rock_chip_material.clone()),
+            Transform::default(),
+            Visibility::Hidden,
+        ));
+    }
+
+    let dust_puff_mesh = meshes.add(Cuboid::new(0.36, 0.22, 0.32));
+    let dust_puff_material = unlit_material(materials, Color::srgb(0.72, 0.55, 0.32));
+    for slot in 0..DUST_PUFF_POOL_SIZE {
+        commands.spawn((
+            ConstructionParticle {
+                kind: ConstructionParticleKind::DustPuff,
+                slot,
+                active: false,
+                elapsed: 0.0,
+                lifetime: 0.0,
+                velocity: Vec3::ZERO,
+                angular_velocity: Vec3::ZERO,
+                base_scale: 1.0,
+            },
+            Mesh3d(dust_puff_mesh.clone()),
+            MeshMaterial3d(dust_puff_material.clone()),
+            Transform::default(),
+            Visibility::Hidden,
+        ));
+    }
+}
+
+fn activate_construction_particles(
+    particles: &mut Query<(&mut ConstructionParticle, &mut Transform, &mut Visibility)>,
+    kind: ConstructionParticleKind,
+    origin: Vec3,
+    count: usize,
+    horizontal_bias: f32,
+) {
+    let mut activated = 0;
+    for (mut particle, mut transform, mut visibility) in particles.iter_mut() {
+        if activated >= count {
+            break;
+        }
+        if particle.kind != kind || particle.active {
+            continue;
+        }
+
+        let slot = particle.slot as f32;
+        let angle =
+            slot / f32::from(match kind {
+                ConstructionParticleKind::RockChip => ROCK_CHIP_POOL_SIZE,
+                ConstructionParticleKind::DustPuff => DUST_PUFF_POOL_SIZE,
+            }) * std::f32::consts::TAU;
+        let radial = Vec3::new(angle.cos(), 0.0, angle.sin());
+
+        particle.active = true;
+        particle.elapsed = 0.0;
+        match kind {
+            ConstructionParticleKind::RockChip => {
+                particle.lifetime = 0.48 + f32::from(particle.slot % 3) * 0.05;
+                particle.velocity = Vec3::new(
+                    radial.x * 0.95 + horizontal_bias * 0.20,
+                    1.45 + f32::from(particle.slot % 3) * 0.18,
+                    radial.z * 0.78,
+                );
+                particle.angular_velocity = Vec3::new(5.0 + slot * 0.4, 3.5, 4.0);
+                particle.base_scale = 0.72 + f32::from(particle.slot % 2) * 0.18;
+            }
+            ConstructionParticleKind::DustPuff => {
+                particle.lifetime = 0.68 + f32::from(particle.slot % 3) * 0.06;
+                particle.velocity = Vec3::new(
+                    radial.x * 0.78 + horizontal_bias * 0.42,
+                    0.52 + f32::from(particle.slot % 3) * 0.10,
+                    radial.z * 0.68,
+                );
+                particle.angular_velocity = Vec3::new(0.0, 1.8 + slot * 0.12, 0.0);
+                particle.base_scale = 0.72 + f32::from(particle.slot % 3) * 0.12;
+            }
+        }
+
+        transform.translation = origin;
+        transform.rotation = Quat::from_rotation_y(angle);
+        transform.scale = Vec3::splat(particle.base_scale * 0.35);
+        *visibility = Visibility::Visible;
+        activated += 1;
+    }
+}
+
+fn update_construction_feedback(
+    time: Res<Time>,
+    restart: Res<RestartRequest>,
+    excavator: Res<ExcavatorStage>,
+    dump_truck: Res<DumpTruckStage>,
+    road_roller: Res<RoadRollerStage>,
+    mut tracker: ResMut<ConstructionFeedbackTracker>,
+    mut particles: Query<(&mut ConstructionParticle, &mut Transform, &mut Visibility)>,
+) {
+    if restart.0 {
+        *tracker = ConstructionFeedbackTracker::default();
+        for (mut particle, mut transform, mut visibility) in &mut particles {
+            particle.active = false;
+            particle.elapsed = 0.0;
+            *transform = Transform::default();
+            *visibility = Visibility::Hidden;
+        }
+        return;
+    }
+
+    if excavator.action == BucketAction::Scooping && tracker.bucket_action != BucketAction::Scooping
+    {
+        let origin = Vec3::new(excavator.scoop_start.x, 0.64, excavator.scoop_start.z);
+        activate_construction_particles(
+            &mut particles,
+            ConstructionParticleKind::RockChip,
+            origin,
+            6,
+            -0.25,
+        );
+    }
+    tracker.bucket_action = excavator.action;
+
+    if dump_truck.action == DumpBedAction::Dumping && tracker.dump_action != DumpBedAction::Dumping
+    {
+        tracker.dump_impact_played = false;
+    }
+    if dump_truck.action == DumpBedAction::Dumping
+        && dump_truck.animation_elapsed >= 0.42
+        && !tracker.dump_impact_played
+    {
+        activate_construction_particles(
+            &mut particles,
+            ConstructionParticleKind::DustPuff,
+            Vec3::new(2.15, 0.50, 0.0),
+            8,
+            0.30,
+        );
+        tracker.dump_impact_played = true;
+    }
+    tracker.dump_action = dump_truck.action;
+
+    if road_roller.passes > tracker.roller_passes {
+        let direction = if road_roller.passes == 1 { 1.0 } else { -1.0 };
+        activate_construction_particles(
+            &mut particles,
+            ConstructionParticleKind::DustPuff,
+            Vec3::new(2.25, 0.40, 0.0),
+            7,
+            direction,
+        );
+    }
+    tracker.roller_passes = road_roller.passes;
+
+    let delta_secs = time.delta_secs();
+    for (mut particle, mut transform, mut visibility) in &mut particles {
+        if !particle.active {
+            continue;
+        }
+
+        particle.elapsed += delta_secs;
+        let progress = (particle.elapsed / particle.lifetime).clamp(0.0, 1.0);
+        match particle.kind {
+            ConstructionParticleKind::RockChip => {
+                particle.velocity.y -= 5.2 * delta_secs;
+                transform.translation += particle.velocity * delta_secs;
+                let shrink = ((1.0 - progress) / 0.28).clamp(0.0, 1.0);
+                transform.scale = Vec3::splat(particle.base_scale * shrink);
+            }
+            ConstructionParticleKind::DustPuff => {
+                transform.translation += particle.velocity * delta_secs;
+                particle.velocity *= (-2.4 * delta_secs).exp();
+                let grow = (progress / 0.22).clamp(0.0, 1.0);
+                let fade = ((1.0 - progress) / 0.72).clamp(0.0, 1.0);
+                transform.scale = Vec3::splat(particle.base_scale * grow * fade);
+            }
+        }
+        transform.rotation *= Quat::from_euler(
+            EulerRot::XYZ,
+            particle.angular_velocity.x * delta_secs,
+            particle.angular_velocity.y * delta_secs,
+            particle.angular_velocity.z * delta_secs,
+        );
+
+        if progress >= 1.0 {
+            particle.active = false;
+            particle.elapsed = 0.0;
+            transform.scale = Vec3::ZERO;
+            *visibility = Visibility::Hidden;
+        }
+    }
 }
 
 fn setup_sound_effects(mut commands: Commands, mut pitches: ResMut<Assets<Pitch>>) {
