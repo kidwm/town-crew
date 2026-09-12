@@ -44,9 +44,10 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     await down(await project(-1.25, 0.85));
     await wait('excavator', 'dragging');
     await move(await project(rock[0], 0.85, rock[1]));
-    await page.locator('#app[data-action="scooping"], #app[data-action="unloading"]').waitFor();
-    await up();
+    // Software rendering can finish the brief pickup animation before the
+    // last mouse-move event returns. Wait for its durable gameplay result.
     await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
+    await up();
   }
   await wait('dump-truck', 'ready');
   await page.screenshot({ path: testInfo.outputPath('truck.png') });
