@@ -2,5 +2,10 @@
 /target/
 /dist/
 
+# Web experiment
+/web/node_modules/
+/web/dist/
+/web/test-results/
+
 # macOS
 .DS_Store
