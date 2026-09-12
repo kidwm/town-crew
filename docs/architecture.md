@@ -52,7 +52,7 @@ requirements. A generic mission engine is not required for this migration.
 
 - `bevy-prototype`: preserves the latest Rust code and original project notes.
 - `web-prototype`: preserves the complete browser experiment under `web/`.
-- `main`: becomes the root Web project after the migration checks pass.
+- `main`: the root Web project, verified and promoted after migration checks.
 
 The local checkout directory may retain its old name so existing Codex tasks
 and browser previews keep working. The GitHub repository name and npm package

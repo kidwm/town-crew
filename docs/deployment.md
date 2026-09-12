@@ -1,8 +1,11 @@
 # Cloudflare deployment
 
-Selected platform: **Cloudflare Workers Static Assets**. Initial publication is
-pending completion of Wrangler authorization. The configuration and local dry
-run are ready; no custom domain or automatic production release is configured.
+Production: **[小小城市隊](https://town-crew.wandererm.workers.dev)** on Cloudflare
+Workers Static Assets. First published on 2026-09-13 (Asia/Taipei) from Web
+migration commit `e4d7b6d`. Initial Cloudflare version:
+`3f4e5375-58eb-421b-bc8b-df9d90c2e837`.
+
+No custom domain or automatic production release is configured.
 
 ## Build and publish
 
@@ -23,7 +26,7 @@ npm run deploy
 
 `deploy:check` builds and runs `wrangler deploy --dry-run` without publishing.
 `deploy` repeats rules/build checks and publishes Worker `town-crew` to its
- default HTTPS `workers.dev` hostname. Wrangler prints the exact URL and version
+default HTTPS `workers.dev` hostname. Wrangler prints the exact URL and version
 ID; use that URL for device testing. Credentials stay in the OS keychain.
 
 The `workers_dev` and `preview_urls` settings are explicit in `wrangler.jsonc`.
@@ -46,7 +49,14 @@ credential. That is separate from the current build/test CI.
 ## Verification and device follow-up
 
 Verify the deployed URL, JS/CSS responses, full mission, cancellation and restart
-using the same production browser suite. Real iPad/Android touch, audible cues,
+using the same production browser suite:
+
+```sh
+PLAYWRIGHT_BASE_URL=https://town-crew.wandererm.workers.dev npm run test:e2e
+```
+
+This skips the local preview server and exercises the hosted build.
+Real iPad/Android touch, audible cues,
 cold loading and sustained frame rate still require hardware testing.
 
 ## Why this platform

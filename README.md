@@ -1,5 +1,7 @@
 # Town Crew · 小小城市隊
 
+**Play:** [小小城市隊](https://town-crew.wandererm.workers.dev)
+
 A complete, replayable road-repair mission using Vite, TypeScript, Three.js,
 and Effect **4.0.0-beta.107**. It runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
@@ -19,6 +21,7 @@ npm run dev
 - `npx playwright install chromium` installs the browser for end-to-end tests.
 - `npm run test:e2e` tests the production build with mouse and emulated touch.
   Run `npm run build` first; the test runner starts its own preview on port 4173.
+- To test a deployed build instead: `PLAYWRIGHT_BASE_URL=https://town-crew.wandererm.workers.dev npm run test:e2e`.
 - `npm run test:e2e:dev` starts Vite on port 5174 and checks stage entry, reload,
   tuning persistence, and HMR without rewriting source.
 - To use an installed Chrome instead: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
