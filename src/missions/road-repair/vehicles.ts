@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Shapes } from './geometry.ts';
+import type { Shapes } from '../../runtime/geometry.ts';
 import { BOOM, STICK, PIVOT, elbow, ROCKS, UNLOAD } from './domain/excavator.ts';
 import type { Point, ExcavatorState } from './domain/excavator.ts';
 

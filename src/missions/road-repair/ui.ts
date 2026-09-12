@@ -16,7 +16,7 @@ export function mountUI(app: HTMLElement, dev: boolean) {
     <div class="loading" role="status">準備出發…</div>
   </main>
   ${dev ? `<aside class="dev-panel" aria-label="開發工具">
-    <div class="dev-heading"><span class="dev-dot"></span> WEB 實驗 <span class="dev-version">02</span></div>
+    <div class="dev-heading"><span class="dev-dot"></span> 開發工具 <span class="dev-version">WEB</span></div>
     <h1>一起，把路修好。</h1>
     <p class="dev-intro">挖土 → 填料 → 整平 → 通車<br>各階段可直接進入與重設。</p>
     <label class="field">直達階段<select id="stage"><option value="excavator">挖土機 · 清除碎石</option><option value="dump-truck">傾卸卡車 · 填料</option><option value="roller">壓路機 · 第一趟</option><option value="roller-return">壓路機 · 回程</option><option value="traffic">完工通車</option><option value="complete">慶祝完成</option></select></label>

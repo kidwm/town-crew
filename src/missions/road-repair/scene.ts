@@ -4,7 +4,7 @@ import type { Tuning } from './domain/dump-truck.ts';
 import { BARRIER_X, roadPose } from './domain/road.ts';
 import type { RoadState } from './domain/road.ts';
 import { smooth } from './domain/excavator.ts';
-import { createShapes } from './geometry.ts';
+import { createShapes } from '../../runtime/geometry.ts';
 import { createExcavatorVisual, createRollerVisual, createCarVisual } from './vehicles.ts';
 
 export function createScene(host: HTMLElement) {
@@ -13,7 +13,7 @@ export function createScene(host: HTMLElement) {
   renderer.setClearColor('#bde6eb');
   renderer.domElement.setAttribute('aria-label', '修路工地：拖曳挖斗、車斗或壓路機完成任務');
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   host.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-10, 10, 6, -6, 0.1, 100);

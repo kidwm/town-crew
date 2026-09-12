@@ -1,11 +1,11 @@
-# Rust build output
-/target/
+/node_modules/
 /dist/
-
-# Web experiment
-/web/node_modules/
-/web/dist/
-/web/test-results/
-
-# macOS
+/test-results/
+/playwright-report/
+/.wrangler/
+/target/
+/web/
+.env
+.env.*
+!.env.example
 .DS_Store

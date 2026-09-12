@@ -1,0 +1,27 @@
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  testMatch: 'road.spec.mjs',
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
+  workers: 1,
+  forbidOnly: !!process.env.CI,
+  retries: 0,
+  reporter: process.env.CI ? 'github' : 'list',
+  use: {
+    baseURL: 'http://127.0.0.1:4173',
+    channel: process.env.PLAYWRIGHT_CHANNEL,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
+  projects: [
+    { name: 'desktop-mouse', use: { viewport: { width: 1280, height: 800 } } },
+    { name: 'tablet-touch', use: { viewport: { width: 1024, height: 768 }, hasTouch: true } },
+  ],
+  webServer: {
+    command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',
+    url: 'http://127.0.0.1:4173',
+    reuseExistingServer: false,
+  },
+});

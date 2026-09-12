@@ -1,5 +1,5 @@
 // Browser audio must be resumed inside a real pointer gesture, including on iPad.
-export function createAudio() {
+export function createAudio<Cue extends string>(cues: Readonly<Record<Cue, readonly number[]>>) {
   let context: AudioContext | undefined;
   let muted = false;
   return {
@@ -8,9 +8,8 @@ export function createAudio() {
       return context.state === 'suspended' ? context.resume() : Promise.resolve();
     },
     setMuted(value: boolean) { muted = value; },
-    play(kind: 'grab' | 'dump' | 'scoop' | 'compact' | 'horn' | 'complete') {
+    play(kind: Cue) {
       if (!context || context.state !== 'running' || muted) return;
-      const cues = { grab: [330], dump: [196, 147], scoop: [294, 392], compact: [220, 330], horn: [392, 494], complete: [523, 659, 784] };
       const tones = cues[kind];
       tones.forEach((frequency, index) => {
         const oscillator = context!.createOscillator();
