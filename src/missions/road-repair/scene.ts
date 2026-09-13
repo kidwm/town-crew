@@ -34,7 +34,7 @@ export function createScene(host: HTMLElement) {
   box(scene, [35, 0.15, 5.9], [0, -0.13, 0], '#73828a');
   for (const z of [-3.15, 3.15]) box(scene, [35, 0.24, 0.35], [0, -0.05, z], '#e2ddc9');
   for (let x = -16; x < 17; x += 3) {
-    box(scene, [1.25, 0.015, 0.1], [x, -0.045, -1.85], '#e6dfba');
+    box(scene, [1.25, 0.015, 0.1], [x, -0.045, 0], '#e6dfba');
   }
   // A few simple landmarks keep the scene readable without external assets.
   for (const [x, z, scale] of [[-8, -6, 1], [5, -6, 1.2], [9, -4, 0.8], [-9, 5, 0.85]]) {
@@ -66,10 +66,22 @@ export function createScene(host: HTMLElement) {
   }
   for (const [x, z] of [[4.9, -1.7], [4.9, 1.7], [-6.5, -1.7]]) {
     cylinder(scene, 0.28, 0.12, [x, 0.01, z], '#e2dac9', 4);
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.21, 0.63, 8), material('#ee9550'));
-    cone.position.set(x, 0.38, z);
+    const cone = new THREE.Group();
+    cone.name = 'traffic-cone';
+    cone.position.set(x, 0.065, z);
     scene.add(cone);
-    cylinder(scene, 0.125, 0.1, [x, 0.35, z], '#fff0d0', 8);
+    // A hollow shell with an annular lip and inner wall, open at the top.
+    const profiles = [
+      { points: [[0.21, 0], [0.075, 0.63]], color: '#ee9550' },
+      { points: [[0.075, 0.63], [0.048, 0.63]], color: '#f5ad68' },
+      { points: [[0.048, 0.63], [0.183, 0]], color: '#81492e' },
+      { points: [[0.1596, 0.24], [0.136, 0.35]], color: '#fff0d0' },
+    ];
+    for (const { points, color } of profiles) {
+      const shell = new THREE.Mesh(new THREE.LatheGeometry(points.map(([r, y]) => new THREE.Vector2(r, y)), 24), material(color));
+      shell.castShadow = shell.receiveShadow = true;
+      cone.add(shell);
+    }
   }
 
   const truck = new THREE.Group();
