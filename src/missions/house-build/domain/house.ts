@@ -21,6 +21,8 @@ export interface HouseState {
   gravel: number; pours: number[]; chute: Point; placed: number;
   truckX: number; dragPx: number; load: Point; from: Point; color: number;
 }
+// The last lift needs time to stow the crane before it drives away.
+export const leavingDuration = (s: HouseState) => s.phase === 'crane-one' ? 2.2 : s.phase === 'crane-two' ? 2.6 : 1.4;
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const smooth = (x: number) => { const t = clamp(x); return t * t * (3 - 2 * t); };
 export const isCrane = (s: HouseState) => s.phase === 'crane-one' || s.phase === 'crane-two';
@@ -96,7 +98,7 @@ export function advance(s: HouseState, delta: number): HouseState {
       return { ...next, placed, load: { ...LOAD_HOME }, action: placed === 3 || placed === 6 ? 'leaving' : 'pickup', elapsed: 0 };
     }
   }
-  if (s.action === 'leaving' && elapsed >= (s.phase === 'crane-one' ? 2.2 : 1.4)) {
+  if (s.action === 'leaving' && elapsed >= leavingDuration(s)) {
     const phase: Stage = s.phase === 'gravel' ? 'concrete' : s.phase === 'concrete' ? 'delivery-one' : s.phase === 'crane-one' ? 'delivery-two' : 'decorate';
     return { ...next, phase, action: phase === 'decorate' ? 'ready' : 'entering', elapsed: 0, truckX: DELIVERY_START, dragPx: 0 };
   }

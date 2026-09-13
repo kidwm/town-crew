@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
-import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, smooth } from './domain/house.ts';
+import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth } from './domain/house.ts';
 import type { HouseState } from './domain/house.ts';
 import { CRANE_TARGET_RADIUS, craneTargetReached } from './domain/crane-target.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
@@ -185,7 +185,14 @@ export function createHouseScene(host: HTMLElement) {
     render(s: HouseState, time: number) {
       const craneStage = isCrane(s), delivery = isDelivery(s), interactive = s.action === 'ready' || s.action === 'dragging';
       const arriving = s.action === 'entering' ? 1 - smooth(s.elapsed / 1.2) : 0;
-      const departing = s.action === 'leaving' ? smooth(s.elapsed / (s.phase === 'crane-one' ? 2.2 : 1.4)) : 0;
+      const departing = s.action === 'leaving' ? smooth(s.elapsed / leavingDuration(s)) : 0;
+      const craneLeaving = s.phase === 'crane-two' && s.action === 'leaving';
+      const craneTravel = craneLeaving ? smooth((s.elapsed - 0.9) / (leavingDuration(s) - 0.9)) : 0;
+      crane.root.visible = s.phase !== 'decorate' && s.phase !== 'complete';
+      // Pull into the open work area before passing the tree beside the exit.
+      crane.root.position.set(-4.7 - craneTravel * 17, 0, -3.8 + 1.4 * smooth(craneTravel / 0.18));
+      crane.retract(craneLeaving ? smooth((s.elapsed - 0.5) / 0.4) : 0);
+      crane.roll(-craneTravel * 17);
       dump.root.visible = s.phase === 'gravel'; dump.root.position.set(-2.6 - arriving * 12 - departing * 12, 0, 0); dump.roll(dump.root.position.x);
       dump.bed.rotation.z = s.action === 'dragging' ? -s.dragPx / 60 * 0.85 : s.action === 'working' ? -0.95 : s.action === 'leaving' ? -0.95 * (1 - Math.min(s.elapsed * 3, 1)) : 0;
       dump.cargo.scale.y = Math.max(0.01, 1 - s.gravel); dump.cargo.visible = s.gravel < 1;
@@ -232,7 +239,12 @@ export function createHouseScene(host: HTMLElement) {
       });
       ghosts.forEach((ghost, i) => { ghost.visible = holding && i === s.placed && s.action !== 'placing'; ghost.position.set(HOUSE.x, PARTS[i].base, HOUSE.z); });
       loadHit.position.copy(load).add(new THREE.Vector3(0, definition.height / 2, 0));
-      crane.aim(holding ? load : new THREE.Vector3(-3.3, 2.2, -2.6), holding ? definition.height : 0.3);
+      if (craneLeaving) {
+        const fold = smooth(s.elapsed / 0.6);
+        const stowed = crane.root.position.clone().add(new THREE.Vector3(-1.2, 1.8, 0));
+        const lastLoad = new THREE.Vector3(HOUSE.x, definition.base, HOUSE.z).lerp(stowed, fold);
+        crane.aim(lastLoad, definition.height + (0.3 - definition.height) * fold);
+      } else crane.aim(holding ? load : new THREE.Vector3(-3.3, 2.2, -2.6), holding ? definition.height : 0.3);
       slingA.visible = slingB.visible = holding;
       const hook = load.clone().add(new THREE.Vector3(0, definition.height + 0.2, 0));
       link(slingA, hook, load.clone().add(new THREE.Vector3(-1.3, definition.height - 0.05, 0)));

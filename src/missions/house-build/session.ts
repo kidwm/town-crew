@@ -97,7 +97,9 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         craneTarget.dataset.ready = String(drop.accepted);
         label('.crane-drop-label', drop.accepted ? '放手，幫你放好！' : '拖到這裡');
       }
-      label('.house-instruction', drop?.accepted ? '對準了！放手就會自動放好' : instructions[state.phase]);
+      label('.house-instruction', state.phase === 'crane-two' && state.action === 'leaving'
+        ? '房子蓋好了！工程車收工囉'
+        : drop?.accepted ? '對準了！放手就會自動放好' : instructions[state.phase]);
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.placed = String(state.placed);
       app.dataset.pours = String(state.pours.filter(v => v === 1).length); app.dataset.color = String(state.color);
       const value = progress(state);
