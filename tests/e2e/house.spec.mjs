@@ -3,6 +3,9 @@ import * as THREE from 'three';
 
 const parts = [{ lift: 2.9, height: 2 }, { lift: 2.9, height: 2 }, { lift: 3, height: 0.22 }, { lift: 5.2, height: 2 }, { lift: 5.2, height: 2 }, { lift: 5.3, height: 1.2 }];
 test('build two floors with four vehicles, resume from menu, decorate and replay', async ({ page }, info) => {
+  // The software-rendered CI trace reached decoration at the four-minute
+  // suite limit. Leave time for reload, the completion badge and replay too.
+  if (process.env.CI) test.setTimeout(360_000);
   const touch = info.project.name === 'tablet-touch', errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
