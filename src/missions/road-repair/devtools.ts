@@ -7,9 +7,9 @@ import type { RoadState, EntryStage } from './domain/road.ts';
 
 interface Snapshot { key: string; state: RoadState; tuning: Tuning; targetStage: EntryStage }
 
-export function restoreDevelopment(snapshotKey: string, hot?: ViteHotContext) {
+export function restoreRoadSnapshot(value: unknown, snapshotKey: string) {
   try {
-    const data = hot?.data.snapshot ?? JSON.parse(sessionStorage.getItem(snapshotKey) ?? 'null');
+    const data = value as Snapshot | undefined;
     if (data?.key === snapshotKey) {
       const candidate = data.state as RoadState;
       const settings = data.tuning as Tuning;
@@ -32,6 +32,11 @@ export function restoreDevelopment(snapshotKey: string, hot?: ViteHotContext) {
       }
     }
   } catch { /* Ignore old or unavailable development snapshots. */ }
+}
+
+export function restoreDevelopment(snapshotKey: string, hot?: ViteHotContext) {
+  try { return restoreRoadSnapshot(hot?.data.snapshot ?? JSON.parse(sessionStorage.getItem(snapshotKey) ?? 'null'), snapshotKey); }
+  catch { /* Storage can be unavailable. */ }
 }
 
 export function saveDevelopment(snapshot: Snapshot, hot?: ViteHotContext) {

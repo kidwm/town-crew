@@ -261,7 +261,9 @@ export function createScene(host: HTMLElement) {
       geometries.forEach((value) => value.dispose());
       usedMaterials.forEach((value) => value.dispose());
       sun.shadow.dispose();
+      shapes.disposeMaterials();
       renderer.dispose();
+      renderer.forceContextLoss();
       renderer.domElement.remove();
     },
   };

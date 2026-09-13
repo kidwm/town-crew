@@ -1,8 +1,9 @@
+import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
 import { Effect } from 'effect';
 import type { createAudio } from '../../runtime/audio.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import type { roadSounds } from './sounds.ts';
-import { restoreDevelopment, saveDevelopment } from './devtools.ts';
+import { restoreDevelopment, restoreRoadSnapshot, saveDevelopment } from './devtools.ts';
 type ViteHotContext = NonNullable<ImportMeta['hot']>;
 import type { createScene } from './scene.ts';
 import { defaultTuning, input as truckInput, pose } from './domain/dump-truck.ts';
@@ -13,7 +14,7 @@ import { advanceRoad, createRoad, stages, grabRoller, moveRoller, releaseRoller,
 import type { EntryStage, RoadState, MissionPhase } from './domain/road.ts';
 import { mountUI, icons } from './ui.ts';
 
-export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext) {
+export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}) {
   const bootStartedAt = performance.now();
   const params = new URLSearchParams(location.search);
   document.body.dataset.dev = String(dev);
@@ -33,8 +34,13 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const restored = restoreDevelopment(snapshotKey, hot);
     if (restored) ({ state, tuning, targetStage } = restored);
   }
+  if (!dev) {
+    const restored = restoreRoadSnapshot(loadProgress('road-repair'), 'play');
+    if (restored) ({ state, tuning, targetStage } = restored);
+  }
   function save() {
     if (dev) saveDevelopment({ key: snapshotKey, state, tuning, targetStage }, hot);
+    else saveProgress('road-repair', { key: 'play', state, tuning, targetStage });
   }
   function ready() {
     if (state.access !== 'working') return false;
@@ -48,7 +54,8 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const events = new AbortController();
     const options = { signal: events.signal };
     const canvas = scene.canvas;
-    let muted = false, frame = 0, firstReady = false;
+    let muted = isMuted(), frame = 0, firstReady = false;
+    audio.setMuted(muted);
     let previousTime = performance.now(), visualTime = 0, lastSave = 0;
     const progress = app.querySelector<HTMLElement>('.progress')!;
     const fillBar = app.querySelector<HTMLElement>('.progress span')!;
@@ -65,7 +72,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       if (next.truck.phase === 'dumping' && state.truck.phase !== 'dumping') audio.play('dump');
       if (next.roller.passes > state.roller.passes) audio.play('compact');
       if (next.phase === 'traffic' && next.elapsed >= 2.05 && state.elapsed < 2.05) audio.play('horn');
-      if (next.phase === 'complete' && state.phase !== 'complete') audio.play('complete');
+      if (next.phase === 'complete' && state.phase !== 'complete') { audio.play('complete'); if (!dev) markCompleted('road-repair'); }
       state = next;
     }
     function unlock() {
@@ -110,10 +117,14 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const cancelPointer = pointer.cancel;
     document.addEventListener('visibilitychange', () => { if (document.hidden) save(); previousTime = performance.now(); }, options);
     window.addEventListener('pagehide', save, options);
-    app.querySelector('.restart')!.addEventListener('click', () => { unlock(); cancelPointer(); state = createRoad(); save(); }, options);
+    app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', () => { unlock(); cancelPointer(); state = createRoad(); save(); }, options));
+    app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { cancelPointer(); save(); onHome(); }, options));
     const soundButton = app.querySelector<HTMLButtonElement>('.sound')!;
+    soundButton.textContent = muted ? '♩' : '♪';
+    soundButton.setAttribute('aria-pressed', String(muted));
+    soundButton.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效');
     soundButton.addEventListener('click', () => {
-      unlock(); muted = !muted; audio.setMuted(muted);
+      unlock(); muted = !muted; audio.setMuted(muted); setMuted(muted);
       soundButton.textContent = muted ? '♩' : '♪';
       soundButton.setAttribute('aria-pressed', String(muted));
       soundButton.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效');
@@ -147,6 +158,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       fillBar.style.transform = `scaleX(${progressValue})`;
       progress.setAttribute('aria-valuenow', String(Math.round(progressValue * 100)));
       success.hidden = state.phase !== 'complete';
+      app.querySelector<HTMLElement>('.finish-actions')!.hidden = state.phase !== 'complete';
       canvas.style.cursor = action() === 'dragging' ? 'grabbing' : ready() ? 'grab' : 'default';
       if (stageSelect) {
         targetStage = state.phase === 'roller' && state.roller.passes > 0 ? 'roller-return' : state.phase;
@@ -164,8 +176,8 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         label('#rocks', `${state.excavator.cleared} / 3`); label('#passes', `${state.roller.passes} / 2`);
         label('#angle', state.phase === 'dump-truck' ? `${Math.round(pose(state.truck, tuning).tilt * 180 / Math.PI)}°` : '—');
         if (!firstReady && ready()) { label('#boot-time', `${Math.round(now - bootStartedAt)} ms`); firstReady = true; }
-        if (now - lastSave > 400) { save(); lastSave = now; }
       }
+      if (now - lastSave > 800) { save(); lastSave = now; }
       frame = requestAnimationFrame(animate);
     }
     frame = requestAnimationFrame(animate);

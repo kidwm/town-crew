@@ -8,11 +8,12 @@ export function mountUI(app: HTMLElement, dev: boolean) {
   <main class="world" aria-label="小小城市隊修路任務">
     <div class="canvas-host"></div>
     <header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header>
-    <div class="controls"><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始修路任務">↻</button></div>
+    <div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始修路任務">↻</button></div>
     <div class="mission-badge"><span class="badge-icon">${icons.excavator}</span><div><span class="eyebrow">道路修復</span><strong id="vehicle-name">挖土機</strong></div></div>
     <div class="mission-steps" aria-label="修路三階段">${Object.entries(icons).map(([key, icon]) => `<span data-step="${key}" aria-label="${key === 'excavator' ? '清除碎石' : key === 'dump-truck' ? '填入材料' : '整平路面'}">${icon}</span>`).join('')}</div>
     <div class="progress" aria-label="修路進度" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
     <div class="success" role="status" aria-label="道路修復完成" hidden><span aria-hidden="true">✓</span></div>
+    <div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div>
     <div class="loading" role="status">準備出發…</div>
   </main>
   ${dev ? `<aside class="dev-panel" aria-label="開發工具">

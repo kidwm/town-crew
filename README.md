@@ -2,8 +2,8 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-A complete, replayable road-repair mission using Vite, TypeScript, Three.js,
-and Effect **4.0.0-beta.107**. It runs in the browser with mouse or single-touch
+Repair a road and build a two-storey home in two replayable town missions,
+using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
 ```sh
@@ -11,7 +11,9 @@ npm ci
 npm run dev
 ```
 
-- Play the whole mission: <http://localhost:5173/>
+- Choose a mission: <http://localhost:5173/>
+- Build a two-storey home: <http://localhost:5173/#house-build>
+- Repair the road: <http://localhost:5173/#road-repair>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -27,7 +29,34 @@ npm run dev
 - To use an installed Chrome instead: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
   No machine-specific runtime paths are required.
 
-## Play
+## Choose a mission
+
+The entrance has two large illustrated cards. Both missions are available immediately.
+Use the home button to return to selection; re-entering continues that mission.
+Production progress is stored separately for each mission in sessionStorage, so
+reloading in the same tab also resumes it. Completion badges and the sound preference
+use localStorage. No account is required; unavailable storage never blocks play.
+Restart clears only the current mission's progress, while its earned badge remains.
+
+## Build a two-storey home
+
+1. Drag the gravel truck's bed upward to fill the prepared foundation.
+2. Drag the concrete mixer's chute to each of three wide target rings. Keep it
+   over the current target to pour; stopping or cancellation preserves partial filling.
+3. Drag the flatbed truck right along the independent foreground lane into its parking bay.
+4. The crane automatically picks up each part. Drag the raised load to its glowing
+   ring and release; it aligns and lowers onto the ghost outline. Two L-shaped wall
+   sections and an upper floor slab complete the first storey.
+5. A second flatbed delivery brings the second storey's two wall sections and roof.
+   There are six lifts across the two deliveries, with a celebration after the first floor.
+6. Choose coral, green or blue for the roof and ring the doorbell. Windows light up,
+   residents wave, and the mission can be replayed or left through the selection screen.
+
+Crane loads travel above the completed structure before automatically lowering.
+Misses and cancelled placements gently reset without installing a part. Trucks use
+clear access routes; the flatbed travels forward on the road in front of the house.
+
+## Repair the road
 
 1. Drag the excavator bucket to the highlighted rock. The fixed-length arm
    follows the finger, then automatically lifts and moves the rock to the side.
@@ -69,13 +98,18 @@ and roller drums rotate according to vehicle displacement.
 - `stage=traffic`: repaired road and the opening traffic sequence.
 - `stage=complete`: restored road and crew celebration.
 
+House-building development entries use `?dev=1&mission=house-build&stage=…`:
+`gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,
+`decorate`, and `complete`. The development panel can jump to or reset each stage,
+with snapshots isolated from normal gameplay.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
-Production ignores development stage parameters and always starts the full mission.
+Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
 maximum angle, and dump duration. The panel and persistence are absent from
-production builds. A plain URL always starts a fresh whole mission.
+production builds. A plain URL opens selection; use restart for a fresh mission.
 
-HMR and page reload preserve mission progress, animation state, and tuning in
+In development, HMR and page reload preserve mission progress, animation state, and tuning in
 versioned sessionStorage. Pointer capture cannot survive reload: an excavator
 drag returns the bucket, a truck drag resets the bed, and a roller drag pauses
 at its current location while preserving the completed pass. Browser storage
@@ -100,8 +134,10 @@ road-repair sequence.
 - `src/missions/road-repair/devtools.ts`: versioned development snapshots.
 - `src/runtime/`: reusable pointer ownership, audio resources, and shape builders.
   These modules do not import road-repair rules.
-- `src/main.ts`: app bootstrap and Effect's scoped ownership of the scene, audio,
-  listeners, animation loop, and HMR cleanup.
+- `src/missions/house-build/`: independent house rules, vehicle models, scene and session.
+- `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
+- `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
+  listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
 - `tests/e2e/`: repeatable production and development browser checks.
 
 See [architecture](docs/architecture.md) and [project plan](PROJECT_PLAN.md).
@@ -110,30 +146,32 @@ Effect owns side effects and resource lifetimes. Frame calculations and gameplay
 rules are ordinary TypeScript functions without renderer objects or Effect
 runtime values. Dependencies are pinned because Effect v4 is still beta.
 
-Share input adapters, asset/audio services, hints, and lifecycle management as
-real reuse appears. Add the second distinct mission before designing a generic
-mission format: firefighting may need continuous aiming while rescue may need
-selection and transport.
+Share services as real reuse appears. Both missions own their own state machines;
+there is no generic mission DSL. Future firefighting or rescue interactions can
+be implemented without adopting either existing vehicle sequence.
 
 ## Verification
 
-The complete Web mission has 16 domain tests, covering fixed arm lengths,
+The two missions have 23 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
-passes, the entire mission, restart, and snapshot recovery.
+passes, complete missions, restart, and snapshot recovery. House tests also cover
+ordered concrete pouring, partial delivery, cancelled placement and load clearance above each floor.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.
 
-The checked-in Playwright browser suite covers the full mouse and emulated-touch flow,
+The checked-in Playwright browser suite covers both complete mouse and emulated-touch flows,
 empty-space input, cancellation, partial roller movement, completion and
-restart. Development reload/HMR is checked from the first completed roller pass, including
-preserved progress and a single canvas. Normal and development layouts are
+restart, mission switching, saved progress, roof decoration, completion badges,
+phone selection and malformed storage. Development reload/HMR is checked from
+the first completed roller pass and the second floor of the house, including
+preserved progress, mission switching and a single canvas. Normal and development layouts are
 visually checked at tablet and desktop sizes.
 
 Real iPad/Android touch, audible output, sustained device performance, and cold
 loading still need hardware verification; touch emulation is not a substitute.
-The production build reports Vite's default warning for the single minified
-JavaScript chunk over 500 kB (approximately 156 kB gzipped).
+The production build reports Vite's default warning for the shared Three.js
+chunk over 500 kB. The entrance loads independently; scene code is loaded when a mission is selected.
 
 ## Web migration and history
 

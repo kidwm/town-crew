@@ -1,38 +1,73 @@
 import { Effect } from 'effect';
 import { createAudio } from './runtime/audio.ts';
-import { createScene } from './missions/road-repair/scene.ts';
-import { createRoadSession } from './missions/road-repair/session.ts';
-import { roadSounds } from './missions/road-repair/sounds.ts';
+import { mountMenu } from './app/menu.ts';
+import type { MissionId } from './app/progress.ts';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-const dev = import.meta.env.DEV && new URLSearchParams(location.search).get('dev') === '1';
-const session = createRoadSession(app, dev, import.meta.hot);
-const lifetime = new AbortController();
-
-// One scope owns the renderer, audio, listeners and frame loop. HMR releases
-// that scope before the replacement starts its own game session.
-const program = Effect.scoped(Effect.gen(function* () {
-  const scene = yield* Effect.acquireRelease(
-    Effect.try({ try: () => createScene(app.querySelector('.canvas-host')!), catch: cause => new Error('無法建立 3D 畫面', { cause }) }),
-    value => Effect.sync(() => value.dispose()),
-  );
-  const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(roadSounds)), value => Effect.promise(() => value.dispose()));
-  yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-  yield* Effect.never;
-}));
-
-void Effect.runPromise(program, { signal: lifetime.signal }).catch((error: unknown) => {
-  if (lifetime.signal.aborted) return;
-  console.error(error);
-  const message = document.createElement('p');
-  message.className = 'loading';
-  message.textContent = '畫面暫時無法啟動，請重新整理或使用支援 WebGL2 的瀏覽器。';
-  app.querySelector('.loading')?.remove();
-  app.querySelector('.world')!.append(message);
-});
-
+const params = new URLSearchParams(location.search);
+const dev = import.meta.env.DEV && params.get('dev') === '1';
+let lifetime: AbortController | undefined;
+let running: Promise<unknown> = import.meta.hot?.data.cleanup ?? Promise.resolve();
+let revision = 0;
+let disposeMenu: (() => void) | undefined;
+const events = new AbortController();
+function route(): MissionId | undefined {
+  if (location.hash === '#menu') return;
+  if (location.hash === '#house-build') return 'house-build';
+  if (location.hash === '#road-repair') return 'road-repair';
+  if (dev) return params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
+}
+function home() { location.hash = 'menu'; }
+async function show() {
+  const current = ++revision;
+  lifetime?.abort(); disposeMenu?.(); disposeMenu = undefined;
+  await running;
+  if (current !== revision) return;
+  for (const key of Object.keys(app.dataset)) delete app.dataset[key];
+  const mission = route();
+  document.body.dataset.dev = String(dev && !!mission);
+  if (!mission) {
+    app.dataset.screen = 'menu';
+    disposeMenu = mountMenu(app, id => { location.hash = id; });
+    return;
+  }
+  app.dataset.screen = 'mission'; app.dataset.mission = mission;
+  app.innerHTML = '<div class="loading" role="status">工程車準備出發…</div>';
+  lifetime = new AbortController();
+  const signal = lifetime.signal;
+  const program = Effect.scoped(Effect.gen(function* () {
+    if (mission === 'road-repair') {
+      const [{ createScene }, { createRoadSession }, { roadSounds }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/road-repair/scene.ts'), import('./missions/road-repair/session.ts'), import('./missions/road-repair/sounds.ts'),
+      ]));
+      const session = createRoadSession(app, dev, import.meta.hot, home);
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(roadSounds)), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else {
+      const { createHouseScene } = yield* Effect.promise(() => import('./missions/house-build/scene.ts'));
+      const { createHouseSession, houseSounds } = yield* Effect.promise(() => import('./missions/house-build/session.ts'));
+      const session = createHouseSession(app, dev, home);
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    }
+    yield* Effect.never;
+  }));
+  running = Effect.runPromise(program, { signal }).catch((error: unknown) => {
+    if (signal.aborted) return;
+    console.error(error);
+    app.innerHTML = '<div class="loading" role="alert">畫面暫時無法啟動，請重新整理或使用支援 WebGL2 的瀏覽器。<p><button class="error-home">回到選關</button></p></div>';
+    app.querySelector('.error-home')?.addEventListener('click', home, { signal: events.signal });
+  });
+}
+window.addEventListener('hashchange', () => { void show(); }, { signal: events.signal });
+void show();
 if (import.meta.hot) {
   import.meta.hot.accept();
-  import.meta.hot.dispose(() => { session.save(); lifetime.abort(); });
+  import.meta.hot.dispose(() => {
+    revision++; events.abort(); disposeMenu?.(); lifetime?.abort();
+    import.meta.hot!.data.cleanup = running;
+  });
 }

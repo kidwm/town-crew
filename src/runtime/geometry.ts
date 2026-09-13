@@ -36,6 +36,6 @@ export function createShapes() {
     parent.add(group);
     return group;
   };
-  return { material, box, cylinder, hitbox, wheel };
+  return { material, box, cylinder, hitbox, wheel, disposeMaterials() { materials.forEach(value => value.dispose()); materials.clear(); } };
 }
 export type Shapes = ReturnType<typeof createShapes>;

@@ -7,21 +7,25 @@ development while keeping both historical implementations available through tags
 ## Boundaries
 
 ```text
-main.ts — application lifetime (Effect scope)
+main.ts — hash navigation and per-mission Effect scopes
+  ├─ app/ — illustrated selection, optional progress and sound preferences
   ├─ runtime/ — primary pointer ownership, audio lifecycle, geometry primitives
-  └─ missions/road-repair/
-       ├─ domain/ — state transitions and numerical animation/IK functions
-       ├─ session.ts — pointer-to-mission mapping and frame orchestration
-       ├─ scene.ts + vehicles.ts — Three.js presentation and picking
-       ├─ ui.ts + sounds.ts — mission presentation
-       └─ devtools.ts — optional reload/HMR snapshots
+  └─ missions/
+       ├─ road-repair/ — existing road state machine, scene, UI and dev snapshots
+       └─ house-build/
+            ├─ domain/house.ts — four vehicle stages, pouring, deliveries, six lifts
+            ├─ scene.ts + vehicles.ts — house, site, crane, trucks and rendering
+            └─ session.ts — input mapping, HUD, optional snapshots and developer entry
 ```
 
 Domain modules have no DOM, Three.js, storage, or Effect dependencies. Renderer
 objects do not enter mission state. `runtime/` has no imports from missions:
 the next mission can reuse browser resource handling without adopting road rules.
 Road-specific models remain within the mission until another mission actually
-needs them. The entry point intentionally starts the only implemented mission.
+needs them. The entry point shows selection and dynamically imports the selected mission.
+The app waits for the previous Effect scope to release input, audio, renderer and
+WebGL context before mounting another scene. Hash navigation supports browser back;
+HMR carries the cleanup promise into the replacement module.
 
 The Effect scope releases input/frame listeners, audio and scene resources on
 HMR. The primary-pointer adapter owns capture and cancellation. The controller
@@ -31,22 +35,24 @@ Gameplay advances through ordinary functions and is independent of audio success
 ## Development and release
 
 Development shortcuts require both Vite development mode and `dev=1`.
-Production ignores `stage` parameters. Development snapshots are validated,
-versioned, optional, and restored through `resumeRoad`, which cancels in-flight
-pointer actions while preserving completed work.
+Production ignores `stage` parameters. Normal play uses separate optional
+sessionStorage snapshots per mission; completion badges and mute preferences use
+localStorage. Domain-specific restoration validates stored data and releases stale
+pointer gestures through `resumeRoad` and `resumeHouse`. Development snapshots
+use separate versioned keys and do not award completion badges.
 
 Production browser tests exercise the built `dist/` files with real pointer
 events. A separate development server tests HMR, reload, tuning and stage resets.
 Both runners own their ports and use the lockfile-installed Playwright browser;
 an optional `PLAYWRIGHT_CHANNEL=chrome` selects system Chrome.
 
-## Next mission
+## Further missions
 
 Add a sibling such as `missions/fire-rescue/` with its own domain, controller,
 scene and cues. Decide its interaction first: continuous aiming and extinguishing
-need not follow the excavator/truck/roller state machine. Extract shared mission
-selection or progress contracts only when both implementations establish their
-requirements. A generic mission engine is not required for this migration.
+need not follow the excavator/truck/roller state machine. Selection and optional
+progress storage are now shared by the two real missions. Further abstractions
+should follow actual reuse. A generic mission engine is not required.
 
 ## History
 

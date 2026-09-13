@@ -7,6 +7,7 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
+  await page.getByRole('button', { name: '修馬路', exact: true }).click();
   const cdp = await page.context().newCDPSession(page);
   const wait = (phase, action) => page.locator(`#app[data-phase="${phase}"]${action ? `[data-action="${action}"]` : ''}`).waitFor();
   const project = async (x, y, z = 0) => {
@@ -48,6 +49,15 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     // last mouse-move event returns. Wait for its durable gameplay result.
     await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
     await up();
+    if (index === 0) {
+      await page.getByRole('button', { name: '回到選關', exact: true }).click();
+      await page.getByRole('button', { name: '蓋房子', exact: true }).click();
+      await expect(page.locator('#app')).toHaveAttribute('data-phase', 'gravel');
+      await page.getByRole('button', { name: '回到選關', exact: true }).click();
+      await page.getByRole('button', { name: '修馬路', exact: true }).click();
+      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
+      await expect(page.locator('canvas')).toHaveCount(1);
+    }
   }
   await wait('dump-truck', 'ready');
   await page.screenshot({ path: testInfo.outputPath('truck.png') });
@@ -86,6 +96,8 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
 
 test('production ignores development stage shortcuts', async ({ page }) => {
   await page.goto('/?dev=1&stage=complete');
+  await expect(page.locator('#app')).toHaveAttribute('data-screen', 'menu');
+  await page.getByRole('button', { name: '修馬路', exact: true }).click();
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'excavator');
   await expect(page.locator('.dev-panel')).toHaveCount(0);
   await expect(page.locator('.success')).toBeHidden();
