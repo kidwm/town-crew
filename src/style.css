@@ -84,7 +84,7 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .mission-steps { bottom: 25px; }
 }
 
-/* The town entrance uses large illustrated buttons, with both missions available. */
+/* Every mission is available from the illustrated town entrance. */
 .town-menu { position: absolute; inset: 0; overflow: auto; background: #f4f2e8; padding: 32px 40px 24px; }
 .menu-brand { display: flex; align-items: center; gap: 12px; max-width: 1060px; margin: auto; }
 .menu-brand strong { display: block; font-size: 18px; letter-spacing: 0.1em; }
@@ -92,7 +92,7 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 .menu-intro { text-align: center; margin: 35px 0 30px; }
 .menu-intro p { font-size: 12px; color: #899583; letter-spacing: 0.16em; margin: 0 0 10px; }
 .menu-intro h1 { font-size: clamp(25px, 3vw, 35px); font-weight: 700; letter-spacing: 0.04em; margin: 0; }
-.mission-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 1000px; margin: auto; }
+.mission-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; max-width: 1160px; margin: auto; }
 .mission-card { text-align: left; color: inherit; border: 1px solid #e2e5d8; padding: 0; border-radius: 25px; background: #fffdf5; overflow: hidden; box-shadow: 0 8px 0 #dfe4d433; transition: transform 180ms, box-shadow 180ms; }
 .mission-card:hover { transform: translateY(-4px); box-shadow: 0 12px 0 #dfe4d455; }
 .mission-card:active { transform: translateY(1px); }
@@ -162,3 +162,37 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 
 .start-roof { display: flex; align-items: center; gap: 8px; }
 .start-roof svg { width: 30px; height: 26px; }
+
+.fire-world .progress { width: 152px; }
+.fire-targets { position: absolute; inset: 0; pointer-events: none; }
+.fire-target { position: absolute; width: 68px; height: 68px; transform: translate(-50%, -50%); border: 3px dashed #fff6d2; border-radius: 50%; box-shadow: 0 0 0 4px #fff5cd24; }
+.fire-target > span { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #fff9e6ed; color: #657b67; border-radius: 18px; padding: 5px 9px; font-size: 11px; white-space: nowrap; }
+.fire-target svg { position: absolute; inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); transform: rotate(-90deg); fill: none; stroke: #7ca770; stroke-width: 5; }
+.fire-target circle { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.fire-target[data-ready='true'] { border-style: solid; border-color: #e9ffd1; background: #91c28b40; }
+.rescue-tally { position: absolute; right: 30px; bottom: 110px; display: flex; gap: 8px; pointer-events: none; }
+.rescue-tally > span { border-radius: 18px; padding: 7px 10px; background: #fff6dfdc; font-size: 11px; color: #8b917b; }
+.rescue-tally b { margin-left: 4px; }.rescue-tally [data-done='true'] { color: #5d876b; background: #eaf4dfe8; }
+.hospital-arrival { position: absolute; bottom: 140px; left: 30px; width: 270px; padding: 6px 12px 13px; background: #fff9e9eb; border: 1px solid #fffa; border-radius: 22px; text-align: center; color: #60816c; font-size: 13px; }
+.hospital-arrival svg { display: block; width: 100%; height: auto; }
+.hospital-van { animation: hospital-arrive 1.6s ease-out both; }
+.hospital-wave { transform-box: fill-box; transform-origin: bottom left; animation: hospital-wave 1s ease-in-out infinite alternate; }
+.hospital-arrival[hidden], .rescue-tally[hidden] { display: none; }
+@keyframes hospital-arrive { from { transform: translateX(-115px); } to { transform: translateX(0); } }
+@keyframes hospital-wave { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+@media (min-width: 651px) and (max-width: 1100px) {
+  .mission-cards { gap: 16px; }.card-copy { padding: 18px; }.card-title { font-size: 22px; }.card-description { min-height: 44px; }
+}
+@media (max-width: 650px) {
+  .fire-target { width: 54px; height: 54px; }
+  .fire-world .drag-hint-hand > * { transform: scale(0.75); }
+  .fire-world .mission-badge { left: 14px; bottom: 75px; padding: 9px 12px; }.fire-world .mission-badge strong { font-size: 13px; }
+  .fire-world .mission-steps { left: 16px; right: auto; bottom: 22px; }.fire-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .rescue-tally { right: 14px; bottom: 139px; }
+  .hospital-arrival { top: 155px; bottom: auto; left: 50%; transform: translateX(-50%); width: 245px; }
+  .fire-world .finish-actions { gap: 8px; padding: 10px; }.fire-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}
+@media (max-height: 550px) and (min-width: 651px) {
+  .hospital-arrival { left: 18px; bottom: 96px; width: 205px; }.rescue-tally { bottom: 88px; }
+}
+@media (prefers-reduced-motion: reduce) { .hospital-van, .hospital-wave { animation: none; } }

@@ -16,6 +16,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop-mouse, tablet-touch]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -25,11 +29,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      # Each runner owns one graphical browser. Three full missions on both
+      # devices no longer have to wait for one long sequential graphics job.
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
       - run: npm run test:e2e:dev
+        if: matrix.project == 'desktop-mouse'
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
-          name: browser-test-results
+          name: browser-test-results-${{ matrix.project }}
           path: test-results/
           retention-days: 7

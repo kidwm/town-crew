@@ -12,10 +12,14 @@ main.ts — hash navigation and per-mission Effect scopes
   ├─ runtime/ — primary pointer ownership, audio lifecycle, geometry primitives
   └─ missions/
        ├─ road-repair/ — existing road state machine, scene, UI and dev snapshots
-       └─ house-build/
-            ├─ domain/house.ts — four vehicle stages, pouring, deliveries, six lifts
-            ├─ scene.ts + vehicles.ts — house, site, crane, trucks and rendering
-            └─ session.ts — input mapping, HUD, optional snapshots and developer entry
+       ├─ house-build/
+       │    ├─ domain/house.ts — four vehicle stages, pouring, deliveries, six lifts
+       │    ├─ scene.ts + vehicles.ts — house, site, crane, trucks and rendering
+       │    └─ session.ts — input mapping, HUD, optional snapshots and developer entry
+       └─ fire-rescue/
+            ├─ domain/fire.ts — water, docking, two rescue trips and ambulance transport
+            ├─ scene.ts + vehicles.ts — shop, emergency vehicles, people, cat and water
+            └─ session.ts + ui.ts + sounds.ts — input, hints, snapshots and water audio
 ```
 
 Domain modules have no DOM, Three.js, storage, or Effect dependencies. Renderer
@@ -46,24 +50,36 @@ Development shortcuts require both Vite development mode and `dev=1`.
 Production ignores `stage` parameters. Normal play uses separate optional
 sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
-pointer gestures through `resumeRoad` and `resumeHouse`. Development snapshots
+pointer gestures through `resumeRoad`, `resumeHouse` and `resumeFire`. Development snapshots
 use separate versioned keys and do not award completion badges.
 House snapshots use schema version 2: after five installed parts, `roof-color`
 pauses with the roof on the truck until the player confirms a colour and starts
 its pickup. Version 1 unfinished roofs migrate to this choice; already completed
 homes retain their colour and completion state.
+Fire snapshots keep each fire's remaining heat, the two independent rescue flags,
+the current passenger and animation progress. Restoration rejects impossible
+stage/action/heat/rescue combinations and releases stale pointer input. Water
+and parking progress remain; loose equipment returns to a visible pickup point.
+The basket moves on a plane in front of the facade. Projected character positions
+and the held basket determine the nearest eligible rescue; continuous dwell is
+transient pointer state. Pickup, descent and unloading each finish before the
+other passenger can be selected. Separate aprons keep the parked engine clear
+of the aerial truck and subsequent ambulance.
 
 Production browser tests exercise the built `dist/` files with real pointer
 events. A separate development server tests HMR, reload, tuning and stage resets.
 Both runners own their ports and use the lockfile-installed Playwright browser;
 an optional `PLAYWRIGHT_CHANNEL=chrome` selects system Chrome.
+CI runs desktop and touch in separate runners, with one graphical browser per
+runner; the desktop job also runs the development checks. Local suites remain
+sequential so graphical runs do not compete for the same GPU.
 
 ## Further missions
 
-Add a sibling such as `missions/fire-rescue/` with its own domain, controller,
-scene and cues. Decide its interaction first: continuous aiming and extinguishing
-need not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are now shared by the two real missions. Further abstractions
+Add a sibling mission with its own domain, controller, scene and cues. Decide its
+interaction first: firefighting's continuous aiming and two passenger trips do
+not follow the excavator/truck/roller state machine. Selection and optional
+progress storage are shared by the three missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

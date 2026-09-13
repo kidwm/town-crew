@@ -27,6 +27,8 @@ export function createDragHint(host: HTMLElement) {
       line.setAttribute('d', `M${from.x} ${from.y}L${to.x} ${to.y}`);
       origin.setAttribute('cx', String(from.x)); origin.setAttribute('cy', String(from.y));
       const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      // A stationary hand demonstrates pressing to spray; it has no arrow.
+      arrow.setAttribute('visibility', Math.hypot(to.x - from.x, to.y - from.y) < 1 ? 'hidden' : 'visible');
       arrow.setAttribute('d', `M-12 -9L0 0L-12 9`);
       arrow.setAttribute('transform', `translate(${to.x} ${to.y}) rotate(${angle * 180 / Math.PI})`);
       const cycle = (time - started) % 2.4;

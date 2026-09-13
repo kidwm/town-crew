@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road and build a two-storey home in two replayable town missions,
+Repair a road, build a two-storey home, and help the fire brigade in three replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -14,6 +14,7 @@ npm run dev
 - Choose a mission: <http://localhost:5173/>
 - Build a two-storey home: <http://localhost:5173/#house-build>
 - Repair the road: <http://localhost:5173/#road-repair>
+- Help the fire brigade: <http://localhost:5173/#fire-rescue>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -31,12 +32,37 @@ npm run dev
 
 ## Choose a mission
 
-The entrance has two large illustrated cards. Both missions are available immediately.
+The entrance has three large illustrated cards. All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Help the fire brigade
+
+1. Drag the fire engine into its parking bay, then drag the hose coupling to the
+   real hydrant. A short hold near the target automatically connects it.
+2. Press a ground fire to spray water. Move between three fires; partial work
+   remains after stopping, cancelling or reloading. There is no spreading fire,
+   time limit, score penalty or water shortage.
+3. The aerial truck arrives in a separate lane. Drag its basket to the roof edge,
+   then press the last fire. The empty basket returns to the ground afterward.
+4. Drag the basket toward either the second-floor resident or the cat on the
+   higher roof platform. Each trip automatically docks, picks up one passenger,
+   lowers and unloads. Choose either order; the remaining passenger stays available.
+5. The ladder stows and leaves; the engine retrieves its hose and reverses out
+   along its own apron. Drag the arriving ambulance into the cleared parking bay.
+6. Drag the stretcher to the resident; a crew member helps them lie down. Drag
+   it back to the ambulance's rear doors. Loading, closing the doors and departure
+   are automatic. A hospital arrival animation and waving crew finish the mission.
+
+Equipment targets accept either the finger or the held object near the actual
+destination, with a 0.4-second dwell and no required release. Releasing early at
+a valid target also works. Interrupted loose equipment returns to its pickup
+point, while extinguished fires, completed rescues and partial driving persist.
+A still-held finger cannot control the next task after automatic assistance.
+All emergency vehicles leave before the final celebration.
 
 ## Build a two-storey home
 
@@ -109,6 +135,11 @@ House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `roof-color`, `decorate`, and `complete`. The development panel can jump to or reset each stage,
 with snapshots isolated from normal gameplay.
 
+Fire-brigade entries use `?dev=1&mission=fire-rescue&stage=…`:
+`dispatch`, `hose`, `ground-fire`, `ladder-arrival`, `roof-reach`, `roof-fire`,
+`rescue`, `stowing`, `ambulance`, `stretcher`, `boarding`, `departure`, and `complete`.
+The same panel supports stage resets, reload and HMR, with isolated development saves.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -127,7 +158,7 @@ rendered interactive frame. It excludes earlier dependency loading and is
 
 ## Code boundaries and future town missions
 
-Planned missions include firefighting, outdoor rescue, and other town activities.
+Future missions include outdoor rescue and other town activities.
 They should own their own interaction rules; they do not have to use this
 road-repair sequence.
 
@@ -141,6 +172,8 @@ road-repair sequence.
 - `src/runtime/`: reusable pointer ownership, audio resources, and shape builders.
   These modules do not import road-repair rules.
 - `src/missions/house-build/`: independent house rules, vehicle models, scene and session.
+- `src/missions/fire-rescue/`: independent fire, rescue and transport rules, emergency
+  vehicles, characters, scene, HUD, controller and continuous water audio.
 - `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
 - `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
   listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
@@ -152,18 +185,20 @@ Effect owns side effects and resource lifetimes. Frame calculations and gameplay
 rules are ordinary TypeScript functions without renderer objects or Effect
 runtime values. Dependencies are pinned because Effect v4 is still beta.
 
-Share services as real reuse appears. Both missions own their own state machines;
-there is no generic mission DSL. Future firefighting or rescue interactions can
-be implemented without adopting either existing vehicle sequence.
+Share services as real reuse appears. Each mission owns its state machine;
+there is no generic mission DSL. Further rescue interactions can be implemented
+without adopting an existing vehicle sequence.
 
 ## Verification
 
-The two missions have 30 domain tests, covering fixed arm lengths,
+The three missions have 38 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. House tests also cover
 ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
 lifting, legacy roof snapshot migration, assembly target geometry, continuous
 placement dwell and load clearance above each floor.
+Fire tests cover both rescue orders, continuous extinguishing, interruption,
+one passenger per trip, transport, and rejection of contradictory snapshots.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.
@@ -174,8 +209,11 @@ restart, fresh starts from selection, progress retained on reload, roof colour b
 phone selection and malformed storage.
 The crane browser checks also cover automatic placement on the real base, visible
 wall faces, continued holding, passing through the target, and cancellation.
+Fire browser tests complete the mission using a desktop mouse and portrait-phone
+touch, choose opposite rescue orders, cancel/reload during extinguishing, restore
+the first completed rescue, verify held-pointer isolation, transport and replay.
 Development reload/HMR is checked from
-the first completed roller pass and the second floor of the house, including
+the first completed roller pass, the second floor of the house and one completed fire rescue, including
 preserved progress, mission switching and a single canvas. Normal and development layouts are
 visually checked at tablet and desktop sizes.
 

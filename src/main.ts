@@ -18,7 +18,8 @@ function route(): MissionId | undefined {
   if (location.hash === '#menu') return;
   if (location.hash === '#house-build') return 'house-build';
   if (location.hash === '#road-repair') return 'road-repair';
-  if (dev) return params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
+  if (location.hash === '#fire-rescue') return 'fire-rescue';
+  if (dev) return params.get('mission') === 'fire-rescue' ? 'fire-rescue' : params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
 }
 function home() { location.hash = 'menu'; }
 async function show() {
@@ -39,7 +40,7 @@ async function show() {
   // The old scope has finished saving before a selection starts a new round.
   if (fresh) clearProgress(mission);
   app.dataset.screen = 'mission'; app.dataset.mission = mission;
-  app.innerHTML = '<div class="loading" role="status">工程車準備出發…</div>';
+  app.innerHTML = '<div class="loading" role="status">小小城市隊準備出發…</div>';
   lifetime = new AbortController();
   const signal = lifetime.signal;
   const program = Effect.scoped(Effect.gen(function* () {
@@ -52,13 +53,22 @@ async function show() {
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(roadSounds)), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else {
+    } else if (mission === 'house-build') {
       const { createHouseScene } = yield* Effect.promise(() => import('./missions/house-build/scene.ts'));
       const { createHouseSession, houseSounds } = yield* Effect.promise(() => import('./missions/house-build/session.ts'));
       const session = createHouseSession(app, dev, home, fresh);
       if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else {
+      const [{ createFireScene }, { createFireSession }, { createFireAudio }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/fire-rescue/scene.ts'), import('./missions/fire-rescue/session.ts'), import('./missions/fire-rescue/sounds.ts'),
+      ]));
+      const session = createFireSession(app, dev, home, fresh);
+      if (fresh) session.save();
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createFireScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(createFireAudio), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     }
     yield* Effect.never;

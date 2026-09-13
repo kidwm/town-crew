@@ -1,5 +1,28 @@
 import { test, expect } from '@playwright/test';
 import { utimes } from 'node:fs/promises';
+import { fireControls } from './fire-controls.mjs';
+
+test('fire rescue reload, HMR and stage reset preserve the selected passenger progress', async ({ page }) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/?dev=1&mission=fire-rescue&stage=rescue');
+  const app = page.locator('#app'), { wait, dragGoal, up } = await fireControls(page);
+  await wait('rescue'); await dragGoal('cat');
+  await expect(app).toHaveAttribute('data-cat', 'true'); await up();
+  await page.reload(); await wait('rescue');
+  await expect(app).toHaveAttribute('data-cat', 'true'); await expect(app).toHaveAttribute('data-resident', 'false');
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+  await page.waitForFunction(element => !element.isConnected, world);
+  await wait('rescue'); await expect(app).toHaveAttribute('data-cat', 'true');
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click();
+  await expect(app).toHaveAttribute('data-rescued', '0');
+  await page.getByRole('button', { name: '回到選關', exact: true }).click();
+  await page.getByRole('button', { name: '消防隊救火', exact: true }).click();
+  await wait('dispatch'); await expect(app).toHaveAttribute('data-extinguished', '0');
+  expect(errors).toEqual([]);
+});
 
 test('development entry, reload, HMR and stage reset retain useful progress', async ({ page }) => {
   const errors = [];
