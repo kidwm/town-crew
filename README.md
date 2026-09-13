@@ -209,6 +209,9 @@ restart, fresh starts from selection, progress retained on reload, roof colour b
 phone selection and malformed storage.
 The crane browser checks also cover automatic placement on the real base, visible
 wall faces, continued holding, passing through the target, and cancellation.
+Brief passes and cancellation use Playwright's clock to keep 120 ms of contact
+below the 400 ms dwell, even when native input commands are slow on CI. Successful
+holds and complete missions run with the clock resumed.
 Fire browser tests complete the mission using a desktop mouse and portrait-phone
 touch, choose opposite rescue orders, cancel/reload during extinguishing, restore
 the first completed rescue, verify held-pointer isolation, transport and replay.

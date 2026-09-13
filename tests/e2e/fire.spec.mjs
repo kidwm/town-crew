@@ -2,12 +2,14 @@ import { test, expect } from '@playwright/test';
 import { FIRES } from '../../src/missions/fire-rescue/domain/fire.ts';
 import { gesture } from './gesture.mjs';
 import { fireControls } from './fire-controls.mjs';
+import { withPausedClock } from './timing.mjs';
 
 test('fire brigade extinguishes, rescues both floors in either order, and transports the resident', async ({ page }, info) => {
   const touch = info.project.name === 'tablet-touch', errors = [];
   // The touch run exercises the narrower portrait layout for the entire mission.
   if (touch) await page.setViewportSize({ width: 390, height: 844 });
   page.on('pageerror', error => errors.push(error.message));
+  await page.clock.install();
   await page.goto('/');
   await expect(page.locator('.mission-card')).toHaveCount(3);
   await page.getByRole('button', { name: '消防隊救火', exact: true }).scrollIntoViewIfNeeded();
@@ -20,7 +22,10 @@ test('fire brigade extinguishes, rescues both floors in either order, and transp
   await down(driving.from); await move(driving.to); await wait('hose'); await up();
   await page.screenshot({ path: info.outputPath('hose.png') });
   const hose = await gesture(page, 'up');
-  await down(hose.from); await move(hose.to); await cancel(); await wait('hose');
+  await withPausedClock(page, async () => {
+    await down(hose.from); await move(hose.to); await page.clock.runFor(120); await cancel();
+  });
+  await wait('hose');
   await expect(app).toHaveAttribute('data-extinguished', '0');
   await dragGoal('hydrant'); await wait('ground-fire'); await up();
   // Partial water is retained on cancellation and reload. The next flame never

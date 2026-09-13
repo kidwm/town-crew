@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
 import { createHouse, HOUSE, PARTS } from '../../src/missions/house-build/domain/house.ts';
+import { withPausedClock } from './timing.mjs';
 
 test('crane accepts the assembly base without release and consumes only the current drag', async ({ page }, info) => {
   const touch = info.project.name === 'tablet-touch', errors = [];
   if (touch) await page.setViewportSize({ width: 390, height: 844 });
   page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install();
   await page.addInitScript(state => sessionStorage.setItem('town-crew:play:v1:house-build', JSON.stringify(state)), createHouse('crane-one'));
   await page.goto('/#house-build');
   const app = page.locator('#app'), cdp = await page.context().newCDPSession(page);
@@ -37,13 +39,18 @@ test('crane accepts the assembly base without release and consumes only the curr
   await expect(app).toHaveAttribute('data-action', 'dragging');
   await expect(app).toHaveAttribute('data-placed', '0');
   // Passing through the destination does not install it after the finger leaves.
-  await move(base); await move(outside);
+  await withPausedClock(page, async () => {
+    await move(base); await page.clock.runFor(120); await move(outside);
+  });
   await page.waitForTimeout(650);
   await expect(app).toHaveAttribute('data-action', 'dragging');
   await expect(app).toHaveAttribute('data-placed', '0');
   await cancel(); await ready();
   // Cancellation at an otherwise valid destination still cancels the dwell.
-  await down(source); await move(base); await cancel(); await ready();
+  await withPausedClock(page, async () => {
+    await down(source); await move(base); await page.clock.runFor(120); await cancel();
+  });
+  await ready();
   await expect(app).toHaveAttribute('data-placed', '0');
 
   await down(source); await move(base);

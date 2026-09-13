@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
 import { gesture } from './gesture.mjs';
+import { withPausedClock } from './timing.mjs';
 
 const parts = [{ lift: 2.9, height: 2 }, { lift: 2.9, height: 2 }, { lift: 3, height: 0.22 }, { lift: 5.2, height: 2 }, { lift: 5.2, height: 2 }, { lift: 5.3, height: 1.2 }];
 test('build two floors, choose the roof before lifting, reload and restart from menu', async ({ page }, info) => {
@@ -9,6 +10,7 @@ test('build two floors, choose the roof before lifting, reload and restart from 
   if (process.env.CI) test.setTimeout(360_000);
   const touch = info.project.name === 'tablet-touch', errors = [];
   page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install();
   await page.goto('/');
   await expect(page.getByRole('button', { name: '修馬路', exact: true })).toBeVisible();
   await page.screenshot({ path: info.outputPath('menu.png') });
@@ -104,7 +106,10 @@ test('build two floors, choose the roof before lifting, reload and restart from 
         await expect(indicator).toHaveAttribute('data-ready', 'false');
         await up(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
-        await down(source); await move(target); await cancel(); await wait(crane);
+        await withPausedClock(page, async () => {
+          await down(source); await move(target); await page.clock.runFor(120); await cancel();
+        });
+        await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
       }
       await down(source);
