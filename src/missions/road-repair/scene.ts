@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { pose } from './domain/dump-truck.ts';
 import type { Tuning } from './domain/dump-truck.ts';
-import { BARRIER_X, roadPose } from './domain/road.ts';
+import { BARRIER_X, ROLLER_LEFT, ROLLER_RIGHT, roadPose } from './domain/road.ts';
 import type { RoadState } from './domain/road.ts';
 import { smooth } from './domain/excavator.ts';
 import { createShapes } from '../../runtime/geometry.ts';
+import type { DragHint } from '../../runtime/drag-hint.ts';
 import { createExcavatorVisual, createRollerVisual, createCarVisual } from './vehicles.ts';
 
 export function createScene(host: HTMLElement) {
@@ -120,15 +121,6 @@ export function createScene(host: HTMLElement) {
   );
   hitbox.position.set(-1.7, 0.05, 0);
   bed.add(hitbox);
-  const hint = new THREE.Group();
-  hint.position.set(-0.6, 3.7, 0.6);
-  scene.add(hint);
-  for (const y of [0, 0.43]) {
-    for (const sign of [-1, 1]) {
-      const mark = box(hint, [0.5, 0.13, 0.12], [sign * 0.16, y, 0], '#fff4c4');
-      mark.rotation.z = -sign * 0.65;
-    }
-  }
   const gravel: THREE.Mesh[] = [];
   for (let i = 0; i < 12; i++) gravel.push(box(scene, [0.16, 0.15, 0.15], [0, 0, 0], '#c3a077'));
   const excavator = createExcavatorVisual(shapes);
@@ -178,6 +170,22 @@ export function createScene(host: HTMLElement) {
   }
   return {
     canvas: renderer.domElement,
+    dragHint(state: RoadState, tuning: Tuning): DragHint | undefined {
+      if (state.access !== 'working') return;
+      const bounds = renderer.domElement.getBoundingClientRect();
+      const project = (x: number, y: number, z: number) => {
+        const point = new THREE.Vector3(x, y, z).project(camera);
+        return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
+      };
+      if (state.phase === 'dump-truck' && state.truck.phase === 'ready') {
+        const from = project(pose(state.truck, tuning).x - 0.45, 1.65, 0.7);
+        return { from, to: { x: from.x, y: from.y - tuning.dragThreshold - 20 }, direction: 'up', label: '按住車斗，往上拖' };
+      }
+      if (state.phase === 'roller' && state.roller.action === 'ready') {
+        const right = state.roller.passes === 0;
+        return { from: project(state.roller.x, 1.2, 0), to: project(right ? ROLLER_RIGHT : ROLLER_LEFT, 1.2, 0), direction: right ? 'right' : 'left', label: right ? '按住車子，往右拖' : '按住車子，往左拖' };
+      }
+    },
     hit(clientX: number, clientY: number, state: RoadState) {
       setRay(clientX, clientY);
       const target = state.phase === 'excavator' ? excavator.hitbox : state.phase === 'dump-truck' ? hitbox : state.phase === 'roller' ? roller.hitbox : undefined;
@@ -214,9 +222,6 @@ export function createScene(host: HTMLElement) {
       }
       cargo.visible = current.fill < 0.95;
       cargo.scale.y = Math.max(0.01, 1 - current.fill);
-      hint.visible = state.phase === 'dump-truck' && state.access === 'working' && current.hint;
-      hint.position.y = 3.45 + Math.sin(time * 3) * 0.13;
-      hint.scale.setScalar(1 + Math.sin(time * 3) * 0.04);
       gravel.forEach((stone, i) => {
         stone.visible = state.phase === 'dump-truck' && state.truck.phase === 'dumping' && current.fill > 0 && current.fill < 1;
         const t = (time * 1.8 + i / gravel.length) % 1;
@@ -233,7 +238,7 @@ export function createScene(host: HTMLElement) {
       roller.root.visible = state.phase === 'roller';
       roller.root.scale.setScalar(1);
       roller.root.position.y = roller.root.position.z = 0;
-      roller.render(road.rollerX - (state.roller.action === 'complete' ? 10 * road.departure : 0), state.roller.passes, state.access === 'working' && ['ready', 'dragging'].includes(state.roller.action), time);
+      roller.render(road.rollerX - (state.roller.action === 'complete' ? 10 * road.departure : 0));
       const trafficTime = state.phase === 'complete' ? 4.8 : state.phase === 'traffic' ? state.elapsed : 0;
       barriers.forEach((barrier, index) => { barrier.position.z = road.barrierZ[index]; });
       car.root.visible = trafficTime >= 0.85 && trafficTime < 3.9;

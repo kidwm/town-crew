@@ -2,6 +2,7 @@ import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '..
 import { Effect } from 'effect';
 import type { createAudio } from '../../runtime/audio.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
+import { createDragHint } from '../../runtime/drag-hint.ts';
 import type { roadSounds } from './sounds.ts';
 import { restoreDevelopment, restoreRoadSnapshot, saveDevelopment } from './devtools.ts';
 type ViteHotContext = NonNullable<ImportMeta['hot']>;
@@ -54,6 +55,8 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const events = new AbortController();
     const options = { signal: events.signal };
     const canvas = scene.canvas;
+    const dragHint = createDragHint(app.querySelector<HTMLElement>('.world')!);
+    const gestureCaption = app.querySelector<HTMLElement>('.gesture-caption')!;
     let muted = isMuted(), frame = 0, firstReady = false;
     audio.setMuted(muted);
     let previousTime = performance.now(), visualTime = 0, lastSave = 0;
@@ -152,6 +155,9 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       setState(advanceRoad(state, delta, tuning));
       if (pointer.context() && pointer.context()!.phase !== state.phase) cancelPointer();
       scene.render(state, tuning, visualTime);
+      dragHint.update(scene.dragHint(state, tuning), visualTime);
+      gestureCaption.hidden = state.access !== 'working' || !['ready', 'dragging'].includes(action()) || !['dump-truck', 'roller'].includes(state.phase);
+      label('.gesture-instruction', state.phase === 'dump-truck' ? '按住車斗，往上拖' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
       app.dataset.phase = state.phase; app.dataset.action = action();
       app.dataset.cleared = String(state.excavator.cleared); app.dataset.passes = String(state.roller.passes);
       const progressValue = roadPose(state, tuning).progress;
@@ -181,7 +187,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       frame = requestAnimationFrame(animate);
     }
     frame = requestAnimationFrame(animate);
-    return () => { cancelPointer(); save(); cancelAnimationFrame(frame); events.abort(); };
+    return () => { cancelPointer(); save(); cancelAnimationFrame(frame); events.abort(); dragHint.dispose(); };
   }
   return { connect, save };
 }

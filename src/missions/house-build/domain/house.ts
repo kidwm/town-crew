@@ -55,9 +55,9 @@ export function moveLoad(s: HouseState, p: Point): HouseState {
     ? { ...s, load: { x: clamp(p.x, -4.5, 4.8), z: clamp(p.z, -2.5, 2.2) } } : s;
 }
 export const atTarget = (s: HouseState) => Math.hypot(s.load.x - HOUSE.x, s.load.z - HOUSE.z) < 0.85;
-export function release(s: HouseState, cancelled = false): HouseState {
+export function release(s: HouseState, cancelled = false, targetReached = atTarget(s)): HouseState {
   if (s.action !== 'dragging') return s;
-  if (isCrane(s)) return { ...s, action: !cancelled && atTarget(s) ? 'placing' : 'resetting', elapsed: 0, from: { ...s.load } };
+  if (isCrane(s)) return { ...s, action: !cancelled && targetReached ? 'placing' : 'resetting', elapsed: 0, from: { ...s.load } };
   return { ...s, action: 'ready', dragPx: 0 };
 }
 export function chooseColor(s: HouseState, color: number): HouseState {

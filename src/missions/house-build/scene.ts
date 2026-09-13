@@ -3,6 +3,9 @@ import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
 import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, smooth } from './domain/house.ts';
 import type { HouseState } from './domain/house.ts';
+import { CRANE_TARGET_RADIUS, craneTargetReached } from './domain/crane-target.ts';
+import type { ScreenPoint } from './domain/crane-target.ts';
+import type { DragHint } from '../../runtime/drag-hint.ts';
 
 export function createHouseScene(host: HTMLElement) {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -142,6 +145,33 @@ export function createHouseScene(host: HTMLElement) {
   }); resize.observe(host);
   return {
     canvas,
+    dragHint(state: HouseState): DragHint | undefined {
+      if (state.action !== 'ready') return;
+      const bounds = canvas.getBoundingClientRect();
+      const project = (x: number, y: number, z: number) => {
+        const point = new THREE.Vector3(x, y, z).project(camera);
+        return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
+      };
+      if (state.phase === 'gravel') {
+        const from = project(-2.4, 1.7, 0);
+        return { from, to: { x: from.x, y: from.y - 80 }, direction: 'up', label: '按住車斗，往上拖' };
+      }
+      if (isDelivery(state)) return { from: project(state.truckX, 1.5, 5.1), to: project(DELIVERY_STOP, 1.5, 5.1), direction: 'right', label: '按住車子，往右拖到停車位' };
+    },
+    craneDropTarget(state: HouseState, pointer?: ScreenPoint) {
+      const bounds = canvas.getBoundingClientRect();
+      const part = PARTS[Math.min(state.placed, PARTS.length - 1)];
+      camera.updateMatrixWorld(true);
+      const project = (x: number, z: number) => {
+        const point = new THREE.Vector3(x, part.lift + part.height / 2, z).project(camera);
+        return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
+      };
+      const target = project(HOUSE.x, HOUSE.z);
+      const accepted = state.action === 'dragging' && !!pointer && craneTargetReached(
+        { x: pointer.x - bounds.left, y: pointer.y - bounds.top }, project(state.load.x, state.load.z), target,
+      );
+      return { ...target, radius: CRANE_TARGET_RADIUS, accepted };
+    },
     hit(x: number, y: number, state: HouseState) {
       setRay(x, y);
       const target = state.phase === 'gravel' ? dump.hit : state.phase === 'concrete' ? chuteHit : isDelivery(state) ? flatbed.hit : isCrane(state) ? loadHit : undefined;
@@ -208,17 +238,15 @@ export function createHouseScene(host: HTMLElement) {
       link(slingA, hook, load.clone().add(new THREE.Vector3(-1.3, definition.height - 0.05, 0)));
       link(slingB, hook, load.clone().add(new THREE.Vector3(1.3, definition.height - 0.05, 0)));
       let hintFrom: THREE.Vector3 | undefined, hintTo: THREE.Vector3 | undefined;
-      if (interactive && s.phase === 'gravel') {
-        hintFrom = new THREE.Vector3(-2.5, 2.9, 0); hintTo = new THREE.Vector3(-2.5, 4.3, 0);
-      } else if (interactive && s.phase === 'concrete') {
+      if (interactive && s.phase === 'concrete') {
         const index = s.pours.findIndex(v => v < 1);
         if (index >= 0) { hintFrom = chuteTip.position.clone(); hintTo = new THREE.Vector3(POUR_TARGETS[index].x, 1.1, POUR_TARGETS[index].z); }
-      } else if (interactive && delivery) {
-        hintFrom = new THREE.Vector3(truckX + 0.3, 1.3, 5.1); hintTo = new THREE.Vector3(DELIVERY_STOP + 0.3, 1.3, 5.1);
       } else if (interactive && craneStage) {
         hintFrom = load.clone().add(new THREE.Vector3(0, definition.height / 2, 0)); hintTo = new THREE.Vector3(HOUSE.x, definition.lift + definition.height / 2, HOUSE.z);
       }
-      ring.visible = !!hintTo;
+      // Crane targets are drawn in the HUD using the same screen-space disc as
+      // the release check, so a wall cannot hide them or make them look elliptical.
+      ring.visible = !!hintTo && !craneStage;
       if (hintTo) { ring.position.copy(hintTo); ring.scale.setScalar(1 + Math.sin(time * 3) * 0.08); }
       trail.forEach((dot, i) => {
         dot.visible = !!hintFrom && !!hintTo && s.action === 'ready';

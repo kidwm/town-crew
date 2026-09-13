@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
+import { gesture } from './gesture.mjs';
 
 const parts = [{ lift: 2.9, height: 2 }, { lift: 2.9, height: 2 }, { lift: 3, height: 0.22 }, { lift: 5.2, height: 2 }, { lift: 5.2, height: 2 }, { lift: 5.3, height: 1.2 }];
 test('build two floors with four vehicles, resume from menu, decorate and replay', async ({ page }, info) => {
@@ -28,10 +29,14 @@ test('build two floors with four vehicles, resume from menu, decorate and replay
   const up = async () => touch ? cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }) : page.mouse.up();
   const cancel = async () => { if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }); else { await page.evaluate(() => window.dispatchEvent(new Event('blur'))); await page.mouse.up(); } };
   await wait('gravel');
-  const bed = await project(-2.4, 1.7, 0);
-  await down(bed); await move({ ...bed, y: bed.y - 25 }); await cancel(); await wait('gravel');
+  const tipping = await gesture(page, 'up'), bed = tipping.from;
+  await page.screenshot({ path: info.outputPath('gravel-gesture.png') });
+  await down(bed); await move({ ...bed, y: bed.y - 25 });
+  await expect(page.locator('.drag-hint')).toBeHidden();
+  await cancel(); await wait('gravel');
   await expect(app).toHaveAttribute('data-placed', '0');
-  await down(bed); await move({ ...bed, y: bed.y - 85 }); await up(); await wait('concrete');
+  await gesture(page, 'up');
+  await down(bed); await move(tipping.to); await up(); await wait('concrete');
   await page.screenshot({ path: info.outputPath('concrete.png') });
   await down(await project(-0.8, 1.1, 1.8));
   await move(await project(0.4, 1.1, -0.4));
@@ -50,18 +55,47 @@ test('build two floors with four vehicles, resume from menu, decorate and replay
   for (let batch = 0; batch < 2; batch++) {
     const delivery = batch === 0 ? 'delivery-one' : 'delivery-two', crane = batch === 0 ? 'crane-one' : 'crane-two';
     await wait(delivery);
-    await down(await project(-6, 1.5, 5.1)); await move(await project(-3, 1.5, 5.1)); await up(); await wait(delivery);
-    await down(await project(-3, 1.5, 5.1)); await move(await project(0.5, 1.5, 5.1)); await up(); await wait(crane);
+    const driving = await gesture(page, 'right');
+    if (batch === 0) await page.screenshot({ path: info.outputPath('flatbed-gesture.png') });
+    await down(driving.from);
+    await move({ x: (driving.from.x + driving.to.x) / 2, y: (driving.from.y + driving.to.y) / 2 });
+    await expect(page.locator('.drag-hint')).toBeHidden();
+    await up(); await wait(delivery);
+    const remaining = await gesture(page, 'right');
+    await down(remaining.from); await move(remaining.to); await up(); await wait(crane);
     for (let i = batch * 3; i < batch * 3 + 3; i++) {
       await wait(crane);
-      const y = parts[i].lift + parts[i].height / 2;
+      const part = parts[i];
+      // Grab visible faces, slab, hook and roof, instead of only the invisible
+      // centre of the L-shaped walls. Each grip has a different drag offset.
+      const grip = i === 0 || i === 3 ? [-4.2, part.lift + 1, 1.2]
+        : i === 1 ? [-1.1, part.lift + 1, 0.2]
+        : i === 2 ? [-2.4, part.lift + 0.22, 0.2]
+        : i === 4 ? [-3.1, part.lift + part.height + 0.2, -0.4]
+        : [-2.3, part.lift + 0.79, 0.2];
+      const source = await project(...grip);
+      const indicator = page.getByRole('img', { name: '吊車放置位置' });
+      await expect(indicator).toBeVisible();
+      const circle = await indicator.boundingBox();
+      const target = { x: circle.x + circle.width / 2, y: circle.y + circle.height / 2 };
       if (i === 0) {
-        await down(await project(-3.1, y, -0.4)); await move(await project(-1, y, 1.5)); await up(); await wait(crane);
+        await down(source); await move({ x: source.x, y: source.y + 50 });
+        await expect(indicator).toHaveAttribute('data-ready', 'false');
+        await up(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
-        await down(await project(-3.1, y, -0.4)); await move(await project(2, y, -0.4)); await cancel(); await wait(crane);
+        await down(source); await move(target);
+        await expect(indicator).toHaveAttribute('data-ready', 'true');
+        await cancel(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
       }
-      await down(await project(-3.1, y, -0.4)); await move(await project(2, y, -0.4)); await up();
+      await down(source);
+      // Include a drop near the circle edge, where the old world-space
+      // distance check did not match what the child could see.
+      await move(i === 1 ? { ...target, y: target.y + circle.height / 2 - 8 } : target);
+      await expect(indicator).toHaveAttribute('data-ready', 'true');
+      await expect(page.locator('.house-instruction')).toHaveText('對準了！放手就會自動放好');
+      if (i === 0) await page.screenshot({ path: info.outputPath('crane-target-ready.png') });
+      await up();
       await expect(app).toHaveAttribute('data-placed', String(i + 1));
       if (i === 2) await page.screenshot({ path: info.outputPath('first-floor.png') });
     }

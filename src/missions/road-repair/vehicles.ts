@@ -124,27 +124,10 @@ export function createRollerVisual(shapes: Shapes) {
   }
   root.add(drum);
   const hitbox = shapes.hitbox(root, [4.4, 3.0, 2.6], [0.15, 1.35, 0]);
-  const arrows = new THREE.Group();
-  for (const direction of [-1, 1]) {
-    const arrow = new THREE.Group();
-    arrow.position.set(direction * 3.0, 0.12, 1.1);
-    box(arrow, [0.9, 0.09, 0.15], [0, 0, 0], '#fff0b5');
-    for (const sign of [-1, 1]) {
-      const part = box(arrow, [0.5, 0.09, 0.14], [direction * 0.3, 0, sign * 0.17], '#fff0b5');
-      part.rotation.y = sign * direction * 0.65;
-    }
-    arrows.add(arrow);
-  }
-  root.add(arrows);
-  return { root, hitbox, render(x: number, passes: number, ready: boolean, time: number) {
+  return { root, hitbox, render(x: number) {
     root.position.x = x;
     for (const tire of tires) tire.rotation.z = -(x + 9) / 0.62;
     drum.rotation.z = -(x + 9) / 0.7;
-    arrows.visible = ready;
-    arrows.children.forEach((arrow, i) => {
-      arrow.visible = passes === 0 || i === 0;
-      arrow.scale.setScalar((passes === 0 && i === 0 ? 0.55 : 1) * (1 + Math.sin(time * 3) * 0.09));
-    });
   } };
 }
 

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as THREE from 'three';
 import assert from 'node:assert/strict';
+import { gesture } from './gesture.mjs';
 
 test('complete road repair, cancellation, partial passes and restart', async ({ page }, testInfo) => {
   const mode = testInfo.project.name === 'tablet-touch' ? 'touch' : 'mouse';
@@ -60,25 +61,33 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     }
   }
   await wait('dump-truck', 'ready');
+  const tipping = await gesture(page, 'up');
   await page.screenshot({ path: testInfo.outputPath('truck.png') });
-  const bed = await project(-1.75, 1.65, 0.7);
+  const bed = tipping.from;
   await down(bed); await up(); await wait('dump-truck', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
   await down(bed); await move({ ...bed, y: bed.y - 25 }); await cancel();
   if (mode === 'mouse') await up();
   await wait('dump-truck', 'ready');
-  await down(bed); await move({ ...bed, y: bed.y - 75 }); await up();
+  await down(bed); await move(tipping.to); await up();
   await wait('roller', 'ready');
 
-  await down(await project(-1.05, 1.2));
-  await move(await project(2.15, 1.2)); await up();
+  const outward = await gesture(page, 'right');
+  await page.screenshot({ path: testInfo.outputPath('roller-gesture.png') });
+  await down(outward.from);
+  await move({ x: (outward.from.x + outward.to.x) / 2, y: (outward.from.y + outward.to.y) / 2 });
+  await expect(page.locator('.drag-hint')).toBeHidden();
+  await up();
   await wait('roller', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
-  await down(await project(2.15, 1.2));
-  await move(await project(5.6, 1.2)); await up();
+  const remaining = await gesture(page, 'right');
+  await down(remaining.from);
+  await move(remaining.to); await up();
   await page.locator('#app[data-phase="roller"][data-action="ready"][data-passes="1"]').waitFor();
-  await down(await project(5.55, 1.2));
-  await move(await project(-1.1, 1.2)); await up();
+  const returning = await gesture(page, 'left');
+  await page.screenshot({ path: testInfo.outputPath('roller-return-gesture.png') });
+  await down(returning.from);
+  await move(returning.to); await up();
   await wait('traffic');
   await page.waitForTimeout(1600);
   await page.screenshot({ path: testInfo.outputPath('traffic.png') });

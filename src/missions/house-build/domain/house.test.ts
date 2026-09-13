@@ -49,6 +49,18 @@ test('missed and cancelled crane placement reset gently without attaching a part
   const placed = tick(release(moveLoad(grab(ready), { x: HOUSE.x + 0.6, z: HOUSE.z })), 1.3);
   assert.equal(placed.placed, 1);
 });
+test('an off-centre grip can install from the highlighted target, while cancellation still resets', () => {
+  const dragged = moveLoad(grab(tick(createHouse('crane-one'))), { x: HOUSE.x, z: HOUSE.z - 1.6 });
+  const placing = release(dragged, false, true);
+  assert.equal(placing.action, 'placing');
+  assert.deepEqual(placing.from, dragged.load);
+  assert.deepEqual(placing.load, dragged.load);
+  assert.equal(tick(placing, 1.3).placed, 1);
+  const cancelled = tick(release(dragged, true, true));
+  assert.equal(cancelled.action, 'ready');
+  assert.equal(cancelled.placed, 0);
+  assert.equal(release(moveLoad(dragged, HOUSE), false, false).action, 'resetting');
+});
 test('all transported parts clear the already built structure before automatic lowering', () => {
   for (let i = 0; i < PARTS.length; i++) {
     const previousTop = Math.max(0.35, ...PARTS.slice(0, i).map(p => p.base + p.height));
