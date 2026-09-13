@@ -34,6 +34,11 @@ The Effect scope releases input/frame listeners, audio and scene resources on
 HMR. The primary-pointer adapter owns capture and cancellation. The controller
 maps screen movement to bucket/roller world coordinates or truck drag distance.
 Gameplay advances through ordinary functions and is independent of audio success.
+Crane picking accepts the projected final part and its assembly base, with a
+small CSS-pixel margin; the former elevated target remains an alternative.
+A continuous 0.4-second dwell commits placement before releasing pointer
+ownership, so a still-held finger cannot control the next load. This dwell is
+transient drag context; cancellation and reload discard it.
 
 ## Development and release
 

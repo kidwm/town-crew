@@ -3,7 +3,7 @@ import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
 import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth } from './domain/house.ts';
 import type { HouseState } from './domain/house.ts';
-import { CRANE_TARGET_RADIUS, craneTargetReached } from './domain/crane-target.ts';
+import { CRANE_TARGET_RADIUS, convexOutline, craneTargetReached } from './domain/crane-target.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 
@@ -159,19 +159,23 @@ export function createHouseScene(host: HTMLElement) {
       }
       if (isDelivery(state)) return { from: project(state.truckX, 1.5, 5.1), to: project(DELIVERY_STOP, 1.5, 5.1), direction: 'right', label: '按住車子，往右拖到停車位' };
     },
-    craneDropTarget(state: HouseState, pointer?: ScreenPoint) {
+    craneDropTarget(state: HouseState, pointer?: ScreenPoint, origin?: ScreenPoint) {
       const bounds = canvas.getBoundingClientRect();
       const part = PARTS[Math.min(state.placed, PARTS.length - 1)];
       camera.updateMatrixWorld(true);
-      const project = (x: number, z: number) => {
-        const point = new THREE.Vector3(x, part.lift + part.height / 2, z).project(camera);
+      const project = (x: number, y: number, z: number) => {
+        const point = new THREE.Vector3(x, y, z).project(camera);
         return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
       };
-      const target = project(HOUSE.x, HOUSE.z);
-      const accepted = state.action === 'dragging' && !!pointer && craneTargetReached(
-        { x: pointer.x - bounds.left, y: pointer.y - bounds.top }, project(state.load.x, state.load.z), target,
+      const footprint = [[-2.4, -2], [2.4, -2], [2.4, 2], [-2.4, 2]].map(([x, z]) => project(HOUSE.x + x, part.base + 0.03, HOUSE.z + z));
+      const top = [[-2.4, -2], [2.4, -2], [2.4, 2], [-2.4, 2]].map(([x, z]) => project(HOUSE.x + x, part.base + part.height, HOUSE.z + z));
+      const target = project(HOUSE.x, part.base + 0.03, HOUSE.z);
+      const raised = project(HOUSE.x, part.lift + part.height / 2, HOUSE.z);
+      const accepted = state.action === 'dragging' && !!pointer && !!origin && craneTargetReached(
+        { x: pointer.x - bounds.left, y: pointer.y - bounds.top }, project(state.load.x, part.lift + part.height / 2, state.load.z),
+        { assembly: convexOutline([...footprint, ...top]), raised }, { x: origin.x - bounds.left, y: origin.y - bounds.top },
       );
-      return { ...target, radius: CRANE_TARGET_RADIUS, accepted };
+      return { ...target, footprint, radius: CRANE_TARGET_RADIUS, accepted };
     },
     hit(x: number, y: number, state: HouseState) {
       setRay(x, y);
@@ -259,10 +263,10 @@ export function createHouseScene(host: HTMLElement) {
         const index = s.pours.findIndex(v => v < 1);
         if (index >= 0) { hintFrom = chuteTip.position.clone(); hintTo = new THREE.Vector3(POUR_TARGETS[index].x, 1.1, POUR_TARGETS[index].z); }
       } else if (interactive && craneStage) {
-        hintFrom = load.clone().add(new THREE.Vector3(0, definition.height / 2, 0)); hintTo = new THREE.Vector3(HOUSE.x, definition.lift + definition.height / 2, HOUSE.z);
+        hintFrom = load.clone().add(new THREE.Vector3(0, definition.height / 2, 0)); hintTo = new THREE.Vector3(HOUSE.x, definition.base + 0.03, HOUSE.z);
       }
-      // Crane targets are drawn in the HUD using the same screen-space disc as
-      // the release check, so a wall cannot hide them or make them look elliptical.
+      // The assembly footprint is drawn in the HUD so installed walls cannot
+      // hide it. The raised load still clears the structure during placement.
       ring.visible = !!hintTo && !craneStage;
       if (hintTo) { ring.position.copy(hintTo); ring.scale.setScalar(1 + Math.sin(time * 3) * 0.08); }
       trail.forEach((dot, i) => {

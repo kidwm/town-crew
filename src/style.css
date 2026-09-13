@@ -114,6 +114,12 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 .crane-target[hidden] { display: none; }
 .crane-target svg { position: absolute; inset: 18px; width: calc(100% - 36px); height: calc(100% - 36px); fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .crane-target-check { display: none; }
+.crane-footprint { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.crane-footprint[hidden] { display: none; }
+.crane-footprint polygon { fill: #fff0b32b; stroke: #fff5cc; stroke-width: 4; stroke-linejoin: round; stroke-dasharray: 10 7; }
+.crane-footprint[data-ready='true'] polygon { fill: #a5d29145; stroke: #e3ffbd; stroke-dasharray: none; }
+.crane-target .crane-target-progress { inset: -7px; width: calc(100% + 14px); height: calc(100% + 14px); transform: rotate(-90deg); stroke: #729e68; stroke-width: 5; }
+.crane-target-progress circle { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .crane-target[data-ready='true'] { border-color: #f4ffdc; background: #88bd88db; box-shadow: 0 0 0 5px #b8e29b70; color: #fffced; }
 .crane-target[data-ready='true'] .crane-target-arrow { display: none; }
 .crane-target[data-ready='true'] .crane-target-check { display: block; }

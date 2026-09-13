@@ -100,24 +100,21 @@ test('build two floors, choose the roof before lifting, reload and restart from 
       const circle = await indicator.boundingBox();
       const target = { x: circle.x + circle.width / 2, y: circle.y + circle.height / 2 };
       if (i === 0) {
-        await down(source); await move({ x: source.x, y: source.y + 50 });
+        await down(source); await move({ x: Math.max(10, source.x - 90), y: source.y + 40 });
         await expect(indicator).toHaveAttribute('data-ready', 'false');
         await up(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
-        await down(source); await move(target);
-        await expect(indicator).toHaveAttribute('data-ready', 'true');
-        await cancel(); await wait(crane);
+        await down(source); await move(target); await cancel(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
       }
       await down(source);
-      // Include a drop near the circle edge, where the old world-space
-      // distance check did not match what the child could see.
+      // Aim at the actual assembly base, including an imprecise edge grip.
       await move(i === 1 ? { ...target, y: target.y + circle.height / 2 - 8 } : target);
-      await expect(indicator).toHaveAttribute('data-ready', 'true');
-      await expect(page.locator('.house-instruction')).toHaveText('對準了！放手就會自動放好');
-      if (i === 0) await page.screenshot({ path: info.outputPath('crane-target-ready.png') });
-      await up();
+      // Keep holding for most lifts. Releasing early at a valid site also works.
+      if (i === 1) await up();
       await expect(app).toHaveAttribute('data-placed', String(i + 1));
+      if (i !== 1) await up();
+      if (i === 0) await page.screenshot({ path: info.outputPath('crane-base-installed.png') });
       if (i === 2) await page.screenshot({ path: info.outputPath('first-floor.png') });
     }
   }

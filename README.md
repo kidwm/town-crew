@@ -44,8 +44,10 @@ Restart clears only the current mission's progress, while its earned badge remai
 2. Drag the concrete mixer's chute to each of three wide target rings. Keep it
    over the current target to pour; stopping or cancellation preserves partial filling.
 3. Drag the flatbed truck right along the independent foreground lane into its parking bay.
-4. The crane automatically picks up each part. Drag the raised load to its glowing
-   ring and release; it aligns and lowers onto the ghost outline. Two L-shaped wall
+4. The crane automatically picks up each part. Drag toward the actual assembly
+   base or ghost outline; the site turns green and a short 0.4-second dwell
+   automatically aligns and lowers the load without releasing. Releasing at a
+   valid destination also works. Two L-shaped wall
    sections and an upper floor slab complete the first storey.
 5. A second flatbed delivery brings the second storey's two wall sections and roof.
    After installing both walls, preview coral, green or blue on the roof waiting on
@@ -55,7 +57,9 @@ Restart clears only the current mission's progress, while its earned badge remai
    residents wave, and the mission can be replayed or left through the selection screen.
 
 Crane loads travel above the completed structure before automatically lowering.
-Misses and cancelled placements gently reset without installing a part. Trucks use
+Misses and cancelled placements gently reset without installing a part. Taps and
+brief passes through the site do not install a load; a held finger cannot pick up
+the next part after automatic placement. Trucks use
 clear access routes; the flatbed travels forward on the road in front of the house.
 
 ## Repair the road
@@ -154,11 +158,12 @@ be implemented without adopting either existing vehicle sequence.
 
 ## Verification
 
-The two missions have 27 domain tests, covering fixed arm lengths,
+The two missions have 30 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. House tests also cover
 ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
-lifting, legacy roof snapshot migration and load clearance above each floor.
+lifting, legacy roof snapshot migration, assembly target geometry, continuous
+placement dwell and load clearance above each floor.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.
@@ -166,7 +171,10 @@ and migration of development snapshots from before the gate sequence existed.
 The checked-in Playwright browser suite covers both complete mouse and emulated-touch flows,
 empty-space input, cancellation, partial roller movement, completion and
 restart, fresh starts from selection, progress retained on reload, roof colour before lifting, completion badges,
-phone selection and malformed storage. Development reload/HMR is checked from
+phone selection and malformed storage.
+The crane browser checks also cover automatic placement on the real base, visible
+wall faces, continued holding, passing through the target, and cancellation.
+Development reload/HMR is checked from
 the first completed roller pass and the second floor of the house, including
 preserved progress, mission switching and a single canvas. Normal and development layouts are
 visually checked at tablet and desktop sizes.

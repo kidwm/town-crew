@@ -4,6 +4,7 @@ import type { createAudio } from '../../runtime/audio.ts';
 import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
 import { icons as roadIcons } from '../road-repair/ui.ts';
 import { createHouse, resumeHouse, grab, release, dragGravel, moveChute, drive, moveLoad, advance, chooseColor, startRoofLift, finish, progress, stages, PARTS, ROOF_COLORS, isCrane, isDelivery } from './domain/house.ts';
+import { advanceCraneSettle, CRANE_SETTLE_SECONDS } from './domain/crane-target.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { HouseState, Stage, Point } from './domain/house.ts';
 import type { createHouseScene } from './scene.ts';
@@ -16,7 +17,7 @@ const icons = {
   crane: '<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M3 22h37v11H3Z" fill="#e0af54"/><path d="M5 12h12v14H5Z" fill="#ecc874"/><path d="M21 24L28 4l15 5" fill="none" stroke="#d3a04e" stroke-width="4"/><path d="M43 9v12q-6 6-6 0" fill="none" stroke="#607970" stroke-width="2"/><circle cx="10" cy="33" r="5" fill="#526c66"/><circle cx="33" cy="33" r="5" fill="#526c66"/></svg>',
 };
 const names: Record<Stage, string> = { gravel: '砂石車 · 鋪好基底', concrete: '水泥車 · 澆灌地基', 'delivery-one': '平板車 · 第一批材料', 'crane-one': '吊車 · 蓋好一樓', 'delivery-two': '平板車 · 第二批材料', 'crane-two': '吊車 · 蓋好二樓', 'roof-color': '先挑屋頂顏色', decorate: '新家蓋好了！', complete: '兩層小樓蓋好了！' };
-const instructions: Record<Stage, string> = { gravel: '按住車斗前端，往上拉', concrete: '把出料口移到光圈，慢慢填滿三區', 'delivery-one': '按住車子，往右拖到停車位', 'crane-one': '把材料拖到光圈，亮綠色後放手', 'delivery-two': '按住車子，往右拖到停車位', 'crane-two': '把材料拖到光圈，亮綠色後放手', 'roof-color': '先挑屋頂顏色，再請吊車吊上去', decorate: '按門鈴，歡迎入住！', complete: '叮咚！歡迎搬進新家' };
+const instructions: Record<Stage, string> = { gravel: '按住車斗前端，往上拉', concrete: '把出料口移到光圈，慢慢填滿三區', 'delivery-one': '按住車子，往右拖到停車位', 'crane-one': '把材料拖到房子上，吊車幫你放好', 'delivery-two': '按住車子，往右拖到停車位', 'crane-two': '把材料拖到房子上，吊車幫你放好', 'roof-color': '先挑屋頂顏色，再請吊車吊上去', decorate: '按門鈴，歡迎入住！', complete: '叮咚！歡迎搬進新家' };
 function iconFor(phase: Stage) { return phase === 'gravel' ? icons.gravel : phase === 'concrete' ? icons.concrete : phase.startsWith('delivery') ? icons.flatbed : icons.crane; }
 
 export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
@@ -29,7 +30,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
     if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } }
     else saveProgress('house-build', state);
   }
-  app.innerHTML = `<main class="world house-world" aria-label="小小城市隊蓋房子任務"><div class="canvas-host"></div><div class="crane-target" role="img" aria-label="吊車放置位置" data-ready="false" hidden><svg class="crane-target-arrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5v21M7 17l9 9 9-9"/></svg><svg class="crane-target-check" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16l7 7L27 8"/></svg><span class="crane-drop-label" role="status">拖到這裡</span></div><header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header><div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始蓋房子任務">↻</button></div><div class="house-caption"><span class="house-instruction"></span><span class="house-detail"></span></div><div class="mission-badge"><span class="badge-icon">${icons.gravel}</span><div><span class="eyebrow">一起蓋兩層小樓</span><strong id="vehicle-name"></strong></div></div><div class="mission-steps house-steps" aria-label="蓋房子四種工程車">${Object.entries(icons).map(([id, icon]) => `<span data-step="${id}">${icon}</span>`).join('')}</div><div class="progress" role="progressbar" aria-label="蓋房子進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div><div class="roof-picker" hidden><div class="roof-swatches" aria-label="屋頂顏色">${ROOF_COLORS.map((color, i) => `<button class="roof-color" data-color="${i}" style="--roof:${color}" aria-label="${['珊瑚紅', '青草綠', '天空藍'][i]}屋頂" aria-pressed="false"></button>`).join('')}</div><button class="start-roof" aria-label="吊起選好的屋頂">${icons.crane}<span>吊屋頂囉</span></button></div><div class="welcome-actions" hidden><button class="doorbell" aria-label="按門鈴，歡迎入住">♬ <span>按門鈴</span></button></div><div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div><div class="loading" role="status">工程車準備出發…</div></main>${dev ? `<aside class="dev-panel"><div class="dev-heading">開發工具 · 蓋房子</div><h1>一起，蓋兩層小樓。</h1><p class="dev-intro">鋪基底 → 澆灌 → 兩次送貨 → 六次吊裝</p><label class="field">直達階段<select id="stage">${stages.map(id => `<option value="${id}">${names[id]}</option>`).join('')}</select></label><button class="reset-stage">重設目前階段</button><dl class="telemetry"><div><dt>目前階段</dt><dd id="phase"></dd></div><div><dt>動作</dt><dd id="action"></dd></div><div><dt>吊裝完成</dt><dd id="placed"></dd></div></dl><p class="dev-note">重載和 HMR 保留進度；拖曳取消後可接著玩。</p></aside>` : ''}`;
+  app.innerHTML = `<main class="world house-world" aria-label="小小城市隊蓋房子任務"><div class="canvas-host"></div><svg class="crane-footprint" aria-hidden="true" hidden><polygon/></svg><div class="crane-target" role="img" aria-label="吊車放置位置" data-ready="false" hidden><svg class="crane-target-progress" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1"/></svg><svg class="crane-target-arrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5v21M7 17l9 9 9-9"/></svg><svg class="crane-target-check" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16l7 7L27 8"/></svg><span class="crane-drop-label" role="status">拖到房子上</span></div><header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header><div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始蓋房子任務">↻</button></div><div class="house-caption"><span class="house-instruction"></span><span class="house-detail"></span></div><div class="mission-badge"><span class="badge-icon">${icons.gravel}</span><div><span class="eyebrow">一起蓋兩層小樓</span><strong id="vehicle-name"></strong></div></div><div class="mission-steps house-steps" aria-label="蓋房子四種工程車">${Object.entries(icons).map(([id, icon]) => `<span data-step="${id}">${icon}</span>`).join('')}</div><div class="progress" role="progressbar" aria-label="蓋房子進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div><div class="roof-picker" hidden><div class="roof-swatches" aria-label="屋頂顏色">${ROOF_COLORS.map((color, i) => `<button class="roof-color" data-color="${i}" style="--roof:${color}" aria-label="${['珊瑚紅', '青草綠', '天空藍'][i]}屋頂" aria-pressed="false"></button>`).join('')}</div><button class="start-roof" aria-label="吊起選好的屋頂">${icons.crane}<span>吊屋頂囉</span></button></div><div class="welcome-actions" hidden><button class="doorbell" aria-label="按門鈴，歡迎入住">♬ <span>按門鈴</span></button></div><div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div><div class="loading" role="status">工程車準備出發…</div></main>${dev ? `<aside class="dev-panel"><div class="dev-heading">開發工具 · 蓋房子</div><h1>一起，蓋兩層小樓。</h1><p class="dev-intro">鋪基底 → 澆灌 → 兩次送貨 → 六次吊裝</p><label class="field">直達階段<select id="stage">${stages.map(id => `<option value="${id}">${names[id]}</option>`).join('')}</select></label><button class="reset-stage">重設目前階段</button><dl class="telemetry"><div><dt>目前階段</dt><dd id="phase"></dd></div><div><dt>動作</dt><dd id="action"></dd></div><div><dt>吊裝完成</dt><dd id="placed"></dd></div></dl><p class="dev-note">重載和 HMR 保留進度；拖曳取消後可接著玩。</p></aside>` : ''}`;
   function connect(scene: ReturnType<typeof createHouseScene>, audio: ReturnType<typeof createAudio<keyof typeof houseSounds>>) {
     const events = new AbortController(), options = { signal: events.signal };
     const dragHint = createDragHint(app.querySelector<HTMLElement>('.world')!);
@@ -43,17 +44,18 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       state = next;
     }
     const height = () => isCrane(state) ? PARTS[Math.min(state.placed, 5)].lift + PARTS[Math.min(state.placed, 5)].height / 2 : state.phase === 'concrete' ? 1.1 : 1.5;
-    const pointer = bindPrimaryDrag<{ phase: Stage; y: number; plane: number; offset: Point; screen: ScreenPoint }>(scene.canvas, {
+    const pointer = bindPrimaryDrag<{ phase: Stage; y: number; plane: number; offset: Point; screen: ScreenPoint; origin: ScreenPoint; settle: number }>(scene.canvas, {
       start(event) {
         unlock();
         if (state.action !== 'ready' || !scene.hit(event.clientX, event.clientY, state)) return;
         const plane = height(), p = scene.onPlane(event.clientX, event.clientY, plane); if (!p) return;
         const anchor = isCrane(state) ? state.load : state.phase === 'concrete' ? state.chute : { x: state.truckX, z: 5.1 };
         update(grab(state)); audio.play('grab');
-        return { phase: state.phase, y: event.clientY, plane, screen: { x: event.clientX, y: event.clientY }, offset: { x: anchor.x - p.x, z: anchor.z - p.z } };
+        const screen = { x: event.clientX, y: event.clientY };
+        return { phase: state.phase, y: event.clientY, plane, screen, origin: screen, settle: 0, offset: { x: anchor.x - p.x, z: anchor.z - p.z } };
       },
       move(event, context) {
-        if (state.phase !== context.phase) return;
+        if (state.phase !== context.phase || state.action !== 'dragging') return;
         context.screen = { x: event.clientX, y: event.clientY };
         if (state.phase === 'gravel') { update(dragGravel(state, context.y - event.clientY)); return; }
         const p = scene.onPlane(event.clientX, event.clientY, context.plane); if (!p) return;
@@ -61,7 +63,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         update(state.phase === 'concrete' ? moveChute(state, target) : isDelivery(state) ? drive(state, target.x) : moveLoad(state, target));
       },
       end(context, cancelled) {
-        const targetReached = isCrane(state) && scene.craneDropTarget(state, context.screen).accepted;
+        const targetReached = isCrane(state) && scene.craneDropTarget(state, context.screen, context.origin).accepted;
         update(release(state, cancelled, targetReached)); save();
       },
     }, events.signal);
@@ -82,25 +84,43 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
     app.querySelector('.loading')!.remove();
     function label(selector: string, text: string) { const node = app.querySelector(selector); if (node && node.textContent !== text) node.textContent = text; }
     const craneTarget = app.querySelector<HTMLElement>('.crane-target')!;
+    const footprint = app.querySelector<SVGSVGElement>('.crane-footprint')!;
+    const settleRing = app.querySelector<SVGCircleElement>('.crane-target-progress circle')!;
     let displayed: Stage | undefined;
     function animate(now: number) {
       const dt = document.hidden ? 0 : Math.min((now - previous) / 1000, 0.1); previous = now; time += dt;
       update(advance(state, dt));
       if (pointer.context() && pointer.context()!.phase !== state.phase) pointer.cancel();
+      const held = pointer.context();
+      if (held && isCrane(state) && state.action === 'dragging') {
+        const accepted = scene.craneDropTarget(state, held.screen, held.origin).accepted;
+        held.settle = advanceCraneSettle(held.settle, dt, accepted);
+        if (held.settle >= CRANE_SETTLE_SECONDS) {
+          update(release(state, false, true));
+          // Commit first, then release ownership. The still-held finger cannot
+          // move this animation or pick up the next part without a new press.
+          pointer.cancel();
+        }
+      }
       scene.render(state, time);
       dragHint.update(scene.dragHint(state), time);
       const drop = isCrane(state) && ['ready', 'dragging'].includes(state.action)
-        ? scene.craneDropTarget(state, pointer.context()?.screen) : undefined;
+        ? scene.craneDropTarget(state, pointer.context()?.screen, pointer.context()?.origin) : undefined;
       craneTarget.hidden = !drop;
+      footprint.toggleAttribute('hidden', !drop);
       if (drop) {
         craneTarget.style.left = `${drop.x}px`; craneTarget.style.top = `${drop.y}px`;
         craneTarget.style.width = craneTarget.style.height = `${drop.radius * 2}px`;
         craneTarget.dataset.ready = String(drop.accepted);
-        label('.crane-drop-label', drop.accepted ? '放手，幫你放好！' : '拖到這裡');
+        footprint.dataset.ready = String(drop.accepted);
+        footprint.querySelector('polygon')!.setAttribute('points', drop.footprint.map(p => `${p.x},${p.y}`).join(' '));
+        settleRing.style.strokeDashoffset = String(1 - (pointer.context()?.settle ?? 0) / CRANE_SETTLE_SECONDS);
+        label('.crane-drop-label', drop.accepted ? '停一下，幫你放好！' : '拖到房子上');
       }
       label('.house-instruction', state.phase === 'crane-two' && state.action === 'leaving'
         ? '房子蓋好了！工程車收工囉'
-        : drop?.accepted ? '對準了！放手就會自動放好' : instructions[state.phase]);
+        : state.action === 'placing' ? '吊車正在幫忙放好'
+        : drop?.accepted ? '對準了！吊車幫你放好' : instructions[state.phase]);
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.placed = String(state.placed);
       app.dataset.pours = String(state.pours.filter(v => v === 1).length); app.dataset.color = String(state.color);
       const value = progress(state);
