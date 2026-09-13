@@ -1,6 +1,6 @@
 # Town Crew · 小小城市隊
 
-**Play:** [小小城市隊](https://town-crew.wandererm.workers.dev)
+**Play:** [小小城市隊](https://town-crew.pages.dev)
 
 A complete, replayable road-repair mission using Vite, TypeScript, Three.js,
 and Effect **4.0.0-beta.107**. It runs in the browser with mouse or single-touch
@@ -21,7 +21,7 @@ npm run dev
 - `npx playwright install chromium` installs the browser for end-to-end tests.
 - `npm run test:e2e` tests the production build with mouse and emulated touch.
   Run `npm run build` first; the test runner starts its own preview on port 4173.
-- To test a deployed build instead: `PLAYWRIGHT_BASE_URL=https://town-crew.wandererm.workers.dev npm run test:e2e`.
+- To test a deployed build instead: `PLAYWRIGHT_BASE_URL=https://town-crew.pages.dev npm run test:e2e`.
 - `npm run test:e2e:dev` starts Vite on port 5174 and checks stage entry, reload,
   tuning persistence, and HMR without rewriting source.
 - To use an installed Chrome instead: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
@@ -154,11 +154,11 @@ can be tried without replaying the whole mission.
 
 `npm run build` produces a static `dist/` directory. No game server, database,
 runtime API keys, or server rendering are required. Hosting uses **Cloudflare
-Workers Static Assets**, configured in `wrangler.jsonc`.
+Pages**, configured in `wrangler.jsonc`.
 
-- `npm run deploy:check`: build and validate the deployment without uploading.
-- `npm run deploy:preview`: build and upload an isolated preview version.
-- `npm run deploy`: run rules/build checks and publish to the production Worker.
+- `npm run deploy:check`: run domain tests and build without uploading.
+- `npm run deploy:preview`: build and deploy to the separate `preview` branch.
+- `npm run deploy`: run rules/build checks and publish to the Pages `main` branch.
 
 Deployment uses Wrangler login; credentials stay outside this repository.
 GitHub CI builds and tests only. See [deployment setup](docs/deployment.md).

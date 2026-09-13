@@ -35,8 +35,8 @@
 
 ## 接下來
 
-1. 已發布 Cloudflare 試玩網址，採用明確指令分開上傳預覽及正式發布：
-   <https://town-crew.wandererm.workers.dev>。GitHub CI 負責建置與測試。
+1. 已改用 Cloudflare Pages 試玩網址，採用明確指令分開上傳預覽及正式發布：
+   <https://town-crew.pages.dev>。GitHub CI 負責建置與測試。
 2. 實際 iPad／Android 驗證觸控、音訊、冷啟動與持續遊玩效能。
 3. 開始第二個不同操作型態的任務，優先討論救火任務。
 4. 比較兩個任務的實際需求，再抽取共用提示、任務選擇與進度服務。

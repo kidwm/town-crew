@@ -11,9 +11,9 @@
     "test:e2e": "playwright test",
     "test:e2e:dev": "playwright test --config playwright.dev.config.ts",
     "check": "npm test && npm run build",
-    "deploy:check": "npm run build && wrangler deploy --dry-run",
-    "deploy:preview": "npm run build && wrangler versions upload",
-    "deploy": "npm run check && wrangler deploy"
+    "deploy:check": "npm run check",
+    "deploy:preview": "npm run build && wrangler pages deploy dist --project-name town-crew --branch preview",
+    "deploy": "npm run check && wrangler pages deploy dist --project-name town-crew --branch main"
   },
   "dependencies": {
     "effect": "4.0.0-beta.107",

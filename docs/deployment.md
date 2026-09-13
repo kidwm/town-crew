@@ -1,78 +1,90 @@
-# Cloudflare deployment
+# Cloudflare Pages deployment
 
-Production: **[小小城市隊](https://town-crew.wandererm.workers.dev)** on Cloudflare
-Workers Static Assets. First published on 2026-09-13 (Asia/Taipei) from Web
-migration commit `e4d7b6d`. Initial Cloudflare version:
-`3f4e5375-58eb-421b-bc8b-df9d90c2e837`.
-
-No custom domain or automatic production release is configured.
+Production URL: **[小小城市隊](https://town-crew.pages.dev)** on Cloudflare Pages.
+The `town-crew` project was created on 2026-09-13 (Asia/Taipei) and received the
+exact hostname `town-crew.pages.dev`, without a suffix.
 
 ## Build and publish
 
-The game is entirely client-side. Vite emits `dist/`; Cloudflare serves those
-files without a Worker script, database, server rendering, or runtime secrets.
-Run commands from the repository root with Node 24.
+Vite emits the client-side game to `dist/`. Pages serves those files without
+Functions, a database, server rendering, or runtime secrets. Run these commands
+from the repository root with Node 24:
 
 ```sh
 npm ci
-npx wrangler login --scopes account:read user:read workers_scripts:write --use-keyring
-npm run check
-npx playwright install chromium
-npm run test:e2e
-npm run test:e2e:dev
+npx wrangler login --scopes account:read user:read pages:write --use-keyring
 npm run deploy:check
 npm run deploy
 ```
 
-`deploy:check` builds and runs `wrangler deploy --dry-run` without publishing.
-`deploy` repeats rules/build checks and publishes Worker `town-crew` to its
-default HTTPS `workers.dev` hostname. Wrangler prints the exact URL and version
-ID; use that URL for device testing. Credentials stay in the OS keychain.
-
-The `workers_dev` and `preview_urls` settings are explicit in `wrangler.jsonc`.
-There is no `main` script or dynamic resource binding. Only `dist/` is uploaded.
-
-## Preview and release policy
-
-- GitHub pushes and PRs run domain, production browser and development checks.
-- Publishing is explicit: a Git push alone does not deploy the game.
-- `npm run deploy:preview` uploads a version and prints a preview URL without
-  replacing production. Use previews for feedback before a release.
-- `npm run deploy` publishes the current build. Record its version ID for rollback.
-- To restore a previous release, inspect `npx wrangler deployments list`, then
-  use `npx wrangler rollback <version-id>` for a known, previously tested version.
-
-If automated releases become useful, connect Git builds with distinct preview
-and production commands, or add a release workflow with a scoped Cloudflare
-credential. That is separate from the current build/test CI.
-
-## Verification and device follow-up
-
-Verify the deployed URL, JS/CSS responses, full mission, cancellation and restart
-using the same production browser suite:
+The Pages project is created once with production branch `main`:
 
 ```sh
-PLAYWRIGHT_BASE_URL=https://town-crew.wandererm.workers.dev npm run test:e2e
+npx wrangler pages project create town-crew --production-branch main --force
 ```
 
-This skips the local preview server and exercises the hosted build.
-Real iPad/Android touch, audible cues,
-cold loading and sustained frame rate still require hardware testing.
+`--force` is used only for initial creation with this Wrangler version: it opts
+out of automatic Workers delegation so the project receives a `pages.dev`
+hostname. It does not overwrite an existing project. Once the Pages project
+exists, ordinary deployments target Pages without that flag.
 
-## Why this platform
+`wrangler.jsonc` sets the project name, compatibility date and
+`pages_build_output_dir`. The publish commands also specify the project and
+branch explicitly, so a local feature branch cannot accidentally change which
+Pages environment receives the upload.
 
-Cloudflare's static-asset requests are free and unlimited, and new static
-projects are directed to Workers Static Assets. Optional dynamic Workers,
-storage products and build quotas have their own limits.
+- `deploy:check` runs the domain tests, TypeScript check and production build
+  without uploading. The Pages deploy command has no `--dry-run` option.
+- `deploy` runs those checks, then uploads `dist/` to production branch `main`.
+- `deploy:preview` builds and uploads to branch `preview`, leaving production
+  unchanged. Wrangler prints the deployment-specific and branch preview URLs.
 
-Alternatives considered were Vercel (convenient previews, but Hobby is for
-personal non-commercial use) and GitHub Pages (sufficient for a public static
-demo, with additional setup for branch previews and project-path hosting).
+Deployment credentials stay outside the repository in Wrangler's encrypted
+credential store, with its key protected by the OS keychain. An existing login
+may also retain Workers permissions for the earlier deployment; Pages publishing
+requires `pages:write`.
 
-Sources checked 2026-09-12:
+## Release policy and rollback
 
-- [Static-asset billing](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
-- [New-project guidance](https://developers.cloudflare.com/workers/best-practices/workers-best-practices/#use-workers-static-assets-for-new-projects)
-- [Cloudflare Git builds](https://developers.cloudflare.com/workers/ci-cd/builds/)
-- [Vercel Hobby](https://vercel.com/docs/plans/hobby)
-- [GitHub Pages limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)
+This is a Direct Upload project. GitHub pushes and PRs run build/browser checks;
+publication remains an explicit command. Cloudflare's built-in Git integration
+cannot later be enabled on this same Direct Upload project. If automatic
+publication is wanted, a GitHub Actions workflow can run the same Pages CLI with
+a scoped credential.
+
+Inspect releases with:
+
+```sh
+npx wrangler pages deployment list --project-name town-crew
+```
+
+A previous successful production deployment can be restored with **Rollback to
+this deployment** in the Pages dashboard. Preview deployments are separate from
+production releases.
+
+## Hosted verification
+
+Run the existing mouse and touch suite against the assigned production URL:
+
+```sh
+PLAYWRIGHT_BASE_URL=https://town-crew.pages.dev npm run test:e2e
+```
+
+This skips the local preview server and exercises the hosted build. For system
+Chrome, also set `PLAYWRIGHT_CHANNEL=chrome`. Real tablet audio, cold loading and
+sustained frame rate still require hardware testing.
+
+## Previous Workers release
+
+The initial Workers release remains available at
+<https://town-crew.wandererm.workers.dev>. It was published on 2026-09-13
+(Asia/Taipei) from `e4d7b6d`, with version
+`3f4e5375-58eb-421b-bc8b-df9d90c2e837`. The repository's deployment commands now
+target Pages; the old Worker is not updated by them.
+
+Sources:
+
+- [Direct Upload and project naming](https://developers.cloudflare.com/pages/get-started/direct-upload/)
+- [Pages Wrangler configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)
+- [Pages rollback](https://developers.cloudflare.com/pages/configuration/rollbacks/)
+- [Direct Upload from CI](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/)
