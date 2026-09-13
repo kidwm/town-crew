@@ -61,7 +61,9 @@ test('house development stages, reload and HMR preserve the second floor', async
   await expect(app).toHaveAttribute('data-phase', 'excavator');
   await page.getByRole('button', { name: '回到選關', exact: true }).click();
   await page.getByRole('button', { name: '蓋房子', exact: true }).click();
-  await expect(app).toHaveAttribute('data-phase', 'concrete');
+  await expect(app).toHaveAttribute('data-phase', 'gravel');
+  await expect(app).toHaveAttribute('data-placed', '0');
+  await expect(app).toHaveAttribute('data-pours', '0');
   await expect(page.locator('canvas')).toHaveCount(1);
   expect(errors).toEqual([]);
 });

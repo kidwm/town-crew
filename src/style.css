@@ -120,13 +120,14 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 .crane-drop-label { position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); padding: 5px 10px; border-radius: 20px; background: #fff9e9ec; color: #687e59; white-space: nowrap; font-size: 11px; }
 .house-steps { gap: 8px; }
 .house-world .progress { width: 200px; }
-.roof-picker, .finish-actions { position: absolute; bottom: 125px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 18px; border: 1px solid #fff8; border-radius: 24px; padding: 16px 22px; background: #fff9e8ed; box-shadow: 0 6px 24px #3f634b19; }
-.roof-picker[hidden], .finish-actions[hidden] { display: none; }
+.roof-picker, .welcome-actions, .finish-actions { position: absolute; bottom: 125px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; justify-content: center; gap: 18px; border: 1px solid #fff8; border-radius: 24px; padding: 16px 22px; background: #fff9e8ed; box-shadow: 0 6px 24px #3f634b19; }
+.roof-picker[hidden], .welcome-actions[hidden], .finish-actions[hidden] { display: none; }
+.roof-picker { width: max-content; max-width: calc(100% - 24px); flex-wrap: wrap; }
 .roof-swatches { display: flex; gap: 12px; }
 .roof-color { width: 48px; height: 48px; border: 4px solid #fffdf1; outline: 2px solid transparent; border-radius: 50%; background: var(--roof); }
 .roof-color[aria-pressed='true'] { outline-color: #647e6c; }
 .roof-color[aria-pressed='true']::after { content: '✓'; color: #fff5da; font-size: 24px; }
-.doorbell, .finish-actions button { min-height: 50px; min-width: 120px; border: 1px solid #c9d7b9; border-radius: 16px; background: #e3ecd5; color: #58775d; padding: 12px 18px; font-size: 16px; white-space: nowrap; }
+.doorbell, .start-roof, .finish-actions button { min-height: 50px; min-width: 120px; border: 1px solid #c9d7b9; border-radius: 16px; background: #e3ecd5; color: #58775d; padding: 12px 18px; font-size: 16px; white-space: nowrap; }
 .doorbell { font-size: 22px; }.doorbell span { font-size: 15px; }
 @media (max-width: 650px) {
   .town-menu { padding: 23px 21px; }
@@ -142,13 +143,16 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .house-detail { font-size: 10px; }
   .house-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }.house-world .mission-badge strong { font-size: 13px; }
   .house-world .mission-steps { left: 16px; right: auto; bottom: 22px; }.house-world .progress { right: 16px; bottom: 34px; width: 110px; }
-  .roof-picker, .finish-actions { bottom: 155px; padding: 12px; gap: 12px; }
+  .roof-picker, .welcome-actions, .finish-actions { bottom: 155px; padding: 12px; gap: 12px; }
   .roof-color { width: 42px; height: 42px; }.roof-swatches { gap: 8px; }.doorbell { min-width: 100px; }
 }
 @media (max-height: 550px) and (min-width: 651px) {
   .menu-intro { margin: 20px 0; }.card-art svg { max-height: 170px; }.card-copy { padding: 16px 22px; }
   .card-vehicles, .menu-footer { display: none; }.card-play { margin-top: 10px; padding-top: 10px; }
   .house-caption, .gesture-caption { top: 65px; }.house-instruction, .gesture-instruction { font-size: 11px; }.house-detail { font-size: 10px; }
-  .roof-picker, .finish-actions { bottom: 84px; padding: 10px 16px; }
+  .roof-picker, .welcome-actions, .finish-actions { bottom: 84px; padding: 10px 16px; }
 }
 @media (prefers-reduced-motion: reduce) { .mission-card { transition: none; } }
+
+.start-roof { display: flex; align-items: center; gap: 8px; }
+.start-roof svg { width: 30px; height: 26px; }

@@ -13,7 +13,6 @@ test('both dump trucks accept the front rim, nearby fingers and existing centre 
     sessionStorage.setItem('town-crew:play:v1:house-build', JSON.stringify(house));
     sessionStorage.setItem('town-crew:play:v1:road-repair', JSON.stringify(road));
   }, { house: createHouse(), road: { key: 'play', state: createRoad('dump-truck'), tuning: defaultTuning, targetStage: 'dump-truck' } });
-  await page.goto('/');
   const app = page.locator('#app'), cdp = await page.context().newCDPSession(page);
   const down = async p => touch ? cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [p] }) : (await page.mouse.move(p.x, p.y), page.mouse.down());
   const move = async p => touch ? cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [p] }) : page.mouse.move(p.x, p.y, { steps: 4 });
@@ -24,7 +23,10 @@ test('both dump trucks accept the front rim, nearby fingers and existing centre 
   };
   for (const house of [true, false]) {
     const phase = house ? 'gravel' : 'dump-truck';
-    await page.getByRole('button', { name: house ? '蓋房子' : '修馬路', exact: true }).click();
+    // Direct entry resumes the fixture; selecting from the menu starts fresh.
+    await page.goto(house ? '/#house-build' : '/#road-repair');
+    // A hash-only navigation does not rerun the snapshot initializer.
+    await page.reload();
     await expect(app).toHaveAttribute('data-phase', phase);
     await expect(app).toHaveAttribute('data-action', 'ready');
     const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height;

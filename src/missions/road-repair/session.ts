@@ -15,12 +15,12 @@ import { advanceRoad, createRoad, stages, grabRoller, moveRoller, releaseRoller,
 import type { EntryStage, RoadState, MissionPhase } from './domain/road.ts';
 import { mountUI, icons } from './ui.ts';
 
-export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}) {
+export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}, fresh = false) {
   const bootStartedAt = performance.now();
   const params = new URLSearchParams(location.search);
   document.body.dataset.dev = String(dev);
   mountUI(app, dev);
-  const queryStage = dev ? params.get('stage') : null;
+  const queryStage = dev && !fresh ? params.get('stage') : null;
   // Preserve existing truck experiment bookmarks; a plain URL starts the whole road mission.
   const entry: EntryStage = stages.includes(queryStage as EntryStage) ? queryStage as EntryStage : queryStage === 'ready' || queryStage === 'dumping' ? 'dump-truck' : 'excavator';
   let state = createRoad(entry);
@@ -31,11 +31,11 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
   let tuning = { ...defaultTuning };
   let targetStage: EntryStage = entry;
   const snapshotKey = `town-crew:road:v2:${location.search}`;
-  if (dev) {
+  if (dev && !fresh) {
     const restored = restoreDevelopment(snapshotKey, hot);
     if (restored) ({ state, tuning, targetStage } = restored);
   }
-  if (!dev) {
+  if (!dev && !fresh) {
     const restored = restoreRoadSnapshot(loadProgress('road-repair'), 'play');
     if (restored) ({ state, tuning, targetStage } = restored);
   }

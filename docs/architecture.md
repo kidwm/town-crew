@@ -26,6 +26,9 @@ needs them. The entry point shows selection and dynamically imports the selected
 The app waits for the previous Effect scope to release input, audio, renderer and
 WebGL context before mounting another scene. Hash navigation supports browser back;
 HMR carries the cleanup promise into the replacement module.
+Entering from selection clears the selected mission's snapshot after the previous
+scope has finished saving. Reload and HMR inside a mission restore its current
+snapshot; completion badges and mute preferences survive a fresh round.
 
 The Effect scope releases input/frame listeners, audio and scene resources on
 HMR. The primary-pointer adapter owns capture and cancellation. The controller
@@ -40,6 +43,10 @@ sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
 pointer gestures through `resumeRoad` and `resumeHouse`. Development snapshots
 use separate versioned keys and do not award completion badges.
+House snapshots use schema version 2: after five installed parts, `roof-color`
+pauses with the roof on the truck until the player confirms a colour and starts
+its pickup. Version 1 unfinished roofs migrate to this choice; already completed
+homes retain their colour and completion state.
 
 Production browser tests exercise the built `dist/` files with real pointer
 events. A separate development server tests HMR, reload, tuning and stage resets.

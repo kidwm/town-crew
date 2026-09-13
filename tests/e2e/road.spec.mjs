@@ -51,13 +51,20 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
     await up();
     if (index === 0) {
+      await page.reload();
+      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
       await page.getByRole('button', { name: '回到選關', exact: true }).click();
       await page.getByRole('button', { name: '蓋房子', exact: true }).click();
       await expect(page.locator('#app')).toHaveAttribute('data-phase', 'gravel');
       await page.getByRole('button', { name: '回到選關', exact: true }).click();
       await page.getByRole('button', { name: '修馬路', exact: true }).click();
-      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
+      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '0');
       await expect(page.locator('canvas')).toHaveCount(1);
+      await wait('excavator', 'ready');
+      await down(await project(-1.25, 0.85));
+      await move(await project(rock[0], 0.85, rock[1]));
+      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
+      await up();
     }
   }
   await wait('dump-truck', 'ready');

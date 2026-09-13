@@ -32,9 +32,9 @@ npm run dev
 ## Choose a mission
 
 The entrance has two large illustrated cards. Both missions are available immediately.
-Use the home button to return to selection; re-entering continues that mission.
+Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
-reloading in the same tab also resumes it. Completion badges and the sound preference
+reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
 
@@ -48,8 +48,10 @@ Restart clears only the current mission's progress, while its earned badge remai
    ring and release; it aligns and lowers onto the ghost outline. Two L-shaped wall
    sections and an upper floor slab complete the first storey.
 5. A second flatbed delivery brings the second storey's two wall sections and roof.
+   After installing both walls, preview coral, green or blue on the roof waiting on
+   the truck. Press the crane button to start the final lift in the chosen colour.
    There are six lifts across the two deliveries, with a celebration after the first floor.
-6. Choose coral, green or blue for the roof and ring the doorbell. Windows light up,
+6. The crane leaves the site. Ring the doorbell to welcome the residents. Windows light up,
    residents wave, and the mission can be replayed or left through the selection screen.
 
 Crane loads travel above the completed structure before automatically lowering.
@@ -100,14 +102,14 @@ and roller drums rotate according to vehicle displacement.
 
 House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,
-`decorate`, and `complete`. The development panel can jump to or reset each stage,
+`roof-color`, `decorate`, and `complete`. The development panel can jump to or reset each stage,
 with snapshots isolated from normal gameplay.
 
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
 maximum angle, and dump duration. The panel and persistence are absent from
-production builds. A plain URL opens selection; use restart for a fresh mission.
+production builds. A plain URL opens selection; select a card or use restart for a fresh mission.
 
 In development, HMR and page reload preserve mission progress, animation state, and tuning in
 versioned sessionStorage. Pointer capture cannot survive reload: an excavator
@@ -152,17 +154,18 @@ be implemented without adopting either existing vehicle sequence.
 
 ## Verification
 
-The two missions have 23 domain tests, covering fixed arm lengths,
+The two missions have 27 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. House tests also cover
-ordered concrete pouring, partial delivery, cancelled placement and load clearance above each floor.
+ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
+lifting, legacy roof snapshot migration and load clearance above each floor.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.
 
 The checked-in Playwright browser suite covers both complete mouse and emulated-touch flows,
 empty-space input, cancellation, partial roller movement, completion and
-restart, mission switching, saved progress, roof decoration, completion badges,
+restart, fresh starts from selection, progress retained on reload, roof colour before lifting, completion badges,
 phone selection and malformed storage. Development reload/HMR is checked from
 the first completed roller pass and the second floor of the house, including
 preserved progress, mission switching and a single canvas. Normal and development layouts are

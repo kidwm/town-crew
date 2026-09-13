@@ -102,6 +102,7 @@ export function createHouseScene(host: HTMLElement) {
     scene.add(root); return root;
   }
   const parts = PARTS.map((_, i) => part(i));
+  const roofPickup = new THREE.Vector3(-0.55, 1.3, 5.1);
   const ghosts = PARTS.map((_, i) => part(i, true));
   const loadHit = shapes.hitbox(scene, [4.8, 2.8, 4], [0, 0, 0]);
   const slingA = cylinder(scene, 0.022, 1, [0, 0, 0], '#65796b', 8);
@@ -184,7 +185,8 @@ export function createHouseScene(host: HTMLElement) {
       return p ? { x: p.x, z: p.z } : undefined;
     },
     render(s: HouseState, time: number) {
-      const craneStage = isCrane(s), delivery = isDelivery(s), interactive = s.action === 'ready' || s.action === 'dragging';
+      const craneStage = isCrane(s), delivery = isDelivery(s), roofChoosing = s.phase === 'roof-color';
+      const interactive = s.action === 'ready' || s.action === 'dragging';
       const arriving = s.action === 'entering' ? 1 - smooth(s.elapsed / 1.2) : 0;
       const departing = s.action === 'leaving' ? smooth(s.elapsed / leavingDuration(s)) : 0;
       const craneLeaving = s.phase === 'crane-two' && s.action === 'leaving';
@@ -213,7 +215,7 @@ export function createHouseScene(host: HTMLElement) {
         particle.position.set(-1.05 + t * 3.6, 1.3 * (1 - t * t), Math.sin(i * 4) * t * 1.5);
         particle.rotation.set(time + i, time * 2, i);
       });
-      flatbed.root.visible = delivery || craneStage;
+      flatbed.root.visible = delivery || craneStage || roofChoosing;
       const truckX = delivery ? s.truckX - arriving * 10 : DELIVERY_STOP + departing * 15;
       flatbed.root.position.set(truckX, 0, 5.1); flatbed.root.rotation.y = Math.PI; flatbed.roll(-truckX);
       const delivered = s.placed % 3;
@@ -225,7 +227,8 @@ export function createHouseScene(host: HTMLElement) {
         const t = smooth(s.elapsed / 1.25);
         // Lift above the parked transporter, then carry into the working plane.
         const rise = smooth(s.elapsed / 0.6), carry = smooth((s.elapsed - 0.6) / 0.65);
-        load.set(0.75 + (LOAD_HOME.x - 0.75) * carry, 1.85 + (definition.lift - 1.85) * rise, 5.1 + (LOAD_HOME.z - 5.1) * carry);
+        const origin = currentPart === 5 ? roofPickup : new THREE.Vector3(0.75, 1.85, 5.1);
+        load.set(origin.x + (LOAD_HOME.x - origin.x) * carry, origin.y + (definition.lift - origin.y) * rise, origin.z + (LOAD_HOME.z - origin.z) * carry);
         if (t >= 1) load.set(LOAD_HOME.x, definition.lift, LOAD_HOME.z);
       }
       if (s.action === 'placing') {
@@ -234,9 +237,10 @@ export function createHouseScene(host: HTMLElement) {
       }
       const holding = craneStage && s.action !== 'leaving';
       parts.forEach((piece, i) => {
-        piece.visible = i < s.placed || (holding && i === s.placed);
+        piece.visible = i < s.placed || (holding && i === s.placed) || (roofChoosing && i === 5);
         piece.position.set(HOUSE.x, PARTS[i].base, HOUSE.z);
         if (holding && i === s.placed) piece.position.copy(load);
+        if (roofChoosing && i === 5) piece.position.copy(roofPickup);
       });
       ghosts.forEach((ghost, i) => { ghost.visible = holding && i === s.placed && s.action !== 'placing'; ghost.position.set(HOUSE.x, PARTS[i].base, HOUSE.z); });
       loadHit.position.copy(load).add(new THREE.Vector3(0, definition.height / 2, 0));

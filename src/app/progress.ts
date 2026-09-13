@@ -10,6 +10,11 @@ export function saveProgress(id: MissionId, snapshot: unknown) {
   memory.set(id, structuredClone(snapshot));
   try { sessionStorage.setItem(key(id), JSON.stringify(snapshot)); } catch { /* Play also works without storage. */ }
 }
+export function clearProgress(id: MissionId) {
+  // A null memory entry also masks an old save when storage is unavailable.
+  memory.set(id, null);
+  try { sessionStorage.removeItem(key(id)); } catch { /* Starting over still works. */ }
+}
 export function isCompleted(id: MissionId) {
   try { return memory.get(`done:${id}`) === true || localStorage.getItem(key(`done:${id}`)) === 'true'; } catch { return memory.get(`done:${id}`) === true; }
 }

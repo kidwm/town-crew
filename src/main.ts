@@ -2,6 +2,7 @@ import { Effect } from 'effect';
 import { createAudio } from './runtime/audio.ts';
 import { mountMenu } from './app/menu.ts';
 import type { MissionId } from './app/progress.ts';
+import { clearProgress } from './app/progress.ts';
 import './style.css';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -11,6 +12,7 @@ let lifetime: AbortController | undefined;
 let running: Promise<unknown> = import.meta.hot?.data.cleanup ?? Promise.resolve();
 let revision = 0;
 let disposeMenu: (() => void) | undefined;
+let fromMenu = false;
 const events = new AbortController();
 function route(): MissionId | undefined {
   if (location.hash === '#menu') return;
@@ -28,10 +30,14 @@ async function show() {
   const mission = route();
   document.body.dataset.dev = String(dev && !!mission);
   if (!mission) {
+    fromMenu = true;
     app.dataset.screen = 'menu';
     disposeMenu = mountMenu(app, id => { location.hash = id; });
     return;
   }
+  const fresh = fromMenu; fromMenu = false;
+  // The old scope has finished saving before a selection starts a new round.
+  if (fresh) clearProgress(mission);
   app.dataset.screen = 'mission'; app.dataset.mission = mission;
   app.innerHTML = '<div class="loading" role="status">工程車準備出發…</div>';
   lifetime = new AbortController();
@@ -41,14 +47,16 @@ async function show() {
       const [{ createScene }, { createRoadSession }, { roadSounds }] = yield* Effect.promise(() => Promise.all([
         import('./missions/road-repair/scene.ts'), import('./missions/road-repair/session.ts'), import('./missions/road-repair/sounds.ts'),
       ]));
-      const session = createRoadSession(app, dev, import.meta.hot, home);
+      const session = createRoadSession(app, dev, import.meta.hot, home, fresh);
+      if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(roadSounds)), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     } else {
       const { createHouseScene } = yield* Effect.promise(() => import('./missions/house-build/scene.ts'));
       const { createHouseSession, houseSounds } = yield* Effect.promise(() => import('./missions/house-build/session.ts'));
-      const session = createHouseSession(app, dev, home);
+      const session = createHouseSession(app, dev, home, fresh);
+      if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
