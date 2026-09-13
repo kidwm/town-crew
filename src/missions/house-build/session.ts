@@ -16,7 +16,7 @@ const icons = {
   crane: '<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M3 22h37v11H3Z" fill="#e0af54"/><path d="M5 12h12v14H5Z" fill="#ecc874"/><path d="M21 24L28 4l15 5" fill="none" stroke="#d3a04e" stroke-width="4"/><path d="M43 9v12q-6 6-6 0" fill="none" stroke="#607970" stroke-width="2"/><circle cx="10" cy="33" r="5" fill="#526c66"/><circle cx="33" cy="33" r="5" fill="#526c66"/></svg>',
 };
 const names: Record<Stage, string> = { gravel: '砂石車 · 鋪好基底', concrete: '水泥車 · 澆灌地基', 'delivery-one': '平板車 · 第一批材料', 'crane-one': '吊車 · 蓋好一樓', 'delivery-two': '平板車 · 第二批材料', 'crane-two': '吊車 · 蓋好二樓', decorate: '幫新家選個顏色', complete: '兩層小樓蓋好了！' };
-const instructions: Record<Stage, string> = { gravel: '按住車斗，往上拖', concrete: '把出料口移到光圈，慢慢填滿三區', 'delivery-one': '按住車子，往右拖到停車位', 'crane-one': '把材料拖到光圈，亮綠色後放手', 'delivery-two': '按住車子，往右拖到停車位', 'crane-two': '把材料拖到光圈，亮綠色後放手', decorate: '選一個屋頂顏色，再按門鈴！', complete: '叮咚！歡迎搬進新家' };
+const instructions: Record<Stage, string> = { gravel: '按住車斗前端，往上拉', concrete: '把出料口移到光圈，慢慢填滿三區', 'delivery-one': '按住車子，往右拖到停車位', 'crane-one': '把材料拖到光圈，亮綠色後放手', 'delivery-two': '按住車子，往右拖到停車位', 'crane-two': '把材料拖到光圈，亮綠色後放手', decorate: '選一個屋頂顏色，再按門鈴！', complete: '叮咚！歡迎搬進新家' };
 function iconFor(phase: Stage) { return phase === 'gravel' ? icons.gravel : phase === 'concrete' ? icons.concrete : phase.startsWith('delivery') ? icons.flatbed : icons.crane; }
 
 export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: () => void) {

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Shapes } from '../../runtime/geometry.ts';
+import { createBedGrip } from '../../runtime/bed-grip.ts';
 
 export function link(mesh: THREE.Object3D, a: THREE.Vector3, b: THREE.Vector3) {
   mesh.position.copy(a).add(b).multiplyScalar(0.5);
@@ -35,7 +36,8 @@ export function createDump(shapes: Shapes) {
   shapes.box(bed, [0.16, 0.8, 1.7], [-2.65, 0.4, 0], '#ecb75c');
   const cargo = shapes.box(bed, [2.4, 0.32, 1.44], [-1.25, 0.38, 0], '#b6a285');
   const hit = shapes.hitbox(bed, [2.9, 1.5, 2.2], [-1.3, 0.3, 0]);
-  return { ...vehicle, bed, cargo, hit };
+  const grip = createBedGrip(bed, [-2.65, 0.8, 0.85]);
+  return { ...vehicle, bed, cargo, hit, grip };
 }
 export function createMixer(shapes: Shapes) {
   const vehicle = chassis(shapes, '#dc9d77', true);

@@ -153,8 +153,8 @@ export function createHouseScene(host: HTMLElement) {
         return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
       };
       if (state.phase === 'gravel') {
-        const from = project(-2.4, 1.7, 0);
-        return { from, to: { x: from.x, y: from.y - 80 }, direction: 'up', label: '按住車斗，往上拖' };
+        const from = dump.grip.project(camera, canvas);
+        return { from, to: { x: from.x, y: from.y - 80 }, direction: 'up', label: '按住車斗前端，往上拉' };
       }
       if (isDelivery(state)) return { from: project(state.truckX, 1.5, 5.1), to: project(DELIVERY_STOP, 1.5, 5.1), direction: 'right', label: '按住車子，往右拖到停車位' };
     },
@@ -174,6 +174,7 @@ export function createHouseScene(host: HTMLElement) {
     },
     hit(x: number, y: number, state: HouseState) {
       setRay(x, y);
+      if (state.phase === 'gravel' && dump.grip.hit(x, y, camera, canvas)) return true;
       const target = state.phase === 'gravel' ? dump.hit : state.phase === 'concrete' ? chuteHit : isDelivery(state) ? flatbed.hit : isCrane(state) ? loadHit : undefined;
       return !!target && ray.intersectObject(target).length > 0;
     },

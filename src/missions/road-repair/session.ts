@@ -157,7 +157,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       scene.render(state, tuning, visualTime);
       dragHint.update(scene.dragHint(state, tuning), visualTime);
       gestureCaption.hidden = state.access !== 'working' || !['ready', 'dragging'].includes(action()) || !['dump-truck', 'roller'].includes(state.phase);
-      label('.gesture-instruction', state.phase === 'dump-truck' ? '按住車斗，往上拖' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
+      label('.gesture-instruction', state.phase === 'dump-truck' ? '按住車斗前端，往上拉' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
       app.dataset.phase = state.phase; app.dataset.action = action();
       app.dataset.cleared = String(state.excavator.cleared); app.dataset.passes = String(state.roller.passes);
       const progressValue = roadPose(state, tuning).progress;

@@ -6,6 +6,7 @@ import type { RoadState } from './domain/road.ts';
 import { smooth } from './domain/excavator.ts';
 import { createShapes } from '../../runtime/geometry.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
+import { createBedGrip } from '../../runtime/bed-grip.ts';
 import { createExcavatorVisual, createRollerVisual, createCarVisual } from './vehicles.ts';
 
 export function createScene(host: HTMLElement) {
@@ -121,6 +122,7 @@ export function createScene(host: HTMLElement) {
   );
   hitbox.position.set(-1.7, 0.05, 0);
   bed.add(hitbox);
+  const bedGrip = createBedGrip(bed, [-2.62, 0.51, 0.85]);
   const gravel: THREE.Mesh[] = [];
   for (let i = 0; i < 12; i++) gravel.push(box(scene, [0.16, 0.15, 0.15], [0, 0, 0], '#c3a077'));
   const excavator = createExcavatorVisual(shapes);
@@ -178,8 +180,8 @@ export function createScene(host: HTMLElement) {
         return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
       };
       if (state.phase === 'dump-truck' && state.truck.phase === 'ready') {
-        const from = project(pose(state.truck, tuning).x - 0.45, 1.65, 0.7);
-        return { from, to: { x: from.x, y: from.y - tuning.dragThreshold - 20 }, direction: 'up', label: '按住車斗，往上拖' };
+        const from = bedGrip.project(camera, renderer.domElement);
+        return { from, to: { x: from.x, y: from.y - tuning.dragThreshold - 20 }, direction: 'up', label: '按住車斗前端，往上拉' };
       }
       if (state.phase === 'roller' && state.roller.action === 'ready') {
         const right = state.roller.passes === 0;
@@ -188,6 +190,7 @@ export function createScene(host: HTMLElement) {
     },
     hit(clientX: number, clientY: number, state: RoadState) {
       setRay(clientX, clientY);
+      if (state.phase === 'dump-truck' && bedGrip.hit(clientX, clientY, camera, renderer.domElement)) return true;
       const target = state.phase === 'excavator' ? excavator.hitbox : state.phase === 'dump-truck' ? hitbox : state.phase === 'roller' ? roller.hitbox : undefined;
       return !!target && raycaster.intersectObject(target).length > 0;
     },
