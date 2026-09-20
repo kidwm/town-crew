@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, and help the fire brigade in three replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, and clear a traffic collision in four replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -15,6 +15,7 @@ npm run dev
 - Build a two-storey home: <http://localhost:5173/#house-build>
 - Repair the road: <http://localhost:5173/#road-repair>
 - Help the fire brigade: <http://localhost:5173/#fire-rescue>
+- Help the traffic crew: <http://localhost:5173/#traffic-rescue>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -32,12 +33,42 @@ npm run dev
 
 ## Choose a mission
 
-The entrance has three large illustrated cards. All missions are available immediately.
+The entrance has four large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Help the traffic crew
+
+1. Two differently coloured cars gently collide and stop with hazard lights. Their
+   occupants move to the pavement. Each new round changes both colours, without
+   repeating or simply swapping the previous pair; reload keeps the current pair.
+2. Drag the police car into its bay and place two cones at the marked road edges.
+   The police car then pulls into a side bay to keep the ambulance route clear.
+3. Tap either accident car to choose the first rescue. Each round assigns one
+   flatbed and one wheel-lift tow truck randomly to the left and right approaches.
+   The selected car's truck reverses into the foreground apron. Drag its winch
+   hook or wheel cradle to that car and hold for 0.4 seconds. The flatbed pulls
+   the car aboard; the wheel-lift raises its front wheels while the rear wheels
+   stay on the road. Drag the loaded truck back out on its arrival side.
+   The other truck automatically arrives for the remaining car, with no second
+   selection. The assignment, selected car and loading progress survive reload.
+4. Drag the street sweeper to the start, then right across the debris. Rotating
+   brushes clear the patches as they pass. Partial driving and cleaning survive
+   release, cancellation and reload; driving back does not restore debris.
+5. Drag the ambulance into the cleared pickup lane. Drag the stretcher to the
+   resident, then back to the ambulance's rear doors. Assistance, loading, door
+   closure and departure happen automatically.
+6. The police collect the cones and leave before another car passes. The remaining
+   resident and officer wave as the clean road reopens and confetti celebrates.
+
+There is no injury detail, time limit or penalty. Loose cones, hooks and stretchers
+reset on interrupted input; completed work and ongoing automatic animations persist.
+A held pointer cannot start another task after automatic assistance. All four
+service vehicles leave before completion. The ambulance, stretcher and character
+models are shared with the fire mission; traffic rules remain independent.
 
 ## Help the fire brigade
 
@@ -143,6 +174,11 @@ Fire-brigade entries use `?dev=1&mission=fire-rescue&stage=…`:
 `rescue`, `stowing`, `ambulance`, `stretcher`, `boarding`, `departure`, and `complete`.
 The same panel supports stage resets, reload and HMR, with isolated development saves.
 
+Traffic-rescue entries use `?dev=1&mission=traffic-rescue&stage=…`:
+`collision`, `police`, `cones`, `tow-choice`, `tow-arrival`, `hook`, `tow-exit`, `sweeper`, `sweep`,
+`ambulance`, `stretcher`, `boarding`, `departure`, `reopen`, and `complete`.
+Stage reset, reload and HMR retain isolated development saves and the current tow assignment.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -161,6 +197,12 @@ rendered interactive frame. It excludes earlier dependency loading and is
 
 ## Code boundaries and future town missions
 
+Before designing or implementing new models, read the [model catalog](docs/model-catalog.md).
+It lists existing vehicles, props and scenery, their source locations, and whether they
+are shared or still built inside a mission scene. Search the source as well: a model
+not yet extracted into `runtime/` still exists and should be considered for reuse.
+Update the catalog whenever a model is added, moved or changed.
+
 Future missions include outdoor rescue and other town activities.
 They should own their own interaction rules; they do not have to use this
 road-repair sequence.
@@ -177,6 +219,12 @@ road-repair sequence.
 - `src/missions/house-build/`: independent house rules, vehicle models, scene and session.
 - `src/missions/fire-rescue/`: independent fire, rescue and transport rules, emergency
   vehicles, characters, scene, HUD, controller and continuous water audio.
+- `src/missions/traffic-rescue/`: independent collision, policing, two-car towing,
+  continuous street cleaning and ambulance transport.
+- `src/runtime/traffic-cone.ts`: the original hollow road-repair cone, shared by
+  the road and traffic missions without changing its shape, colours or scale.
+- `src/runtime/emergency-models.ts`: shared emergency chassis, ambulance, stretcher
+  and residents; no mission rules.
 - `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
 - `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
   listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
@@ -194,7 +242,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The three missions have 38 domain tests, covering fixed arm lengths,
+The four missions have 53 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. House tests also cover
 ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
@@ -202,6 +250,9 @@ lifting, legacy roof snapshot migration, assembly target geometry, continuous
 placement dwell and load clearance above each floor.
 Fire tests cover both rescue orders, continuous extinguishing, interruption,
 one passenger per trip, transport, and rejection of contradictory snapshots.
+Traffic tests cover both towing orders and type assignments, automatic second dispatch,
+wheel-lift ground contact, nonrepeating colours, one load per trip,
+interrupted cleaning, equipment recovery, stage entry and contradictory snapshots.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.
@@ -220,10 +271,15 @@ holds and complete missions run with the clock resumed.
 Fire browser tests complete the mission using a desktop mouse and portrait-phone
 touch, choose opposite rescue orders, cancel/reload during extinguishing, restore
 the first completed rescue, verify held-pointer isolation, transport and replay.
+Traffic browser checks complete opposite towing orders and type assignments on mouse and portrait-phone
+touch, verify cancelled selection, automatic second dispatch, cone dwell cancellation, held-pointer isolation, partial towing and cleaning
+reload, colour persistence, completion badges, fresh rounds and restart.
 Development reload/HMR is checked from
-the first completed roller pass, the second floor of the house and one completed fire rescue, including
+the first completed roller pass, the second floor of the house one completed fire rescue and partial street cleaning, including
 preserved progress, mission switching and a single canvas. Normal and development layouts are
 visually checked at tablet and desktop sizes.
+Traffic development checks also resume a wheel-lift mid-animation and preserve
+the tow assignment through reload, HMR and stage reset.
 
 Real iPad/Android touch, audible output, sustained device performance, and cold
 loading still need hardware verification; touch emulation is not a substitute.

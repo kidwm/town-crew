@@ -16,10 +16,15 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/house.ts — four vehicle stages, pouring, deliveries, six lifts
        │    ├─ scene.ts + vehicles.ts — house, site, crane, trucks and rendering
        │    └─ session.ts — input mapping, HUD, optional snapshots and developer entry
-       └─ fire-rescue/
-            ├─ domain/fire.ts — water, docking, two rescue trips and ambulance transport
-            ├─ scene.ts + vehicles.ts — shop, emergency vehicles, people, cat and water
-            └─ session.ts + ui.ts + sounds.ts — input, hints, snapshots and water audio
+       ├─ fire-rescue/
+       │    ├─ domain/fire.ts — water, docking, two rescue trips and ambulance transport
+       │    ├─ scene.ts + vehicles.ts — shop, emergency vehicles, people, cat and water
+       │    └─ session.ts + ui.ts + sounds.ts — input, hints, snapshots and water audio
+       └─ traffic-rescue/
+            ├─ domain/traffic.ts — colours, tow assignment, first-car choice, automatic second trip, cleaning and transport
+            ├─ domain/towing.ts — mirrored approach routes, flatbed loading and wheel-lift ground contact
+            ├─ scene.ts + vehicles.ts — street, police, flatbed and rotating sweeper brushes
+            └─ session.ts + ui.ts — input, hints, snapshots and audio cues
 ```
 
 Domain modules have no DOM, Three.js, storage, or Effect dependencies. Renderer
@@ -66,6 +71,18 @@ transient pointer state. Pickup, descent and unloading each finish before the
 other passenger can be selected. Separate aprons keep the parked engine clear
 of the aerial truck and subsequent ambulance.
 
+Traffic snapshots use schema version 2 and preserve both colours, the left/right
+tow-type assignment, placed cones, individually removed cars, the selected car,
+continuous sweeping and animation elapsed time. Interrupted equipment
+returns to its pickup point; vehicle positions and cleaned patches remain. Last-round
+colours are kept separately from gameplay progress so a new selection avoids repeating
+the preceding pair. `runtime/emergency-models.ts` shares renderer-only ambulance,
+stretcher, chassis and character builders across the fire and traffic missions.
+New rounds reroll the tow assignment; development stage resets keep it. Version 1
+snapshots retain colours and completed work, restarting unfinished old towing on
+the new route. Only the first car needs a choice; the remaining truck is dispatched
+automatically after the first loaded vehicle leaves.
+
 Production browser tests exercise the built `dist/` files with real pointer
 events. A separate development server tests HMR, reload, tuning and stage resets.
 Both runners own their ports and use the lockfile-installed Playwright browser;
@@ -76,10 +93,17 @@ sequential so graphical runs do not compete for the same GPU.
 
 ## Further missions
 
+Use the [model catalog](model-catalog.md) before creating vehicles, characters, props
+or scenery. It includes models embedded in scene setup, not just exported builders.
+Search all mission sources and inspect the original appearance before implementing a
+similar object. When reuse appears, extract the existing renderer code and preserve its
+geometry, materials and scale; mission rules remain independent. Keep the catalog in
+sync with additions, moves, changes and deliberate variants.
+
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the three missions. Further abstractions
+progress storage are shared by the four missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

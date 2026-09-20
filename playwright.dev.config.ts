@@ -3,7 +3,8 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: 'development.spec.mjs',
-  timeout: 30_000,
+  // Reload and HMR repeatedly recreate WebGL contexts, especially on software renderers.
+  timeout: 90_000,
   workers: 1,
   forbidOnly: !!process.env.CI,
   use: {

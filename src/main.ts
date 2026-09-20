@@ -18,7 +18,9 @@ function route(): MissionId | undefined {
   if (location.hash === '#menu') return;
   if (location.hash === '#house-build') return 'house-build';
   if (location.hash === '#road-repair') return 'road-repair';
+  if (location.hash === '#traffic-rescue') return 'traffic-rescue';
   if (location.hash === '#fire-rescue') return 'fire-rescue';
+  if (dev && params.get('mission') === 'traffic-rescue') return 'traffic-rescue';
   if (dev) return params.get('mission') === 'fire-rescue' ? 'fire-rescue' : params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
 }
 function home() { location.hash = 'menu'; }
@@ -60,6 +62,15 @@ async function show() {
       if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else if (mission === 'traffic-rescue') {
+      const [{ createTrafficScene }, { createTrafficSession, createTrafficAudio }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/traffic-rescue/scene.ts'), import('./missions/traffic-rescue/session.ts'),
+      ]));
+      const session = createTrafficSession(app, dev, home, fresh);
+      if (fresh) session.save();
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createTrafficScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(createTrafficAudio), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     } else {
       const [{ createFireScene }, { createFireSession }, { createFireAudio }] = yield* Effect.promise(() => Promise.all([

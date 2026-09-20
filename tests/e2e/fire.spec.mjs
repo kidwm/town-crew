@@ -11,7 +11,7 @@ test('fire brigade extinguishes, rescues both floors in either order, and transp
   page.on('pageerror', error => errors.push(error.message));
   await page.clock.install();
   await page.goto('/');
-  await expect(page.locator('.mission-card')).toHaveCount(3);
+  await expect(page.locator('.mission-card')).toHaveCount(4);
   await page.getByRole('button', { name: '消防隊救火', exact: true }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('menu-fire.png') });
   await page.getByRole('button', { name: '消防隊救火', exact: true }).click();

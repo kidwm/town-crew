@@ -29,7 +29,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npx playwright install --with-deps chromium
-      # Each runner owns one graphical browser. Three full missions on both
+      # Each runner owns one graphical browser. Four full missions on both
       # devices no longer have to wait for one long sequential graphics job.
       - run: npm run test:e2e -- --project=${{ matrix.project }}
       - run: npm run test:e2e:dev

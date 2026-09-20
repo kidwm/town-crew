@@ -92,7 +92,7 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 .menu-intro { text-align: center; margin: 35px 0 30px; }
 .menu-intro p { font-size: 12px; color: #899583; letter-spacing: 0.16em; margin: 0 0 10px; }
 .menu-intro h1 { font-size: clamp(25px, 3vw, 35px); font-weight: 700; letter-spacing: 0.04em; margin: 0; }
-.mission-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; max-width: 1160px; margin: auto; }
+.mission-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; max-width: 980px; margin: auto; }
 .mission-card { text-align: left; color: inherit; border: 1px solid #e2e5d8; padding: 0; border-radius: 25px; background: #fffdf5; overflow: hidden; box-shadow: 0 8px 0 #dfe4d433; transition: transform 180ms, box-shadow 180ms; }
 .mission-card:hover { transform: translateY(-4px); box-shadow: 0 12px 0 #dfe4d455; }
 .mission-card:active { transform: translateY(1px); }
@@ -196,3 +196,19 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .hospital-arrival { left: 18px; bottom: 96px; width: 205px; }.rescue-tally { bottom: 88px; }
 }
 @media (prefers-reduced-motion: reduce) { .hospital-van, .hospital-wave { animation: none; } }
+
+.traffic-targets { position: absolute; inset: 0; pointer-events: none; }
+.traffic-world .progress { width: 205px; }
+.traffic-tally { position: absolute; right: 30px; bottom: 110px; display: flex; gap: 8px; pointer-events: none; }
+.traffic-tally[hidden] { display: none; }
+.traffic-tally > span { display: flex; align-items: center; gap: 7px; border-radius: 14px; padding: 6px 9px; background: #fff8e5de; }
+.traffic-tally svg { width: 39px; height: 26px; }.traffic-tally b { color: #799681; }
+.traffic-tally [data-done='true'] { background: #e9f2dc; }
+@media (max-width: 650px) {
+  .traffic-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }.traffic-world .mission-badge strong { font-size: 13px; }
+  .traffic-world .mission-steps { left: 16px; right: auto; bottom: 22px; }.traffic-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .traffic-world .drag-hint-hand > * { transform: scale(0.75); }
+  .traffic-target { width: 44px; height: 44px; }.traffic-target > span { font-size: 10px; padding: 3px 7px; }
+  .traffic-tally { right: 14px; bottom: 137px; }
+  .traffic-world .finish-actions { gap: 8px; padding: 10px; }.traffic-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}
