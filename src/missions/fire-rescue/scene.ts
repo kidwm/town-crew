@@ -26,7 +26,7 @@ export function createFireScene(host: HTMLElement) {
   box(scene, [300, 0.5, 300], [0, -0.4, 0], '#b8cea3');
   box(scene, [24, 0.1, 9.6], [-1, -0.05, 0.25], '#d8d3b7');
   box(scene, [70, 0.08, 3.5], [0, -0.04, STREET_Z], '#aaa995');
-  for (let x = -22; x < 23; x += 2) box(scene, [0.9, 0.02, 0.08], [x, 0.025, 7.3], '#f7eccb');
+  for (let x = -22; x < 23; x += 2) box(scene, [0.9, 0.02, 0.08], [x, 0.025, STREET_Z], '#f7eccb');
   // An open side apron gives the engine its own route beside the main lane.
   box(scene, [22, 0.08, 3.1], [-12, -0.02, 2.3], '#c7bf9e');
   box(scene, [6.55, 0.23, 4.1], [3, 0.05, -1], '#e8ddba');

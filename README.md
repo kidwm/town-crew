@@ -67,8 +67,10 @@ All emergency vehicles leave before the final celebration.
 ## Build a two-storey home
 
 1. Drag the gravel truck's bed upward to fill the prepared foundation.
-2. Drag the concrete mixer's chute to each of three wide target rings. Keep it
-   over the current target to pour; stopping or cancellation preserves partial filling.
+2. Drag the concrete mixer's chute toward the centre of each outlined foundation
+   region. Its ring rests on the gravel/concrete surface; aiming there aligns
+   the outlet and stream with that region's centre. Holding the raised outlet
+   above the region also works. Stopping or cancellation preserves partial filling.
 3. Drag the flatbed truck right along the independent foreground lane into its parking bay.
 4. The crane automatically picks up each part. Drag toward the actual assembly
    base or ghost outline; the site turns green and a short 0.4-second dwell
@@ -99,8 +101,9 @@ clear access routes; the flatbed travels forward on the road in front of the hou
 3. Drag the roller right across the repair area, then back left. Either pass
    can be paused and resumed. The first pass compresses the material; the second
    leaves a visibly repaired road surface.
-4. The construction vehicles leave the road, barriers move aside, and a car
-   passes with a horn cue. The crew celebrates together. Restart replays the
+4. The construction vehicles leave, the discarded rocks and cones are cleared,
+   and the barriers are removed before a car passes with a horn cue. The repaired
+   surface sits below the centre marking, and confetti celebrates completion. Restart replays the
    entire mission from the excavator with all progress cleared.
 
 The entry barrier opens fully before a construction vehicle moves. It closes
@@ -207,6 +210,8 @@ The checked-in Playwright browser suite covers both complete mouse and emulated-
 empty-space input, cancellation, partial roller movement, completion and
 restart, fresh starts from selection, progress retained on reload, roof colour before lifting, completion badges,
 phone selection and malformed storage.
+Concrete browser checks also drag directly to each ground-level region centre,
+verify the saved outlet aligns exactly, and reject pouring into later regions early.
 The crane browser checks also cover automatic placement on the real base, visible
 wall faces, continued holding, passing through the target, and cancellation.
 Brief passes and cancellation use Playwright's clock to keep 120 ms of contact

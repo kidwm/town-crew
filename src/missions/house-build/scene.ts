@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
-import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth } from './domain/house.ts';
-import type { HouseState } from './domain/house.ts';
+import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, POUR_RADIUS, ROOF_COLORS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth } from './domain/house.ts';
+import type { HouseState, Point } from './domain/house.ts';
 import { CRANE_TARGET_RADIUS, convexOutline, craneTargetReached } from './domain/crane-target.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
@@ -52,6 +52,13 @@ export function createHouseScene(host: HTMLElement) {
   });
   const slabs = POUR_TARGETS.map(p => box(scene, [1.58, 0.18, 4], [p.x, 0.25, p.z], '#b9c5bc'));
   const completeSlab = box(scene, [4.8, 0.2, 4], [HOUSE.x, 0.25, HOUSE.z], '#c5cdbf');
+  const pourSurface = (state: HouseState, index: number) => state.pours[index] > 0 ? 0.36 : 0.185;
+  const pourZones = POUR_TARGETS.map(p => {
+    const root = new THREE.Group(); root.position.set(p.x, 0, p.z); scene.add(root);
+    for (const x of [-0.79, 0.79]) box(root, [0.035, 0.015, 4], [x, 0, 0], '#e8dec1');
+    for (const z of [-2, 2]) box(root, [1.58, 0.015, 0.035], [0, 0, z], '#e8dec1');
+    return root;
+  });
   const windows: THREE.Mesh[] = [];
   function part(index: number, ghost = false) {
     const root = new THREE.Group(); root.name = `house-part-${index}`;
@@ -188,6 +195,16 @@ export function createHouseScene(host: HTMLElement) {
       const p = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), new THREE.Vector3());
       return p ? { x: p.x, z: p.z } : undefined;
     },
+    concreteAim(x: number, y: number, state: HouseState, aim: Point): Point {
+      const index = state.pours.findIndex(v => v < 1), target = POUR_TARGETS[index];
+      if (!target) return aim;
+      setRay(x, y);
+      const ground = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -pourSurface(state, index)), new THREE.Vector3());
+      const near = (p: Point) => Math.hypot(p.x - target.x, p.z - target.z) < POUR_RADIUS;
+      // Accept a finger on the actual foundation or the raised chute above it.
+      // Align both the outlet and falling concrete with that zone's centre.
+      return (ground && near(ground)) || near(aim) ? { ...target } : aim;
+    },
     render(s: HouseState, time: number) {
       const craneStage = isCrane(s), delivery = isDelivery(s), roofChoosing = s.phase === 'roof-color';
       const interactive = s.action === 'ready' || s.action === 'dragging';
@@ -204,14 +221,18 @@ export function createHouseScene(host: HTMLElement) {
       dump.bed.rotation.z = s.action === 'dragging' ? -s.dragPx / 60 * 0.85 : s.action === 'working' ? -0.95 : s.action === 'leaving' ? -0.95 * (1 - Math.min(s.elapsed * 3, 1)) : 0;
       dump.cargo.scale.y = Math.max(0.01, 1 - s.gravel); dump.cargo.visible = s.gravel < 1;
       gravelFill.scale.x = Math.max(0.001, s.gravel); gravelFill.visible = s.gravel > 0;
-      stones.forEach((stone, i) => { stone.visible = s.gravel > (i + 1) / 36 && s.pours[Math.min(2, Math.floor((i % 7) / 2.4))] < 1; });
+      stones.forEach((stone, i) => {
+        const zone = Math.min(2, Math.max(0, Math.floor((stone.position.x - (HOUSE.x - 2.4)) / 1.6)));
+        stone.visible = s.gravel > (i + 1) / 36 && s.pours[zone] < 1;
+      });
       slabs.forEach((slab, i) => { slab.visible = s.pours[i] > 0; slab.scale.z = Math.max(0.001, s.pours[i]); });
+      pourZones.forEach((zone, i) => { zone.visible = s.phase === 'concrete' && s.pours[i] < 1; zone.position.y = pourSurface(s, i); });
       completeSlab.visible = s.pours.every(v => v >= 1);
       mixer.root.visible = s.phase === 'concrete'; mixer.root.position.set(-3.2 - arriving * 12 - departing * 12, 0, 0.3); mixer.roll(mixer.root.position.x); mixer.drum.rotation.y = time * 1.1;
       chute.visible = chuteTip.visible = s.phase === 'concrete' && arriving === 0 && departing === 0;
       chuteTip.position.set(s.chute.x, 1.1, s.chute.z);
       link(chute, new THREE.Vector3(-1.6, 1.82, 0.3), chuteTip.position);
-      const pouring = s.phase === 'concrete' && s.action === 'dragging' && s.pours.some((v, i) => v < 1 && Math.hypot(s.chute.x - POUR_TARGETS[i].x, s.chute.z - POUR_TARGETS[i].z) < 0.85 && s.pours.slice(0, i).every(n => n === 1));
+      const pouring = s.phase === 'concrete' && s.action === 'dragging' && s.pours.some((v, i) => v < 1 && Math.hypot(s.chute.x - POUR_TARGETS[i].x, s.chute.z - POUR_TARGETS[i].z) < POUR_RADIUS && s.pours.slice(0, i).every(n => n === 1));
       stream.visible = pouring; stream.position.set(s.chute.x, 0.65, s.chute.z);
       particles.forEach((particle, i) => {
         particle.visible = s.phase === 'gravel' && s.action === 'working' && s.gravel < 1;
@@ -261,7 +282,7 @@ export function createHouseScene(host: HTMLElement) {
       let hintFrom: THREE.Vector3 | undefined, hintTo: THREE.Vector3 | undefined;
       if (interactive && s.phase === 'concrete') {
         const index = s.pours.findIndex(v => v < 1);
-        if (index >= 0) { hintFrom = chuteTip.position.clone(); hintTo = new THREE.Vector3(POUR_TARGETS[index].x, 1.1, POUR_TARGETS[index].z); }
+        if (index >= 0) { hintFrom = chuteTip.position.clone(); hintTo = new THREE.Vector3(POUR_TARGETS[index].x, pourSurface(s, index), POUR_TARGETS[index].z); }
       } else if (interactive && craneStage) {
         hintFrom = load.clone().add(new THREE.Vector3(0, definition.height / 2, 0)); hintTo = new THREE.Vector3(HOUSE.x, definition.base + 0.03, HOUSE.z);
       }

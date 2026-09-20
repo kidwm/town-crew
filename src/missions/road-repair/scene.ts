@@ -57,7 +57,8 @@ export function createScene(host: HTMLElement) {
   const pit = cylinder(scene, 1.75, 0.06, [2.25, -0.005, 0], '#434c50');
   pit.scale.z = 0.77;
   const fill = cylinder(scene, 1.67, 0.16, [2.25, 0.06, 0], '#bb945f');
-  const repairedRoad = box(scene, [4.05, 0.06, 3.05], [2.25, 0.015, 0], '#63757e');
+  // A thin asphalt patch sits on the road, below its restored centre marking.
+  const repairedRoad = box(scene, [4.05, 0.01, 3.05], [2.25, -0.05, 0], '#63757e');
   const fillStones: THREE.Mesh[] = [];
   for (let i = 0; i < 16; i++) {
     const angle = i * 2.399;
@@ -66,12 +67,13 @@ export function createScene(host: HTMLElement) {
     stone.rotation.y = angle;
     fillStones.push(stone);
   }
+  const siteEquipment = new THREE.Group(); scene.add(siteEquipment);
   for (const [x, z] of [[4.9, -1.7], [4.9, 1.7], [-6.5, -1.7]]) {
-    cylinder(scene, 0.28, 0.12, [x, 0.01, z], '#e2dac9', 4);
+    cylinder(siteEquipment, 0.28, 0.12, [x, 0.01, z], '#e2dac9', 4);
     const cone = new THREE.Group();
     cone.name = 'traffic-cone';
     cone.position.set(x, 0.065, z);
-    scene.add(cone);
+    siteEquipment.add(cone);
     // A hollow shell with an annular lip and inner wall, open at the top.
     const profiles = [
       { points: [[0.21, 0], [0.075, 0.63]], color: '#ee9550' },
@@ -126,7 +128,8 @@ export function createScene(host: HTMLElement) {
   const gravel: THREE.Mesh[] = [];
   for (let i = 0; i < 12; i++) gravel.push(box(scene, [0.16, 0.15, 0.15], [0, 0, 0], '#c3a077'));
   const excavator = createExcavatorVisual(shapes);
-  scene.add(excavator.root, ...excavator.rocks, excavator.halo, ...excavator.trail, ...excavator.discarded);
+  scene.add(excavator.root, ...excavator.rocks, excavator.halo, ...excavator.trail);
+  siteEquipment.add(...excavator.discarded);
   const roller = createRollerVisual(shapes);
   scene.add(roller.root);
   const car = createCarVisual(shapes);
@@ -203,6 +206,8 @@ export function createScene(host: HTMLElement) {
       const current = pose(state.truck, tuning);
       const road = roadPose(state, tuning);
       const celebrating = state.phase === 'complete' || (state.phase === 'traffic' && state.elapsed >= 3.9);
+      // Debris and temporary equipment are cleared before the first car enters.
+      siteEquipment.visible = state.phase !== 'traffic' && state.phase !== 'complete';
       const excavatorOffset = state.excavator.action === 'entering' ? -9 * (1 - smooth(state.excavator.elapsed / 0.9)) : -10 * road.departure;
       excavator.root.scale.setScalar(1);
       excavator.root.position.z = 0;
@@ -243,17 +248,12 @@ export function createScene(host: HTMLElement) {
       roller.root.position.y = roller.root.position.z = 0;
       roller.render(road.rollerX - (state.roller.action === 'complete' ? 10 * road.departure : 0));
       const trafficTime = state.phase === 'complete' ? 4.8 : state.phase === 'traffic' ? state.elapsed : 0;
-      barriers.forEach((barrier, index) => { barrier.position.z = road.barrierZ[index]; });
+      barriers.forEach((barrier, index) => {
+        barrier.position.z = road.barrierZ[index];
+        barrier.visible = state.phase !== 'complete' && trafficTime < 0.85;
+      });
       car.root.visible = trafficTime >= 0.85 && trafficTime < 3.9;
       car.render(-10 + 20 * smooth((trafficTime - 0.85) / 3.0));
-      if (celebrating) {
-        const crew = [excavator.root, truck, roller.root];
-        crew.forEach((vehicle, i) => {
-          vehicle.visible = true;
-          vehicle.scale.setScalar(0.55);
-          vehicle.position.set([-1.8, 0.3, 4.2][i], Math.max(0, Math.sin(time * 4 + i)) * 0.12, -4.6);
-        });
-      }
       renderer.render(scene, camera);
     },
     dispose() {

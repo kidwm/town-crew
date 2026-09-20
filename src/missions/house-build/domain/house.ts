@@ -4,6 +4,7 @@ export type Action = 'entering' | 'ready' | 'dragging' | 'working' | 'leaving' |
 export interface Point { x: number; z: number }
 export const HOUSE = { x: 2, z: -0.4 };
 export const POUR_TARGETS = [{ x: 0.4, z: -0.4 }, { x: 2, z: -0.4 }, { x: 3.6, z: -0.4 }];
+export const POUR_RADIUS = 0.85;
 export const PARTS = [
   { name: '一樓前牆', base: 0.35, height: 2, lift: 2.9, kind: 'front' },
   { name: '一樓後牆', base: 0.35, height: 2, lift: 2.9, kind: 'back' },
@@ -82,7 +83,7 @@ export function advance(s: HouseState, delta: number): HouseState {
   }
   if (s.phase === 'concrete' && s.action === 'dragging') {
     const target = s.pours.findIndex(v => v < 1);
-    if (target >= 0 && Math.hypot(s.chute.x - POUR_TARGETS[target].x, s.chute.z - POUR_TARGETS[target].z) < 0.85) {
+    if (target >= 0 && Math.hypot(s.chute.x - POUR_TARGETS[target].x, s.chute.z - POUR_TARGETS[target].z) < POUR_RADIUS) {
       next.pours = s.pours.map((v, i) => i === target ? clamp(v + dt / 1.15) : v);
       if (next.pours.every(v => v === 1)) return { ...next, action: 'working', elapsed: 0 };
     }

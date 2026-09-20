@@ -21,7 +21,10 @@ export async function fireControls(page, touch = false) {
   }
   async function dragGoal(id, direction = 'up') {
     const hint = await gesture(page, direction), to = await target(id);
-    await down(hint.from); await move(to);
+    await down(hint.from);
+    // Reach the chosen destination without artificial intermediate mouse
+    // pauses that can complete a different rescue on a slow CI renderer.
+    if (touch) await move(to); else await page.mouse.move(to.x, to.y);
   }
   return { down, move, up, cancel, wait, project, target, dragGoal };
 }

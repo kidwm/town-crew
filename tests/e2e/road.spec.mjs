@@ -102,11 +102,14 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '100');
   assert.equal(await page.locator('[data-step][data-state="done"]').count(), 3);
   await page.screenshot({ path: testInfo.outputPath('complete.png') });
+  await page.reload(); await wait('complete');
+  await page.screenshot({ path: testInfo.outputPath('complete-reloaded.png') });
   await page.getByRole('button', { name: '重新開始修路任務' }).click();
   await wait('excavator', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '0');
+  await page.screenshot({ path: testInfo.outputPath('site-restored.png') });
   assert.deepEqual(errors, []);
 });
 

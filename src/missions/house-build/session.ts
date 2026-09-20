@@ -60,7 +60,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         if (state.phase === 'gravel') { update(dragGravel(state, context.y - event.clientY)); return; }
         const p = scene.onPlane(event.clientX, event.clientY, context.plane); if (!p) return;
         const target = { x: p.x + context.offset.x, z: p.z + context.offset.z };
-        update(state.phase === 'concrete' ? moveChute(state, target) : isDelivery(state) ? drive(state, target.x) : moveLoad(state, target));
+        update(state.phase === 'concrete' ? moveChute(state, scene.concreteAim(event.clientX, event.clientY, state, target)) : isDelivery(state) ? drive(state, target.x) : moveLoad(state, target));
       },
       end(context, cancelled) {
         const targetReached = isCrane(state) && scene.craneDropTarget(state, context.screen, context.origin).accepted;
