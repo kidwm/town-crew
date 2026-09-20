@@ -312,4 +312,6 @@ Pages**, configured in `wrangler.jsonc`.
 - `npm run deploy`: run rules/build checks and publish to the Pages `main` branch.
 
 Deployment uses Wrangler login; credentials stay outside this repository.
-GitHub CI builds and tests only. See [deployment setup](docs/deployment.md).
+Pushes to `main` automatically publish the tested build after both browser test jobs
+pass. PRs and `codex/**` pushes run checks only. GitHub Actions uses dedicated
+Cloudflare repository secrets; see [deployment setup](docs/deployment.md).

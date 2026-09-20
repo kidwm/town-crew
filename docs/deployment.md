@@ -46,11 +46,24 @@ requires `pages:write`.
 
 ## Release policy and rollback
 
-This is a Direct Upload project. GitHub pushes and PRs run build/browser checks;
-publication remains an explicit command. Cloudflare's built-in Git integration
-cannot later be enabled on this same Direct Upload project. If automatic
-publication is wanted, a GitHub Actions workflow can run the same Pages CLI with
-a scoped credential.
+This is a Direct Upload project. The [GitHub Actions workflow](../.github/workflows/ci.yml)
+builds and tests pushes and pull requests. A push to `main` automatically publishes
+after both desktop and touch jobs pass, including the desktop development/HMR checks.
+The deploy job downloads the exact `dist/` artifact exercised by the desktop tests
+and uploads it with the lockfile-pinned Wrangler version. It does not rebuild it.
+Pull requests and `codex/**` branch pushes run checks without publishing.
+New pushes cancel superseded runs on the same branch.
+
+Configure these repository **Actions secrets** once:
+
+- `CLOUDFLARE_ACCOUNT_ID`: the account containing the `town-crew` Pages project.
+- `CLOUDFLARE_API_TOKEN`: a dedicated token with **Account → Cloudflare Pages → Edit**,
+  limited to that account. Local Wrangler OAuth credentials are not copied to CI.
+
+The production deployment job uses the `production` GitHub environment and records
+the source commit hash in Pages. Missing credentials fail with a clear error;
+failed tests prevent the deploy job from running. Manual `npm run deploy` and the
+separate preview command remain available.
 
 Inspect releases with:
 
