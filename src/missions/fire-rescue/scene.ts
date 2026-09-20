@@ -24,8 +24,11 @@ export function createFireScene(host: HTMLElement) {
   Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 15, bottom: -15, far: 45 }); scene.add(sun);
   const shapes = createShapes(), { box, cylinder, material } = shapes;
   box(scene, [300, 0.5, 300], [0, -0.4, 0], '#b8cea3');
-  box(scene, [24, 0.1, 9.6], [-1, -0.05, 0.25], '#d8d3b7');
-  box(scene, [70, 0.08, 3.5], [0, -0.04, STREET_Z], '#aaa995');
+  const streetWidth = 3.5, forecourtBack = -4.55, forecourtFront = STREET_Z - streetWidth / 2;
+  // Meet the road edge exactly: overlapping surfaces at y = 0 obscure the
+  // back of the road and make the centred markings look uneven.
+  box(scene, [24, 0.1, forecourtFront - forecourtBack], [-1, -0.05, (forecourtFront + forecourtBack) / 2], '#d8d3b7');
+  box(scene, [70, 0.08, streetWidth], [0, -0.04, STREET_Z], '#aaa995');
   for (let x = -22; x < 23; x += 2) box(scene, [0.9, 0.02, 0.08], [x, 0.025, STREET_Z], '#f7eccb');
   // An open side apron gives the engine its own route beside the main lane.
   box(scene, [22, 0.08, 3.1], [-12, -0.02, 2.3], '#c7bf9e');
