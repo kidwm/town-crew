@@ -312,6 +312,8 @@ Pages**, configured in `wrangler.jsonc`.
 - `npm run deploy`: run rules/build checks and publish to the Pages `main` branch.
 
 Deployment uses Wrangler login; credentials stay outside this repository.
-Pushes to `main` automatically publish the tested build after both browser test jobs
-pass. PRs and `codex/**` pushes run checks only. GitHub Actions uses dedicated
-Cloudflare repository secrets; see [deployment setup](docs/deployment.md).
+The Cloudflare GitHub App automatically builds and publishes pushes to `main`,
+running `npm run check` before publishing. Other branches receive preview deployments.
+GitHub Actions independently runs the full desktop, touch and development/HMR tests;
+Pages does not wait for those jobs. No Cloudflare API token is needed in Actions.
+See [deployment setup](docs/deployment.md).

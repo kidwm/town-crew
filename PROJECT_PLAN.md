@@ -102,8 +102,9 @@
 ## 接下來
 
 1. Cloudflare Pages 試玩網址：<https://town-crew.pages.dev>。
-   推送 `main` 後，GitHub Actions 等桌面、觸控與開發模式測試通過，才發布同一份建置檔。
-   PR 與 `codex/**` 分支只檢查；保留手動正式發布與獨立預覽指令。
+   Cloudflare GitHub App 在推送 `main` 後執行單元測試、型別檢查與建置，自動正式發布；其它分支建立預覽。
+   GitHub Actions 獨立執行桌面、觸控與開發模式測試，Pages 不會等待這些工作；Actions 不需部署 Token。
+   保留手動正式發布與獨立預覽指令。
 2. 實際 iPad／Android 驗證觸控、音訊、冷啟動與持續遊玩效能。
 3. 和幼兒實際試玩消防救援，觀察是否直接碰火苗、能否辨識兩個高度的救援對象。
 4. 和幼兒試玩交通救援，觀察點選首車、兩種拖吊工具、清掃提示與四車流程長度。

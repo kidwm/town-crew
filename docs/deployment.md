@@ -44,26 +44,35 @@ credential store, with its key protected by the OS keychain. An existing login
 may also retain Workers permissions for the earlier deployment; Pages publishing
 requires `pages:write`.
 
-## Release policy and rollback
+## Automatic deployment and checks
 
-This is a Direct Upload project. The [GitHub Actions workflow](../.github/workflows/ci.yml)
-builds and tests pushes and pull requests. A push to `main` automatically publishes
-after both desktop and touch jobs pass, including the desktop development/HMR checks.
-The deploy job downloads the exact `dist/` artifact exercised by the desktop tests
-and uploads it with the lockfile-pinned Wrangler version. It does not rebuild it.
-Pull requests and `codex/**` branch pushes run checks without publishing.
-New pushes cancel superseded runs on the same branch.
+The existing Pages project was connected to `kidwm/town-crew` on 2026-09-20 through
+**Settings → Build → Git repository → Connect**, retaining `town-crew.pages.dev`
+and its deployment history. The **Cloudflare Workers and Pages** GitHub App is
+restricted to selected repositories, with `town-crew` included.
 
-Configure these repository **Actions secrets** once:
+Pages build settings:
 
-- `CLOUDFLARE_ACCOUNT_ID`: the account containing the `town-crew` Pages project.
-- `CLOUDFLARE_API_TOKEN`: a dedicated token with **Account → Cloudflare Pages → Edit**,
-  limited to that account. Local Wrangler OAuth credentials are not copied to CI.
+- Production branch: `main`, with automatic deployments enabled.
+- Preview branches: all non-production branches.
+- Build command: `npm run check` (domain tests, TypeScript check and Vite build).
+- Output directory: `dist`; root directory: repository root; framework preset: None.
+- Build system: Version 3; Node 24 is selected by the checked-in `.nvmrc`.
 
-The production deployment job uses the `production` GitHub environment and records
-the source commit hash in Pages. Missing credentials fail with a clear error;
-failed tests prevent the deploy job from running. Manual `npm run deploy` and the
-separate preview command remain available.
+A push to `main` triggers Cloudflare's own build and publishes on success. Other
+branches receive separate preview URLs. GitHub Actions does not upload the site,
+so no Cloudflare API token or account secret is required in Actions.
+
+The [GitHub Actions workflow](../.github/workflows/ci.yml) independently runs domain,
+build, desktop, touch and development/HMR checks on `main`, `codex/**` pushes and
+pull requests. New pushes cancel superseded checks on the same branch. Pages does
+**not** wait for these browser checks: a direct push to `main` can publish before
+they finish. Review the checks before merging a pull request.
+
+Manual `npm run deploy` and the separate preview command remain available using
+local Wrangler login; its credentials stay outside GitHub Actions.
+
+## Release history and rollback
 
 Inspect releases with:
 
@@ -100,4 +109,5 @@ Sources:
 - [Direct Upload and project naming](https://developers.cloudflare.com/pages/get-started/direct-upload/)
 - [Pages Wrangler configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)
 - [Pages rollback](https://developers.cloudflare.com/pages/configuration/rollbacks/)
-- [Direct Upload from CI](https://developers.cloudflare.com/pages/how-to/use-direct-upload-with-continuous-integration/)
+- [Pages GitHub integration](https://developers.cloudflare.com/pages/configuration/git-integration/github-integration/)
+- [Pages build image and Node version](https://developers.cloudflare.com/pages/configuration/build-image/)

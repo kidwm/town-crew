@@ -5,6 +5,8 @@ export default defineConfig({
   testMatch: 'development.spec.mjs',
   // Reload and HMR repeatedly recreate WebGL contexts, especially on software renderers.
   timeout: 90_000,
+  // Multi-stage vehicle animations need the same CI allowance as production checks.
+  expect: { timeout: 15_000 },
   workers: 1,
   forbidOnly: !!process.env.CI,
   use: {

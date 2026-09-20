@@ -1,4 +1,4 @@
-name: Web checks and deploy
+name: Web checks
 
 on:
   push:
@@ -34,48 +34,9 @@ jobs:
       - run: npm run test:e2e -- --project=${{ matrix.project }}
       - run: npm run test:e2e:dev
         if: matrix.project == 'desktop-mouse'
-      - name: Save tested production build
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.project == 'desktop-mouse'
-        uses: actions/upload-artifact@v7
-        with:
-          name: pages-dist
-          path: dist/
-          if-no-files-found: error
-          retention-days: 1
       - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: browser-test-results-${{ matrix.project }}
           path: test-results/
           retention-days: 7
-
-  deploy:
-    name: Deploy to Cloudflare Pages
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment:
-      name: production
-      url: https://town-crew.pages.dev
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - uses: actions/download-artifact@v8
-        with:
-          name: pages-dist
-          path: dist/
-      - name: Publish tested build
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::error::Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in the repository Actions secrets."
-            exit 1
-          fi
-          npx wrangler pages deploy dist --project-name town-crew --branch main --commit-hash "$GITHUB_SHA" --commit-dirty=false
