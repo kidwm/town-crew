@@ -32,6 +32,7 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   const cancel = async () => mode === 'mouse' ? page.evaluate(() => window.dispatchEvent(new Event('blur'))) : cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
 
   await wait('excavator', 'ready');
+  await page.screenshot({ path: testInfo.outputPath('broken-road-and-empty-hauler.png') });
   await page.mouse.click(700, 640);
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
   await down(await project(-1.25, 0.85));
@@ -45,12 +46,14 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     await wait('excavator', 'ready');
     await down(await project(-1.25, 0.85));
     await wait('excavator', 'dragging');
-    await move(await project(rock[0], 0.85, rock[1]));
+    await move(await project(rock[0], 0.11, rock[1]));
     // Software rendering can finish the brief pickup animation before the
     // last mouse-move event returns. Wait for its durable gameplay result.
     await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
     await up();
     if (index === 0) {
+      await expect(page.locator('#app')).toHaveAttribute('data-loaded', '1');
+      await page.screenshot({ path: testInfo.outputPath('first-chunk-loaded.png') });
       await page.reload();
       await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
       await page.getByRole('button', { name: '回到選關', exact: true }).click();
@@ -62,12 +65,32 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
       await expect(page.locator('canvas')).toHaveCount(1);
       await wait('excavator', 'ready');
       await down(await project(-1.25, 0.85));
-      await move(await project(rock[0], 0.85, rock[1]));
+      await move(await project(rock[0], 0.11, rock[1]));
       await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
       await up();
     }
   }
+  await wait('haul-away', 'ready');
+  await expect(page.locator('#app')).toHaveAttribute('data-loaded', '3');
+  await page.screenshot({ path: testInfo.outputPath('loaded-hauler.png') });
+  let hauling = await gesture(page, 'left');
+  await down(hauling.from); await up(); await wait('haul-away', 'ready');
+  await down(hauling.from);
+  await move({ x: (hauling.from.x + hauling.to.x) / 2, y: (hauling.from.y + hauling.to.y) / 2 });
+  await cancel(); if (mode === 'mouse') await up();
+  await wait('haul-away', 'ready');
+  const haulX = await page.locator('#app').getAttribute('data-haul-x');
+  expect(Number(haulX)).toBeLessThan(1.8); expect(Number(haulX)).toBeGreaterThan(-3.8);
+  await page.reload(); await wait('haul-away', 'ready');
+  await expect(page.locator('#app')).toHaveAttribute('data-haul-x', haulX);
+  await expect(page.locator('#app')).toHaveAttribute('data-loaded', '3');
+  hauling = await gesture(page, 'left');
+  await down(hauling.from); await move(hauling.to);
   await wait('dump-truck', 'ready');
+  await expect(page.locator('#app')).toHaveAttribute('data-loaded', '0');
+  // A held finger from hauling cannot tip the next truck.
+  await expect(page.locator('#app')).toHaveAttribute('data-action', 'ready');
+  await up();
   const tipping = await gesture(page, 'up');
   await page.screenshot({ path: testInfo.outputPath('truck.png') });
   const bed = tipping.from;
@@ -100,13 +123,14 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await page.screenshot({ path: testInfo.outputPath('traffic.png') });
   await wait('complete');
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '100');
-  assert.equal(await page.locator('[data-step][data-state="done"]').count(), 3);
+  assert.equal(await page.locator('[data-step][data-state="done"]').count(), 4);
   await page.screenshot({ path: testInfo.outputPath('complete.png') });
   await page.reload(); await wait('complete');
   await page.screenshot({ path: testInfo.outputPath('complete-reloaded.png') });
   await page.getByRole('button', { name: '重新開始修路任務' }).click();
   await wait('excavator', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
+  await expect(page.locator('#app')).toHaveAttribute('data-loaded', '0');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '0');
   await page.screenshot({ path: testInfo.outputPath('site-restored.png') });

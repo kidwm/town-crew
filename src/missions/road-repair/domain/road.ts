@@ -1,11 +1,13 @@
 import { advance as advanceTruck, createState, defaultTuning, pose as truckPose } from './dump-truck.ts';
 import type { TruckState, Tuning } from './dump-truck.ts';
-import { advanceExcavator, createExcavator, smooth } from './excavator.ts';
+import { advanceExcavator, createExcavator, HOME, smooth } from './excavator.ts';
 import type { ExcavatorState } from './excavator.ts';
+import { HAUL_START, HAUL_EXIT, HAUL_OFFSCREEN, HAUL_DURATION } from './hauling.ts';
+export { HAUL_START, HAUL_EXIT, HAUL_Z, HAUL_SCALE } from './hauling.ts';
 
-export const stages = ['excavator', 'dump-truck', 'roller', 'roller-return', 'traffic', 'complete'] as const;
+export const stages = ['excavator', 'haul-away', 'dump-truck', 'roller', 'roller-return', 'traffic', 'complete'] as const;
 export type EntryStage = (typeof stages)[number];
-export type MissionPhase = 'excavator' | 'dump-truck' | 'roller' | 'traffic' | 'complete';
+export type MissionPhase = 'excavator' | 'haul-away' | 'dump-truck' | 'roller' | 'traffic' | 'complete';
 export const ROLLER_LEFT = -1.2;
 export const ROLLER_RIGHT = 5.4;
 export const BARRIER_X = [-6.7, 7.9] as const;
@@ -27,16 +29,30 @@ export interface RoadState {
   excavator: ExcavatorState;
   truck: TruckState;
   roller: RollerState;
+  hauler: { action: 'ready' | 'dragging' | 'leaving' | 'complete'; x: number; elapsed: number };
 }
 export function createRoad(stage: EntryStage = 'excavator'): RoadState {
   const phase = stage === 'roller-return' ? 'roller' : stage;
   return {
     phase, elapsed: 0,
-    access: phase === 'traffic' || phase === 'complete' || stage === 'roller-return' ? 'working' : 'opening-entry',
+    access: phase === 'haul-away' || phase === 'traffic' || phase === 'complete' || stage === 'roller-return' ? 'working' : 'opening-entry',
     excavator: { ...createExcavator(), ...(phase === 'excavator' ? {} : { action: 'complete' as const, cleared: 3 }) },
-    truck: createState(phase === 'excavator' || phase === 'dump-truck' ? 'entering' : 'complete'),
+    truck: createState(phase === 'excavator' || phase === 'haul-away' || phase === 'dump-truck' ? 'entering' : 'complete'),
+    hauler: { action: phase === 'excavator' || phase === 'haul-away' ? 'ready' : 'complete', x: phase === 'excavator' || phase === 'haul-away' ? HAUL_START : HAUL_EXIT, elapsed: 0 },
     roller: { action: phase === 'traffic' || phase === 'complete' ? 'complete' : stage === 'roller-return' ? 'ready' : 'entering', elapsed: 0, x: stage === 'roller-return' ? ROLLER_RIGHT : ROLLER_LEFT, passes: phase === 'traffic' || phase === 'complete' ? 2 : stage === 'roller-return' ? 1 : 0 },
   };
+}
+export function grabHauler(state: RoadState): RoadState {
+  return state.phase === 'haul-away' && state.access === 'working' && state.hauler.action === 'ready' && state.excavator.cleared === 3
+    ? { ...state, hauler: { ...state.hauler, action: 'dragging' } } : state;
+}
+export function moveHauler(state: RoadState, x: number): RoadState {
+  if (state.phase !== 'haul-away' || state.hauler.action !== 'dragging' || !Number.isFinite(x)) return state;
+  x = Math.max(HAUL_EXIT, Math.min(HAUL_START, x));
+  return { ...state, hauler: { ...state.hauler, x, action: x <= HAUL_EXIT + 0.05 ? 'leaving' : 'dragging', elapsed: 0 } };
+}
+export function releaseHauler(state: RoadState): RoadState {
+  return state.hauler.action === 'dragging' ? { ...state, hauler: { ...state.hauler, action: 'ready' } } : state;
 }
 export function grabRoller(state: RollerState): RollerState {
   return state.action === 'ready' ? { ...state, action: 'dragging' } : state;
@@ -52,6 +68,12 @@ export function releaseRoller(state: RollerState): RollerState {
   return state.action === 'dragging' ? { ...state, action: 'ready' } : state;
 }
 function tick(state: RoadState, delta: number, tuning: Tuning): RoadState {
+  if (state.phase === 'haul-away') {
+    if (state.hauler.action !== 'leaving') return state;
+    const elapsed = state.hauler.elapsed + delta;
+    if (elapsed < HAUL_DURATION) return { ...state, hauler: { ...state.hauler, elapsed } };
+    return { ...state, phase: 'dump-truck', access: 'entering', elapsed: 0, hauler: { ...state.hauler, action: 'complete', elapsed: 0 } };
+  }
   const construction = state.phase !== 'traffic' && state.phase !== 'complete';
   if (construction && (state.access === 'opening-entry' || state.access === 'closing-entry' || state.access === 'opening-exit')) {
     const elapsed = state.elapsed + delta;
@@ -62,9 +84,9 @@ function tick(state: RoadState, delta: number, tuning: Tuning): RoadState {
   if (construction && state.access === 'leaving') {
     const elapsed = state.elapsed + delta;
     if (elapsed < DEPARTURE_DURATION) return { ...state, elapsed };
-    const phase = state.phase === 'excavator' ? 'dump-truck' : state.phase === 'dump-truck' ? 'roller' : 'traffic';
+    const phase = state.phase === 'excavator' ? 'haul-away' : state.phase === 'dump-truck' ? 'roller' : 'traffic';
     // Keep the entrance open throughout the handoff to the next vehicle.
-    return { ...state, phase, access: phase === 'traffic' ? 'working' : 'entering', elapsed: 0 };
+    return { ...state, phase, access: phase === 'haul-away' || phase === 'traffic' ? 'working' : 'entering', elapsed: 0 };
   }
   if (state.phase === 'excavator') {
     const excavator = advanceExcavator(state.excavator, delta);
@@ -99,21 +121,32 @@ export function advanceRoad(state: RoadState, delta: number, tuning: Tuning = de
 }
 export function roadPose(state: RoadState, tuning: Tuning) {
   const { phase, excavator, truck, roller } = state;
-  const fill = phase === 'excavator' ? 0 : phase === 'dump-truck' ? truckPose(truck, tuning).fill : 1;
+  const fill = phase === 'excavator' || phase === 'haul-away' ? 0 : phase === 'dump-truck' ? truckPose(truck, tuning).fill : 1;
   const flatten = phase === 'traffic' || phase === 'complete' || roller.action === 'complete' ? 1 : roller.action === 'flattening' ? smooth(roller.elapsed / 0.78) : 0;
   const compact = roller.passes === 0 ? 0 : roller.action === 'settling' ? smooth(roller.elapsed / 0.42) * 0.5 : 0.5 + flatten * 0.5;
   const rollerX = roller.action === 'entering' ? -9 + (ROLLER_LEFT + 9) * (1 - (1 - Math.min(roller.elapsed / 1.15, 1)) ** 2) : roller.x;
-  const progress = phase === 'excavator' ? excavator.cleared / 9 : phase === 'dump-truck' ? (1 + fill) / 3 : phase === 'roller' ? (2 + roller.passes / 2) / 3 : 1;
+  const hauled = (HAUL_START - state.hauler.x) / (HAUL_START - HAUL_EXIT);
+  const progress = phase === 'excavator' ? excavator.cleared / 12 : phase === 'haul-away' ? (1 + hauled) / 4 : phase === 'dump-truck' ? (2 + fill) / 4 : phase === 'roller' ? (3 + roller.passes / 2) / 4 : 1;
+  const haulerX = state.hauler.action === 'leaving' ? state.hauler.x + (HAUL_OFFSCREEN - state.hauler.x) * smooth(state.hauler.elapsed / HAUL_DURATION) : state.hauler.action === 'complete' ? HAUL_OFFSCREEN : state.hauler.x;
   let entryGate = 0;
   if (state.access === 'opening-entry' || state.access === 'opening-exit') entryGate = smooth(state.elapsed / GATE_DURATION);
   if (state.access === 'entering' || state.access === 'leaving') entryGate = 1;
   if (state.access === 'closing-entry') entryGate = 1 - smooth(state.elapsed / GATE_DURATION);
+  if (phase === 'haul-away') entryGate = 1;
   const barrierZ = phase === 'complete' ? [BARRIER_CLEAR_Z, BARRIER_CLEAR_Z]
     : phase === 'traffic' ? [BARRIER_CLEAR_Z, BARRIER_CLEAR_Z * smooth(state.elapsed / 0.85)]
     : [BARRIER_CLEAR_Z * entryGate, 0];
-  return { fill, flatten, compact, rollerX, progress, barrierZ, departure: state.access === 'leaving' ? smooth(state.elapsed / DEPARTURE_DURATION) : 0 };
+  return { fill, flatten, compact, rollerX, haulerX, progress, barrierZ, departure: state.access === 'leaving' ? smooth(state.elapsed / DEPARTURE_DURATION) : 0 };
 }
 export function resumeRoad(state: RoadState, tuning: Tuning = defaultTuning): RoadState {
+  if (!state.hauler) {
+    // Legacy roadside piles become loaded cargo. Restart an unfinished scoop
+    // on the road so an old animation cannot drop it at the former dump site.
+    const e = state.excavator;
+    state = { ...state, hauler: createRoad(state.phase).hauler,
+      excavator: state.phase === 'excavator' && ['scooping', 'unloading', 'returning', 'dragging'].includes(e.action)
+        ? { ...e, action: e.cleared === 3 ? 'complete' : 'ready', elapsed: 0, bucket: { ...HOME }, from: { ...HOME }, target: { ...HOME } } : e };
+  }
   // Upgrade pre-gate snapshots without discarding completed work. Restart an
   // interrupted entrance outside the gate instead of restoring a crossing pose.
   if (!accessModes.includes(state.access)) {
@@ -133,5 +166,6 @@ export function resumeRoad(state: RoadState, tuning: Tuning = defaultTuning): Ro
     excavator: state.excavator.action === 'dragging' ? { ...state.excavator, action: 'returning', elapsed: 0, from: state.excavator.bucket } : state.excavator,
     truck: state.truck.phase === 'dragging' ? { ...state.truck, phase: 'resetting', elapsed: 0, fromTilt: truckPose(state.truck, tuning).tilt } : state.truck,
     roller: releaseRoller(state.roller),
+    hauler: state.hauler.action === 'dragging' ? { ...state.hauler, action: 'ready' } : state.hauler,
   };
 }

@@ -123,23 +123,33 @@ clear access routes; the flatbed travels forward on the road in front of the hou
 
 ## Repair the road
 
-1. Drag the excavator bucket to the highlighted rock. The fixed-length arm
-   follows the finger, then automatically lifts and moves the rock to the side.
-   Clear all three rocks. Misses and cancelled drags softly return the bucket.
-2. The dump truck enters. Drag upward on the front-to-middle part of the orange
-   bed. A tap or short drag returns the bed; crossing 60 CSS pixels starts
-   dumping. The rear hinge is excluded from the interactive volume.
-3. Drag the roller right across the repair area, then back left. Either pass
-   can be paused and resumed. The first pass compresses the material; the second
-   leaves a visibly repaired road surface.
-4. The construction vehicles leave, the discarded rocks and cones are cleared,
-   and the barriers are removed before a car passes with a horn cue. The repaired
-   surface sits below the centre marking, and confetti celebrates completion. Restart replays the
-   entire mission from the excavator with all progress cleared.
+The town road has cracked, flat pieces of old asphalt, not natural mountain boulders.
+
+1. Drag the excavator bucket toward each broken road surface. It automatically
+   lifts the piece and drops it into the waiting green cleanup truck. All three
+   pieces remain visible as cargo. Misses and cancelled drags return the bucket.
+2. After the excavator leaves, drag the loaded cleanup truck left through the
+   open gate. Taps cannot complete the trip; release or reload retains its position
+   and load. The blue delivery truck waits until cleanup has fully departed.
+3. Drag the delivery truck's bed at the front, farthest from its rear hinge,
+   upward. Crossing the threshold triggers automatic tipping. The animation fills
+   the base and spreads darker road material before the roller arrives.
+4. Drag the roller right across the repair area, then back left. Either pass
+   can be paused and resumed. The second pass leaves a smooth road patch.
+5. The vehicles leave, cones and barriers are cleared, and a car passes with a
+   horn cue. The finished surface sits below the restored centre marking.
+   Restart clears all loading and hauling progress.
+
+The original natural boulder model is preserved in `src/runtime/rocks.ts` as
+`createBoulder`, with its original geometry, colour and size. The same module
+provides the separate flat `createAsphaltChunk`. Both are in the model catalog.
+Old saves retain completed work: former roadside piles become truck cargo;
+uncompleted old scoops restart safely and later stages do not replay cleanup.
 
 The entry barrier opens fully before a construction vehicle moves. It closes
 after the vehicle parks, before interaction begins. On departure it opens
-again and stays clear during the handoff to the next vehicle. The far barrier
+again and stays clear while the child drives cleanup out and during the handoff
+to the next vehicle. The far barrier
 sits beyond the roller's complete body at its rightmost working position.
 
 Only the primary pointer can control a vehicle. Pointer cancellation, lost
@@ -157,12 +167,13 @@ and roller drums rotate according to vehicle displacement.
 
 `?dev=1` enables the development panel in Vite development mode. Direct entries:
 
-- `stage=excavator`: excavator entrance and three rocks.
-- `stage=dump-truck`: rocks cleared, truck entrance.
+- `stage=excavator`: excavator entrance, three asphalt chunks and an empty cleanup truck.
+- `stage=haul-away`: all three chunks loaded, excavator gone, drag the cleanup truck left.
+- `stage=dump-truck`: cleanup gone, delivery truck entrance.
 - `stage=roller`: material filled, first roller pass.
 - `stage=roller-return`: first pass complete, roller at the right edge.
 - `stage=traffic`: repaired road and the opening traffic sequence.
-- `stage=complete`: restored road and crew celebration.
+- `stage=complete`: restored road with all vehicles and equipment cleared.
 
 House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,
@@ -188,7 +199,8 @@ production builds. A plain URL opens selection; select a card or use restart for
 In development, HMR and page reload preserve mission progress, animation state, and tuning in
 versioned sessionStorage. Pointer capture cannot survive reload: an excavator
 drag returns the bucket, a truck drag resets the bed, and a roller drag pauses
-at its current location while preserving the completed pass. Browser storage
+at its current location while preserving the completed pass. Cleanup-truck drags
+pause in place with all loaded chunks retained. Browser storage
 is optional. Background tabs pause the simulation.
 
 The boot measurement runs from application-module evaluation to the first
@@ -242,9 +254,11 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The four missions have 53 domain tests, covering fixed arm lengths,
+The four missions have 57 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
-passes, complete missions, restart, and snapshot recovery. House tests also cover
+passes, complete missions, restart, and snapshot recovery. Road checks also cover
+ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
+exit clearance and waiting for the loaded cleanup truck to fully leave. House tests also cover
 ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
 lifting, legacy roof snapshot migration, assembly target geometry, continuous
 placement dwell and load clearance above each floor.
@@ -275,7 +289,8 @@ Traffic browser checks complete opposite towing orders and type assignments on m
 touch, verify cancelled selection, automatic second dispatch, cone dwell cancellation, held-pointer isolation, partial towing and cleaning
 reload, colour persistence, completion badges, fresh rounds and restart.
 Development reload/HMR is checked from
-the first completed roller pass, the second floor of the house one completed fire rescue and partial street cleaning, including
+a loaded cleanup truck partway through its drive, the first completed roller pass,
+the second floor of the house, one completed fire rescue and partial street cleaning, including
 preserved progress, mission switching and a single canvas. Normal and development layouts are
 visually checked at tablet and desktop sizes.
 Traffic development checks also resume a wheel-lift mid-animation and preserve

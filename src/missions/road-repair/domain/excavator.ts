@@ -1,13 +1,13 @@
 export interface Point { x: number; y: number; z: number }
 export const HOME: Point = { x: -1.25, y: 0.85, z: 0 };
 export const PIVOT: Point = { x: -4, y: 2.35, z: 0 };
-export const UNLOAD: Point = { x: -1.5, y: 1.6, z: 2.4 };
+export const UNLOAD: Point = { x: 1.76, y: 2.25, z: -2 };
 export const BOOM = 3.6;
 export const STICK = 4;
-export const ROCKS: Point[] = [
-  { x: 1.15, y: 0.55, z: -0.65 },
-  { x: 2.35, y: 0.55, z: 0.55 },
-  { x: 3.35, y: 0.55, z: -0.45 },
+export const ROAD_CHUNKS: Point[] = [
+  { x: 1.15, y: 0, z: -0.65 },
+  { x: 2.35, y: 0, z: 0.55 },
+  { x: 3.35, y: 0, z: -0.45 },
 ];
 export type ExcavatorAction = 'entering' | 'ready' | 'dragging' | 'scooping' | 'unloading' | 'returning' | 'complete';
 export interface ExcavatorState {
@@ -56,8 +56,8 @@ export function advanceExcavator(state: ExcavatorState, delta: number): Excavato
   if (state.action === 'entering') return elapsed >= 0.9 ? { ...state, action: 'ready', elapsed: 0 } : { ...state, elapsed };
   if (state.action === 'dragging') {
     const bucket = mix(state.bucket, state.target, 1 - Math.exp(-24 * delta));
-    const rock = ROCKS[state.cleared];
-    if (rock && Math.hypot(bucket.x - rock.x, bucket.z - rock.z) <= 1.1) {
+    const chunk = ROAD_CHUNKS[state.cleared];
+    if (chunk && Math.hypot(bucket.x - chunk.x, bucket.z - chunk.z) <= 1.1) {
       return { ...state, bucket, from: bucket, action: 'scooping', elapsed: 0 };
     }
     return { ...state, bucket };
@@ -71,7 +71,10 @@ export function advanceExcavator(state: ExcavatorState, delta: number): Excavato
     return elapsed >= 0.9 ? { ...state, bucket, from: bucket, cleared: state.cleared + 1, action: 'returning', elapsed: 0 } : { ...state, bucket, elapsed };
   }
   if (state.action === 'returning') {
-    const bucket = reachable(mix(state.from, HOME, smooth(elapsed / 0.55)));
+    const t = smooth(elapsed / 0.55), returning = mix(state.from, HOME, t);
+    // Lift over the cleanup truck's cab before returning to the work area.
+    if (state.from.y > HOME.y + 1) returning.y += Math.sin(t * Math.PI) * 1.1;
+    const bucket = reachable(returning);
     return elapsed >= 0.55 ? { ...state, bucket: { ...HOME }, action: state.cleared === 3 ? 'complete' : 'ready', elapsed: 0 } : { ...state, bucket, elapsed };
   }
   return state;

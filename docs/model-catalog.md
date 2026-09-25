@@ -1,6 +1,6 @@
 # Town Crew 建模清單
 
-盤點日期：2026-09-20。範圍為目前四個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
+盤點日期：2026-09-25。範圍為目前四個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
 Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式建立，沒有集中存放的外部模型檔。
 
 **新增關卡或物件前，先查本清單，再搜尋原始碼。**
@@ -30,14 +30,17 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 奶油白車身、綠色條紋、可開合後門與中空後艙，擔架可實際進入。 |
 | 擔架 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createStretcher` | 消防救援、交通救援 | 有輪底架、床墊、枕頭、護欄與乘員／毯子顯示狀態。 |
 | 居民與制服人物 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson` | 消防救援、交通救援 | 共用人物輪廓及可動手臂；交通關卡在場景中設定警員與救護員制服配色。蓋房子的住戶另有實作。 |
+| 天然大石頭 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder` | 保留供山路等未來關卡使用 | 原修馬路的十二面體大石頭；保留半徑 0.57、原灰褐色材質及旋轉變體。可傳入 0.38 產生原小石頭尺寸。現在市區修路不再擺放天然巨石，模型仍可直接匯入。 |
+| 破損瀝青路面塊 | [rocks.ts](../src/runtime/rocks.ts) · `createAsphaltChunk` | 修馬路的待挖區、挖斗及清運車載料 | 新增扁平不規則路面塊，深灰瀝青表面、淺灰碎料斷面與裂紋；與天然石頭是不同模型，不覆蓋原模型。 |
+| 修路傾卸車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路的運料車、清運車 | 從原修路場景抽取，保留四輪、後鉸鏈車斗、車斗前端抓取點與原運料車配色。清運變體採綠色車頭、棕色空斗，由關卡加入舊路面載料及設定 0.72 倍大小。 |
 | 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 四關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
 
 ## 車輛
 
 | 車輛 | 來源／搜尋入口 | 使用關卡 | 目前狀態與特色 |
 | --- | --- | --- | --- |
-| 挖土機 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createExcavatorVisual` | 修馬路 | 關卡內模型；履帶、固定長度機臂、挖斗與挖取岩石的顯示。含修路幾何規則依賴，抽取時需分離。 |
-| 傾卸卡車／砂石車 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `truck`、`bed`、`cargo` | 修馬路 | **直接建在場景內**；四輪、後鉸鏈車斗、砂石及出料粒子。 |
+| 挖土機 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createExcavatorVisual` | 修馬路 | 關卡內模型；履帶、固定長度機臂、挖斗與挖取舊路面／裝車的顯示。含修路幾何規則依賴，抽取時需分離。 |
+| 運料車／清運車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路 | 共用原修路傾卸車的整車結構；兩種配色區分送入新料與載走舊料。載貨狀態與出料粒子仍由關卡控制。 |
 | 壓路機 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createRollerVisual` | 修馬路 | 關卡內模型；車身及隨位移轉動的滾筒。 |
 | 通行小客車 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createCarVisual` | 修馬路 | 關卡內模型；完工後通行。與交通救援的小客車目前是不同實作。 |
 | 砂石車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createDump` | 蓋房子 | 關卡內模型；使用蓋房子自己的底盤、活動車斗與載料。與修馬路砂石車尚未共用整車。 |
@@ -64,7 +67,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 小貓 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createCat` | 消防救援 | 耳朵、眼睛、腳及可動尾巴。 |
 | 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
 | 可移動路障 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `barriers` | 修馬路 | 場景內建立，配合進出場規則移開及關閉。 |
-| 岩石與卸料石堆 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createExcavatorVisual` | 修馬路 | 挖土機顯示的一部分；位置與大小參考修路的 domain 常數。 |
+| 天然岩石／破損路面 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder`、`createAsphaltChunk` | 共用模型庫／修馬路 | 原天然石頭已獨立保留；市區第一關使用扁平路面塊，裝入清運車，不再堆在路旁。詳見共用模型表。 |
 | 消防栓、水管接頭、水管 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `hydrant`、`connector`、`hose` | 消防救援 | 場景內模型；消防栓是真實接管目標，水管按曲線更新。 |
 | 雲梯工作籃 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` 的 `basket` | 消防救援 | 雲梯車組件，包含護欄、噴嘴與互動範圍。 |
 | 擔架與乘員 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createStretcher` | 消防救援、交通救援 | 已共用；乘員顯示和空擔架由同一模型切換。 |
@@ -74,7 +77,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 水泥出料槽及出口 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `chute`、`chuteTip` | 蓋房子 | 場景內可拖道具，與地面澆灌分區對準。 |
 | 兩層樓組件 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `part`、`parts`、`ghosts` | 蓋房子 | 四組 L 形牆板、一塊樓板、一個屋頂；含門窗、屋簷與半透明安裝輪廓。 |
 | 房屋地基、砂石及水泥面 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `gravelFill`、`stones`、`slabs`、`completeSlab` | 蓋房子 | 場景內分區表面及填料模型。 |
-| 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
+| 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`asphalt`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |
 | 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 四關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |

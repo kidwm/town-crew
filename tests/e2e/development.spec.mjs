@@ -61,6 +61,28 @@ test('development entry, reload, HMR and stage reset retain useful progress', as
   expect(errors).toEqual([]);
 });
 
+test('road cleanup development entry preserves cargo and a partial drive across reload and HMR', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  await page.goto('/?dev=1&stage=haul-away');
+  const app = page.locator('#app'), { wait, down, move, cancel } = await fireControls(page);
+  await wait('haul-away'); await expect(app).toHaveAttribute('data-loaded', '3');
+  const hint = await gesture(page, 'left');
+  await down(hint.from); await move({ x: (hint.from.x + hint.to.x) / 2, y: (hint.from.y + hint.to.y) / 2 });
+  await cancel(); await page.mouse.up(); await wait('haul-away');
+  const x = await app.getAttribute('data-haul-x');
+  expect(Number(x)).toBeLessThan(1.8); expect(Number(x)).toBeGreaterThan(-3.8);
+  await page.reload(); await wait('haul-away'); await expect(app).toHaveAttribute('data-haul-x', x);
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+  await page.waitForFunction(element => !element.isConnected, world);
+  await wait('haul-away'); await expect(app).toHaveAttribute('data-haul-x', x); await expect(app).toHaveAttribute('data-loaded', '3');
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click();
+  await wait('haul-away'); await expect(app).toHaveAttribute('data-haul-x', '1.8');
+  await page.locator('#stage').selectOption('excavator'); await wait('excavator');
+  await expect(app).toHaveAttribute('data-loaded', '0');
+});
+
 test('house development stages, reload and HMR preserve the second floor', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));

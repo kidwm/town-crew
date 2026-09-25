@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceRoad, BARRIER_CLEAR_Z, BARRIER_X, createRoad, resumeRoad, roadPose, ROLLER_LEFT, ROLLER_RIGHT } from './road.ts';
+import { advanceRoad, BARRIER_CLEAR_Z, BARRIER_X, createRoad, grabHauler, moveHauler, resumeRoad, roadPose, ROLLER_LEFT, ROLLER_RIGHT, HAUL_EXIT, HAUL_START, HAUL_Z, HAUL_SCALE } from './road.ts';
 import type { EntryStage, RoadState } from './road.ts';
 import { defaultTuning, pose as truckPose } from './dump-truck.ts';
 import { smooth } from './excavator.ts';
@@ -9,6 +9,7 @@ import { smooth } from './excavator.ts';
 // truck body, and front drum. Invisible picking volumes are not obstacles.
 function footprint(state: RoadState) {
   const road = roadPose(state, defaultTuning);
+  if (state.phase === 'haul-away') return { min: road.haulerX - 3.13 * HAUL_SCALE, max: road.haulerX + 1.5 * HAUL_SCALE, z: HAUL_Z + 1.3 * HAUL_SCALE };
   if (state.phase === 'excavator') {
     const offset = state.excavator.action === 'entering' ? -9 * (1 - smooth(state.excavator.elapsed / 0.9)) : -10 * road.departure;
     return { min: offset - 6.3, max: offset, z: 1.1 };
@@ -68,6 +69,19 @@ test('closed barriers leave room for the whole roller at both ends of its work r
     assertClear({ ...state, roller: { ...state.roller, x } });
   }
   assertClear({ ...state, roller: { ...state.roller, x: ROLLER_RIGHT } });
+});
+
+test('loaded cleanup truck keeps the exit clear through dragging, cancellation and automatic departure', () => {
+  let state = grabHauler(createRoad('haul-away'));
+  for (let x = HAUL_START; x > HAUL_EXIT; x -= 0.1) {
+    state = moveHauler(state, x); assertClear(state);
+    assert.equal(roadPose(resumeRoad(state), defaultTuning).barrierZ[0], BARRIER_CLEAR_Z);
+  }
+  state = moveHauler(state, HAUL_EXIT);
+  for (let i = 0; i < 90 && state.phase === 'haul-away'; i++) { assertClear(state); state = advanceRoad(state, 1 / 60); }
+  assert.equal(state.phase, 'dump-truck');
+  assertClear(state);
+  assert.equal(roadPose(state, defaultTuning).barrierZ[0], BARRIER_CLEAR_Z);
 });
 
 test('reload preserves gate animation; old snapshots restart an entrance safely', () => {

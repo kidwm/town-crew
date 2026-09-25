@@ -11,7 +11,7 @@ import { defaultTuning, input as truckInput, pose } from './domain/dump-truck.ts
 import type { Tuning } from './domain/dump-truck.ts';
 import { HOME, grabBucket, moveBucket, releaseBucket } from './domain/excavator.ts';
 import type { Point } from './domain/excavator.ts';
-import { advanceRoad, createRoad, stages, grabRoller, moveRoller, releaseRoller, roadPose } from './domain/road.ts';
+import { advanceRoad, createRoad, stages, grabHauler, moveHauler, releaseHauler, grabRoller, moveRoller, releaseRoller, roadPose } from './domain/road.ts';
 import type { EntryStage, RoadState, MissionPhase } from './domain/road.ts';
 import { mountUI, icons } from './ui.ts';
 
@@ -45,11 +45,11 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
   }
   function ready() {
     if (state.access !== 'working') return false;
-    return state.phase === 'excavator' ? state.excavator.action === 'ready' : state.phase === 'dump-truck' ? state.truck.phase === 'ready' : state.phase === 'roller' && state.roller.action === 'ready';
+    return state.phase === 'excavator' ? state.excavator.action === 'ready' : state.phase === 'haul-away' ? state.hauler.action === 'ready' : state.phase === 'dump-truck' ? state.truck.phase === 'ready' : state.phase === 'roller' && state.roller.action === 'ready';
   }
   function action() {
     if (state.phase !== 'traffic' && state.phase !== 'complete' && state.access !== 'working') return state.access;
-    return state.phase === 'excavator' ? state.excavator.action : state.phase === 'dump-truck' ? state.truck.phase : state.phase === 'roller' ? state.roller.action : state.phase;
+    return state.phase === 'excavator' ? state.excavator.action : state.phase === 'haul-away' ? state.hauler.action : state.phase === 'dump-truck' ? state.truck.phase : state.phase === 'roller' ? state.roller.action : state.phase;
   }
   function connect(scene: ReturnType<typeof createScene>, audio: ReturnType<typeof createAudio<keyof typeof roadSounds>>) {
     const events = new AbortController();
@@ -63,8 +63,8 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const progress = app.querySelector<HTMLElement>('.progress')!;
     const fillBar = app.querySelector<HTMLElement>('.progress span')!;
     const success = app.querySelector<HTMLElement>('.success')!;
-    const phaseNames = { excavator: '挖土機', 'dump-truck': '傾卸卡車', roller: '壓路機', traffic: '開放通車', complete: '道路修好了！' };
-    const actions: Record<string, string> = { 'opening-entry': '移開入口路障', 'closing-entry': '封閉施工區', 'opening-exit': '開放工程車離場', leaving: '工程車離場', entering: '進場', ready: '等待操作', dragging: '跟手拖曳', scooping: '挖取碎石', unloading: '移走碎石', returning: '挖斗復位', resetting: '車斗復位', dumping: '自動倒料', lowering: '放下車斗', settling: '第一趟完成', flattening: '整平路面', complete: '完成', traffic: '移開路障／通車' };
+    const phaseNames = { excavator: '挖土機 · 清除舊路面', 'haul-away': '清運車 · 載走舊路面', 'dump-truck': '運料車 · 補好道路', roller: '壓路機 · 壓平路面', traffic: '開放通車', complete: '道路修好了！' };
+    const actions: Record<string, string> = { 'opening-entry': '移開入口路障', 'closing-entry': '封閉施工區', 'opening-exit': '開放工程車離場', leaving: '工程車離場', entering: '進場', ready: '等待操作', dragging: '跟手拖曳', scooping: '挖起舊路面', unloading: '裝入清運車', returning: '挖斗復位', resetting: '車斗復位', dumping: '填補路基', lowering: '鋪上路面材料', settling: '第一趟完成', flattening: '整平路面', complete: '完成', traffic: '移開路障／通車' };
     const stageSelect = app.querySelector<HTMLSelectElement>('#stage');
     if (stageSelect) stageSelect.value = targetStage;
     const threshold = app.querySelector<HTMLInputElement>('#threshold');
@@ -88,15 +88,16 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       start(event) {
         unlock();
         if (!ready() || !scene.hit(event.clientX, event.clientY, state)) return;
-        const point = scene.onPlane(event.clientX, event.clientY, state.phase === 'roller' ? 1.2 : HOME.y);
+        const point = scene.onPlane(event.clientX, event.clientY, state.phase === 'haul-away' ? 1.1 : state.phase === 'roller' ? 1.2 : HOME.y);
         if (!point) return;
         const context = {
           phase: state.phase, startY: event.clientY,
           offset: state.phase === 'excavator'
             ? { x: state.excavator.bucket.x - point.x, y: 0, z: state.excavator.bucket.z - point.z }
-            : { x: state.roller.x - point.x, y: 0, z: 0 },
+            : { x: (state.phase === 'haul-away' ? state.hauler.x : state.roller.x) - point.x, y: 0, z: 0 },
         };
         if (state.phase === 'excavator') setState({ ...state, excavator: grabBucket(state.excavator) });
+        if (state.phase === 'haul-away') setState(grabHauler(state));
         if (state.phase === 'dump-truck') setState({ ...state, truck: truckInput(state.truck, { type: 'grab' }, tuning) });
         if (state.phase === 'roller') setState({ ...state, roller: grabRoller(state.roller) });
         audio.play('grab');
@@ -107,14 +108,15 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         if (state.phase === 'dump-truck') {
           setState({ ...state, truck: truckInput(state.truck, { type: 'drag', upwardPx: context.startY - event.clientY }, tuning) });
         } else {
-          const point = scene.onPlane(event.clientX, event.clientY, state.phase === 'roller' ? 1.2 : HOME.y);
+          const point = scene.onPlane(event.clientX, event.clientY, state.phase === 'haul-away' ? 1.1 : state.phase === 'roller' ? 1.2 : HOME.y);
           if (!point) return;
-          if (state.phase === 'excavator') setState({ ...state, excavator: moveBucket(state.excavator, { x: point.x + context.offset.x, y: HOME.y, z: point.z + context.offset.z }) });
+          if (state.phase === 'excavator') setState({ ...state, excavator: moveBucket(state.excavator, scene.excavationAim(event.clientX, event.clientY, state, { x: point.x + context.offset.x, y: HOME.y, z: point.z + context.offset.z })) });
+          if (state.phase === 'haul-away') setState(moveHauler(state, point.x + context.offset.x));
           if (state.phase === 'roller') setState({ ...state, roller: moveRoller(state.roller, point.x + context.offset.x) });
         }
       },
       end(_context, cancelled) {
-        setState({ ...state, excavator: releaseBucket(state.excavator), truck: truckInput(state.truck, { type: cancelled ? 'cancel' : 'release' }, tuning), roller: releaseRoller(state.roller) });
+        setState(releaseHauler({ ...state, excavator: releaseBucket(state.excavator), truck: truckInput(state.truck, { type: cancelled ? 'cancel' : 'release' }, tuning), roller: releaseRoller(state.roller) }));
       },
     }, events.signal);
     const cancelPointer = pointer.cancel;
@@ -156,10 +158,11 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       if (pointer.context() && pointer.context()!.phase !== state.phase) cancelPointer();
       scene.render(state, tuning, visualTime);
       dragHint.update(scene.dragHint(state, tuning), visualTime);
-      gestureCaption.hidden = state.access !== 'working' || !['ready', 'dragging'].includes(action()) || !['dump-truck', 'roller'].includes(state.phase);
-      label('.gesture-instruction', state.phase === 'dump-truck' ? '按住車斗前端，往上拉' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
+      gestureCaption.hidden = state.access !== 'working' || !['ready', 'dragging'].includes(action());
+      label('.gesture-instruction', state.phase === 'excavator' ? '拖挖斗到破損路面，裝進清運車' : state.phase === 'haul-away' ? '按住清運車，往左拖，把舊路面載走' : state.phase === 'dump-truck' ? '按住車斗前端，往上拉' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
       app.dataset.phase = state.phase; app.dataset.action = action();
       app.dataset.cleared = String(state.excavator.cleared); app.dataset.passes = String(state.roller.passes);
+      app.dataset.haulX = String(state.hauler.x); app.dataset.loaded = String(state.hauler.action === 'complete' ? 0 : state.excavator.cleared);
       const progressValue = roadPose(state, tuning).progress;
       fillBar.style.transform = `scaleX(${progressValue})`;
       progress.setAttribute('aria-valuenow', String(Math.round(progressValue * 100)));
@@ -173,7 +176,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       if (displayedPhase !== state.phase) {
         label('#vehicle-name', phaseNames[state.phase]);
         app.querySelector('.badge-icon')!.innerHTML = icons[state.phase as keyof typeof icons] ?? '<span aria-hidden="true">✓</span>';
-        const current = ['excavator', 'dump-truck', 'roller'].indexOf(state.phase);
+        const current = ['excavator', 'haul-away', 'dump-truck', 'roller'].indexOf(state.phase);
         app.querySelectorAll<HTMLElement>('[data-step]').forEach((element, i) => { element.dataset.state = current < 0 || i < current ? 'done' : i === current ? 'active' : 'upcoming'; });
         displayedPhase = state.phase;
       }

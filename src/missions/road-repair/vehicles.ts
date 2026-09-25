@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import type { Shapes } from '../../runtime/geometry.ts';
-import { BOOM, STICK, PIVOT, elbow, ROCKS, UNLOAD } from './domain/excavator.ts';
+import { BOOM, STICK, PIVOT, elbow, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import { createAsphaltChunk } from '../../runtime/rocks.ts';
+import { cargoLocal, cargoLanding, HAUL_SCALE } from './domain/hauling.ts';
 import type { Point, ExcavatorState } from './domain/excavator.ts';
 
 export function createExcavatorVisual(shapes: Shapes) {
-  const { box, cylinder, material } = shapes;
+  const { box, cylinder } = shapes;
   const root = new THREE.Group();
   root.name = 'excavator';
   for (const z of [-0.85, 0.85]) {
@@ -33,21 +35,18 @@ export function createExcavatorVisual(shapes: Shapes) {
   for (const z of [-0.3, 0, 0.3]) box(bucket, [0.32, 0.12, 0.14], [0.62, -0.27, z], '#f6d184');
   const hitbox = shapes.hitbox(bucket, [1.55, 1.5, 1.6], [0.1, 0, 0]);
   root.add(bucket);
-  const rocks = ROCKS.map((position, i) => {
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.57, 0), material('#a49e86'));
-    rock.position.set(position.x, position.y, position.z);
-    rock.rotation.set(0.2, i * 0.8, 0.1);
-    rock.castShadow = true;
-    return rock;
+  const chunks = ROAD_CHUNKS.map((position, i) => {
+    const chunk = createAsphaltChunk(shapes, i);
+    chunk.position.set(position.x, position.y, position.z);
+    return chunk;
   });
   const halo = new THREE.Mesh(new THREE.RingGeometry(0.64, 0.82, 32), new THREE.MeshBasicMaterial({ color: '#fff0a6', side: THREE.DoubleSide }));
   halo.rotation.x = -Math.PI / 2;
   const trail = Array.from({ length: 5 }, () => new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), new THREE.MeshBasicMaterial({ color: '#fff4c4' })));
-  const discarded = ROCKS.map((_, i) => {
-    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.38, 0), material('#a49e86'));
-    rock.position.set(UNLOAD.x + (i - 1) * 0.46, 0.3, 2.7 + (i % 2) * 0.18);
-    rock.castShadow = true;
-    return rock;
+  const loaded = ROAD_CHUNKS.map((_, i) => {
+    const chunk = createAsphaltChunk(shapes, i), p = cargoLocal(i);
+    chunk.position.set(p.x, p.y, p.z);
+    return chunk;
   });
   const vec = (p: Point) => new THREE.Vector3(p.x, p.y, p.z);
   const orient = (mesh: THREE.Mesh, from: Point, to: Point) => {
@@ -56,7 +55,7 @@ export function createExcavatorVisual(shapes: Shapes) {
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
   };
   return {
-    root, hitbox, rocks, halo, trail, discarded,
+    root, hitbox, chunks, halo, trail, loaded,
     render(state: ExcavatorState, active: boolean, offset: number, time: number, canInteract = true) {
       root.visible = active;
       root.position.x = offset;
@@ -71,22 +70,22 @@ export function createExcavatorVisual(shapes: Shapes) {
       bucket.position.copy(vec(state.bucket));
       bucket.rotation.z = state.action === 'scooping' || state.action === 'unloading' ? -0.28 : 0;
       const ready = active && canInteract && state.action === 'ready';
-      const target = ROCKS[state.cleared];
+      const target = ROAD_CHUNKS[state.cleared];
       halo.visible = ready && !!target;
       if (target) {
         halo.position.set(target.x, 0.12, target.z);
         halo.scale.setScalar(1 + Math.sin(time * 4) * 0.08);
       }
-      rocks.forEach((rock, i) => {
+      chunks.forEach((rock, i) => {
         rock.visible = active && i >= state.cleared;
-        rock.position.copy(vec(ROCKS[i]));
+        rock.position.copy(vec(ROAD_CHUNKS[i]));
         rock.scale.setScalar(1);
         if (i === state.cleared && ['scooping', 'unloading'].includes(state.action)) {
           rock.position.copy(vec(state.bucket)).add(new THREE.Vector3(0.2, -0.1, 0));
           if (state.action === 'unloading') {
-            const fall = Math.max(0, (state.elapsed - 0.7) / 0.2);
-            rock.position.y -= fall;
-            rock.scale.setScalar(1 - fall * 0.4);
+            const fall = smooth((state.elapsed - 0.7) / 0.2);
+            rock.position.lerp(vec(cargoLanding(i)), fall);
+            rock.scale.setScalar(1 + (HAUL_SCALE - 1) * fall);
           }
         } else if (ready && i === state.cleared) rock.scale.setScalar(1 + Math.sin(time * 4) * 0.07);
       });
@@ -98,7 +97,7 @@ export function createExcavatorVisual(shapes: Shapes) {
           dot.scale.setScalar(Math.sin(t * Math.PI));
         }
       });
-      discarded.forEach((rock, i) => { rock.visible = i < state.cleared; });
+      loaded.forEach((rock, i) => { rock.visible = i < state.cleared; });
     },
   };
 }

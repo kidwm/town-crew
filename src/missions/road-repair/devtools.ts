@@ -4,6 +4,7 @@ import type { Tuning } from './domain/dump-truck.ts';
 import type { Point } from './domain/excavator.ts';
 import { resumeRoad, stages } from './domain/road.ts';
 import type { RoadState, EntryStage } from './domain/road.ts';
+import { HAUL_EXIT, HAUL_START } from './domain/hauling.ts';
 
 interface Snapshot { key: string; state: RoadState; tuning: Tuning; targetStage: EntryStage }
 
@@ -15,7 +16,14 @@ export function restoreRoadSnapshot(value: unknown, snapshotKey: string) {
       const settings = data.tuning as Tuning;
       const pointOK = (p: Point) => p && [p.x, p.y, p.z].every(v => Number.isFinite(v) && Math.abs(v) < 30);
       const e = candidate.excavator, r = candidate.roller, t = candidate.truck;
-      if (['excavator', 'dump-truck', 'roller', 'traffic', 'complete'].includes(candidate.phase)
+      const h = candidate.hauler;
+      const haulerOK = h === undefined ? candidate.phase !== 'haul-away' :
+        ['ready', 'dragging', 'leaving', 'complete'].includes(h.action) && Number.isFinite(h.elapsed) && h.elapsed >= 0
+        && Number.isFinite(h.x) && h.x >= HAUL_EXIT && h.x <= HAUL_START
+        && (candidate.phase === 'haul-away' ? e.cleared === 3 && e.action === 'complete' && candidate.access === 'working' && h.action !== 'complete'
+          : candidate.phase === 'excavator' ? h.action === 'ready' && h.x === HAUL_START : h.action === 'complete');
+      if (['excavator', 'haul-away', 'dump-truck', 'roller', 'traffic', 'complete'].includes(candidate.phase)
+        && haulerOK
         && ['entering', 'ready', 'dragging', 'scooping', 'unloading', 'returning', 'complete'].includes(e.action)
         && ['entering', 'ready', 'dragging', 'settling', 'flattening', 'complete'].includes(r.action)
         && ['entering', 'ready', 'dragging', 'resetting', 'dumping', 'lowering', 'complete'].includes(t.phase)

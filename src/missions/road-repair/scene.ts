@@ -2,19 +2,20 @@ import { createTrafficCone } from '../../runtime/traffic-cone.ts';
 import * as THREE from 'three';
 import { pose } from './domain/dump-truck.ts';
 import type { Tuning } from './domain/dump-truck.ts';
-import { BARRIER_X, ROLLER_LEFT, ROLLER_RIGHT, roadPose } from './domain/road.ts';
+import { HAUL_EXIT, HAUL_Z, HAUL_SCALE, BARRIER_X, ROLLER_LEFT, ROLLER_RIGHT, roadPose } from './domain/road.ts';
 import type { RoadState } from './domain/road.ts';
-import { smooth } from './domain/excavator.ts';
+import { HOME, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import type { Point } from './domain/excavator.ts';
 import { createShapes } from '../../runtime/geometry.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
-import { createBedGrip } from '../../runtime/bed-grip.ts';
+import { createDumpTruck } from '../../runtime/dump-truck.ts';
 import { createExcavatorVisual, createRollerVisual, createCarVisual } from './vehicles.ts';
 
 export function createScene(host: HTMLElement) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor('#bde6eb');
-  renderer.domElement.setAttribute('aria-label', '修路工地：拖曳挖斗、車斗或壓路機完成任務');
+  renderer.domElement.setAttribute('aria-label', '修路工地：挖除舊路面、裝車清運、運料填補與壓平通車');
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   host.append(renderer.domElement);
@@ -34,10 +35,17 @@ export function createScene(host: HTMLElement) {
   const { box, cylinder, material } = shapes;
 
   box(scene, [70, 0.5, 70], [0, -0.5, 0], '#99c98a');
-  box(scene, [35, 0.15, 5.9], [0, -0.13, 0], '#73828a');
+  // Leave a real opening for the repair, rather than covering intact asphalt
+  // with a raised dark plate. The surrounding road and kerbs stay continuous.
+  const repairLeft = 0.225, repairRight = 4.275;
+  box(scene, [repairLeft + 17.5, 0.15, 5.9], [(repairLeft - 17.5) / 2, -0.13, 0], '#73828a');
+  box(scene, [17.5 - repairRight, 0.15, 5.9], [(repairRight + 17.5) / 2, -0.13, 0], '#73828a');
+  for (const z of [-2.2375, 2.2375]) box(scene, [4.05, 0.15, 1.425], [2.25, -0.13, z], '#73828a');
   for (const z of [-3.15, 3.15]) box(scene, [35, 0.24, 0.35], [0, -0.05, z], '#e2ddc9');
+  const repairedMarkings: THREE.Mesh[] = [];
   for (let x = -16; x < 17; x += 3) {
-    box(scene, [1.25, 0.015, 0.1], [x, -0.045, 0], '#e6dfba');
+    const marking = box(scene, [1.25, 0.015, 0.1], [x, -0.045, 0], '#e6dfba');
+    if (x > repairLeft && x < repairRight) repairedMarkings.push(marking);
   }
   // A few simple landmarks keep the scene readable without external assets.
   for (const [x, z, scale] of [[-8, -6, 1], [5, -6, 1.2], [9, -4, 0.8], [-9, 5, 0.85]]) {
@@ -55,11 +63,11 @@ export function createScene(host: HTMLElement) {
     box(scene, [2.4, 0.24, 1.9], [x, 1.96, -10], '#dfaa81');
     box(scene, [0.5, 0.75, 0.03], [x, 1.08, -9.13], '#83b7bf');
   }
-  const pit = cylinder(scene, 1.75, 0.06, [2.25, -0.005, 0], '#434c50');
-  pit.scale.z = 0.77;
-  const fill = cylinder(scene, 1.67, 0.16, [2.25, 0.06, 0], '#bb945f');
+  const pit = box(scene, [4.05, 0.02, 3.05], [2.25, -0.13, 0], '#434c50');
+  const fill = box(scene, [3.85, 0.16, 2.85], [2.25, -0.02, 0], '#bb945f');
   // A thin asphalt patch sits on the road, below its restored centre marking.
   const repairedRoad = box(scene, [4.05, 0.01, 3.05], [2.25, -0.05, 0], '#63757e');
+  const asphalt = box(scene, [3.85, 0.04, 2.85], [2.25, 0.08, 0], '#626e74');
   const fillStones: THREE.Mesh[] = [];
   for (let i = 0; i < 16; i++) {
     const angle = i * 2.399;
@@ -74,48 +82,18 @@ export function createScene(host: HTMLElement) {
     cone.position.set(x, 0, z); siteEquipment.add(cone);
   }
 
-  const truck = new THREE.Group();
-  truck.name = 'dump-truck';
+  const delivery = createDumpTruck(shapes);
+  const { root: truck, bed, cargo, hitbox, bedGrip } = delivery;
   scene.add(truck);
-  box(truck, [4.7, 0.42, 1.65], [-0.85, 0.78, 0], '#28587c');
-  box(truck, [1.55, 1.55, 1.55], [-2.2, 1.62, 0], '#3c98be');
-  box(truck, [1.65, 0.15, 1.68], [-2.2, 2.43, 0], '#70b7d0');
-  for (const z of [-0.79, 0.79]) {
-    box(truck, [0.92, 0.79, 0.035], [-2.05, 1.87, z], '#b6e0e1');
-    box(truck, [0.24, 0.07, 0.07], [-1.75, 1.3, z], '#ecdfbb');
-  }
-  box(truck, [0.035, 0.72, 1.22], [-2.99, 1.95, 0], '#b6e0e1');
-  box(truck, [0.2, 0.18, 1.76], [-3.03, 0.95, 0], '#e1dfd0');
-  for (const z of [-0.55, 0.55]) box(truck, [0.05, 0.24, 0.29], [-3.03, 1.3, z], '#fff1b1');
-  const wheels: THREE.Group[] = [];
-  for (const x of [-2.1, 0.1]) {
-    cylinder(truck, 0.1, 2.24, [x, 0.48, 0], '#60727a').rotation.x = Math.PI / 2;
-    for (const z of [-1.12, 1.12]) wheels.push(shapes.wheel(truck, x, z));
-  }
-  const bed = new THREE.Group();
-  bed.position.set(1.25, 1.6, 0);
-  truck.add(bed);
-  box(bed, [2.8, 0.24, 1.65], [-1.3, -0.2, 0], '#e89b3c');
-  for (const z of [-0.76, 0.76]) {
-    box(bed, [2.8, 0.72, 0.16], [-1.3, 0.15, z], '#eda943');
-    for (const x of [-2.5, -1.7, -0.9, -0.1]) {
-      box(bed, [0.075, 0.69, 0.04], [x, 0.15, z + Math.sign(z) * 0.09], '#ffd17a');
-    }
-  }
-  box(bed, [0.2, 0.72, 1.65], [-2.62, 0.15, 0], '#eda943');
-  const cargo = box(bed, [2.4, 0.23, 1.35], [-1.3, 0.08, 0], '#bc956b');
-  const hitbox = new THREE.Mesh(
-    new THREE.BoxGeometry(2.4, 1.9, 2.25),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }),
-  );
-  hitbox.position.set(-1.7, 0.05, 0);
-  bed.add(hitbox);
-  const bedGrip = createBedGrip(bed, [-2.62, 0.51, 0.85]);
+  const hauler = createDumpTruck(shapes, true);
+  hauler.root.name = 'cleanup-truck';
+  hauler.root.scale.setScalar(HAUL_SCALE); hauler.cargo.visible = false;
+  scene.add(hauler.root);
   const gravel: THREE.Mesh[] = [];
   for (let i = 0; i < 12; i++) gravel.push(box(scene, [0.16, 0.15, 0.15], [0, 0, 0], '#c3a077'));
   const excavator = createExcavatorVisual(shapes);
-  scene.add(excavator.root, ...excavator.rocks, excavator.halo, ...excavator.trail);
-  siteEquipment.add(...excavator.discarded);
+  scene.add(excavator.root, ...excavator.chunks, excavator.halo, ...excavator.trail);
+  hauler.root.add(...excavator.loaded);
   const roller = createRollerVisual(shapes);
   scene.add(roller.root);
   const car = createCarVisual(shapes);
@@ -172,6 +150,9 @@ export function createScene(host: HTMLElement) {
         const from = bedGrip.project(camera, renderer.domElement);
         return { from, to: { x: from.x, y: from.y - tuning.dragThreshold - 20 }, direction: 'up', label: '按住車斗前端，往上拉' };
       }
+      if (state.phase === 'haul-away' && state.hauler.action === 'ready') {
+        return { from: project(state.hauler.x - 0.6, 1.1, HAUL_Z), to: project(HAUL_EXIT - 0.6, 1.1, HAUL_Z), direction: 'left', label: '按住清運車，往左拖，把舊路面載走' };
+      }
       if (state.phase === 'roller' && state.roller.action === 'ready') {
         const right = state.roller.passes === 0;
         return { from: project(state.roller.x, 1.2, 0), to: project(right ? ROLLER_RIGHT : ROLLER_LEFT, 1.2, 0), direction: right ? 'right' : 'left', label: right ? '按住車子，往右拖' : '按住車子，往左拖' };
@@ -180,7 +161,7 @@ export function createScene(host: HTMLElement) {
     hit(clientX: number, clientY: number, state: RoadState) {
       setRay(clientX, clientY);
       if (state.phase === 'dump-truck' && bedGrip.hit(clientX, clientY, camera, renderer.domElement)) return true;
-      const target = state.phase === 'excavator' ? excavator.hitbox : state.phase === 'dump-truck' ? hitbox : state.phase === 'roller' ? roller.hitbox : undefined;
+      const target = state.phase === 'excavator' ? excavator.hitbox : state.phase === 'haul-away' ? hauler.driveHitbox : state.phase === 'dump-truck' ? hitbox : state.phase === 'roller' ? roller.hitbox : undefined;
       return !!target && raycaster.intersectObject(target).length > 0;
     },
     onPlane(clientX: number, clientY: number, height: number) {
@@ -188,11 +169,19 @@ export function createScene(host: HTMLElement) {
       const point = raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), new THREE.Vector3());
       return point ? { x: point.x, y: point.y, z: point.z } : undefined;
     },
+    excavationAim(clientX: number, clientY: number, state: RoadState, aim: Point): Point {
+      const chunk = ROAD_CHUNKS[state.excavator.cleared];
+      if (!chunk) return aim;
+      setRay(clientX, clientY);
+      const surface = raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(chunk.y + 0.11)), new THREE.Vector3());
+      // A toddler aims at the flat broken surface, below the raised bucket.
+      return surface && Math.hypot(surface.x - chunk.x, surface.z - chunk.z) < 0.9 ? { ...chunk, y: HOME.y } : aim;
+    },
     render(state: RoadState, tuning: Tuning, time: number) {
       const current = pose(state.truck, tuning);
       const road = roadPose(state, tuning);
       const celebrating = state.phase === 'complete' || (state.phase === 'traffic' && state.elapsed >= 3.9);
-      // Debris and temporary equipment are cleared before the first car enters.
+      // Temporary equipment is cleared before the first car enters.
       siteEquipment.visible = state.phase !== 'traffic' && state.phase !== 'complete';
       const excavatorOffset = state.excavator.action === 'entering' ? -9 * (1 - smooth(state.excavator.elapsed / 0.9)) : -10 * road.departure;
       excavator.root.scale.setScalar(1);
@@ -203,16 +192,29 @@ export function createScene(host: HTMLElement) {
       truck.scale.setScalar(1);
       truck.position.set(current.x - (state.truck.phase === 'complete' ? 10 * road.departure : 0), 0, 0);
       bed.rotation.z = -current.tilt;
-      for (const wheel of wheels) wheel.rotation.z = -(truck.position.x + 9) / 0.48;
+      delivery.roll(truck.position.x + 9);
+      hauler.root.visible = state.phase === 'excavator' || state.phase === 'haul-away';
+      hauler.root.position.set(road.haulerX, 0, HAUL_Z); hauler.roll(road.haulerX / HAUL_SCALE);
       pit.visible = road.flatten < 1;
       fill.visible = road.fill > 0 && road.flatten < 1;
-      fill.scale.set(Math.max(0.01, road.fill), 1 - road.compact * 0.9, Math.max(0.01, road.fill) * 0.77);
+      fill.scale.set(Math.max(0.01, road.fill), 1 - road.compact * 0.9, Math.max(0.01, road.fill));
+      // The truck fills the base, then a short spreading animation lays the
+      // darker road material before the roller arrives to compact it.
+      const paving = state.phase === 'dump-truck' && ['lowering', 'complete'].includes(state.truck.phase)
+        ? state.truck.phase === 'complete' ? 1 : smooth(state.truck.elapsed / 0.7)
+        : state.phase === 'roller' || state.phase === 'traffic' || state.phase === 'complete' ? 1 : 0;
+      asphalt.visible = paving > 0 && road.flatten < 1;
+      asphalt.scale.x = Math.max(0.001, paving);
+      asphalt.position.y = fill.position.y + 0.08 * fill.scale.y + 0.02;
       repairedRoad.visible = road.flatten > 0;
       repairedRoad.scale.x = Math.max(0.01, road.flatten);
+      repairedMarkings.forEach(marking => { marking.visible = road.flatten === 1; });
       for (let i = 0; i < fillStones.length; i++) {
+        const paved = paving >= (i + 1) / 17;
         fillStones[i].visible = road.fill > (i + 1) / 17 && road.flatten < 1;
+        fillStones[i].material = material(paved ? '#626e74' : '#c9a574');
         fillStones[i].scale.y = 1 - road.compact * 0.9;
-        fillStones[i].position.y = 0.17 - road.compact * 0.13;
+        fillStones[i].position.y = (paved ? asphalt.position.y + 0.02 : fill.position.y + 0.08 * fill.scale.y) + 0.06 * fillStones[i].scale.y;
       }
       cargo.visible = current.fill < 0.95;
       cargo.scale.y = Math.max(0.01, 1 - current.fill);
