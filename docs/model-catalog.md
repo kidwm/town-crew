@@ -35,6 +35,8 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 修路傾卸車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路的運料車、清運車 | 從原修路場景抽取，保留四輪、後鉸鏈車斗、車斗前端抓取點與原運料車配色。清運變體採綠色車頭、棕色空斗，由關卡加入舊路面載料及設定 0.72 倍大小。 |
 | 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 五關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
 
+小貓與小狗也已放入共用 [pets.ts](../src/runtime/pets.ts)，外觀與使用比例見下方人物／道具表。
+
 ## 車輛
 
 | 車輛 | 來源／搜尋入口 | 使用關卡 | 目前狀態與特色 |
@@ -63,8 +65,9 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 物件 | 來源／搜尋入口 | 使用關卡 | 目前狀態 |
 | --- | --- | --- | --- |
 | 居民、消防員、警員、救護員 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`；制服變體見 [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) | 消防救援、交通救援、警察隊 | 人物基礎已共用，警員變體已抽為 `createOfficer`，保留原制服配色；其餘制服由場景設定。 |
-| 蓋房子住戶與小孩 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `residents` | 蓋房子 | 場景內獨立人物模型，含成人與縮小的孩子；與共用人物尚未整合。 |
-| 小貓 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createCat` | 消防救援 | 耳朵、眼睛、腳及可動尾巴。 |
+| 蓋房子住戶與小孩 | [house-build/residents.ts](../src/missions/house-build/residents.ts) · `createResidents` | 蓋房子 | 沿用原住戶模型，依本局顯示三種家庭組合；成人與孩子使用不同大小，最多四位。與救援共用人物仍為不同實作。 |
+| 小貓 | [pets.ts](../src/runtime/pets.ts) · `createCat` | 消防救援、蓋房子 | 從消防原實作原樣抽出，共用耳朵、眼睛、腳及可動尾巴；消防保留原匯出入口與 1.2 倍比例，蓋房子採 0.8 倍。 |
+| 小狗 | [pets.ts](../src/runtime/pets.ts) · `createDog` | 蓋房子 | 新增共用模型：垂耳、口鼻、四腳、項圈及可動尾巴；蓋房子採 0.85 倍。 |
 | 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
 | 可移動路障 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `barriers` | 修馬路 | 場景內建立，配合進出場規則移開及關閉。 |
 | 天然岩石／破損路面 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder`、`createAsphaltChunk` | 共用模型庫／修馬路 | 原天然石頭已獨立保留；市區第一關使用扁平路面塊，裝入清運車，不再堆在路旁。詳見共用模型表。 |
@@ -75,7 +78,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 托輪架 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createWheelYoke` | 交通救援 | 兩個輪胎托座與橫桿；可拖工具和車尾固定托架使用同一建構函式。前輪對齊托座，後輪接地的幾何規則在 [domain/towing.ts](../src/missions/traffic-rescue/domain/towing.ts)。 |
 | 警員相機 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `cameraProp`、`flash` | 交通救援 | 場景內道具，掛在警員身上。 |
 | 水泥出料槽及出口 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `chute`、`chuteTip` | 蓋房子 | 場景內可拖道具，與地面澆灌分區對準。 |
-| 兩層樓組件 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `part`、`parts`、`ghosts` | 蓋房子 | 四組 L 形牆板、一塊樓板、一個屋頂；含門窗、屋簷與半透明安裝輪廓。 |
+| 兩層樓組件 | [house-build/house-model.ts](../src/missions/house-build/house-model.ts) · `createHouseParts` | 蓋房子 | 沿用四組 L 形牆板、一塊樓板；屋頂有尖頂、單斜頂、平頂變體，搭配窗格／比例及四組牆面門窗色。實體與半透明輪廓共用幾何；屋頂色由本局配色決定。 |
 | 房屋地基、砂石及水泥面 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `gravelFill`、`stones`、`slabs`、`completeSlab` | 蓋房子 | 場景內分區表面及填料模型。 |
 | 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`asphalt`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |

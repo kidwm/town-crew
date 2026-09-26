@@ -70,10 +70,17 @@ sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
 pointer gestures through `resumeRoad`, `resumeHouse` and `resumeFire`. Development snapshots
 use separate versioned keys and do not award completion badges.
-House snapshots use schema version 2: after five installed parts, `roof-color`
-pauses with the roof on the truck until the player confirms a colour and starts
-its pickup. Version 1 unfinished roofs migrate to this choice; already completed
-homes retain their colour and completion state.
+House snapshots use schema version 3 and include roof style, mirrored layout,
+palette, family and pet. Work coordinates remain in the original site's local frame;
+the scene mirrors its entire site group and converts input/projection at that boundary.
+The same transform drives vehicles, buildings, crane targets and hints. Each concrete
+region accepts partial pouring in any order. New rounds avoid repeating roof style,
+layout and palette; a separate last-round summary survives restarting work. Development
+selectors retain the round on stage resets, and explicitly select variants for testing.
+Version 1/2 homes migrate to the original appearance and layout, retaining work and
+roof colour. The old `roof-color` pause automatically starts pickup; new play moves
+directly from the fifth installation to roof pickup. The crane leaves before the
+automatic welcome, and phase/placement checkpoints are saved immediately.
 Fire snapshots keep each fire's remaining heat, the two independent rescue flags,
 the current passenger and animation progress. Restoration rejects impossible
 stage/action/heat/rescue combinations and releases stale pointer input. Water

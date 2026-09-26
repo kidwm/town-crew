@@ -1,45 +1,44 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advance, createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, chooseColor, startRoofLift, resumeHouse, progress, PARTS, HOUSE, POUR_TARGETS, DELIVERY_STOP, DELIVERY_START } from './house.ts';
+import { advance, createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, resumeHouse, progress, PARTS, HOUSE, POUR_TARGETS, DELIVERY_STOP, DELIVERY_START } from './house.ts';
 import type { HouseState } from './house.ts';
+import { DEFAULT_ROUND, ROOF_TYPES } from './round.ts';
 function tick(s: HouseState, seconds = 2) { for (let i = 0; i < Math.ceil(seconds * 60); i++) s = advance(s, 1 / 60); return s; }
 
-test('four vehicles, two deliveries and six lifts produce a decorated two-storey home', () => {
-  let s = tick(createHouse());
+const orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+for (const roof of ROOF_TYPES) for (const layout of [0, 1] as const) for (const order of orders)
+test(`${roof}/${layout}: four vehicles and six lifts complete after pouring ${order}`, () => {
+  const round = { ...DEFAULT_ROUND, roof, layout };
+  let s = tick(createHouse('gravel', round));
   s = tick(dragGravel(grab(s), 75), 4); assert.equal(s.phase, 'concrete');
   s = tick(s);
-  for (const target of POUR_TARGETS) s = tick(moveChute(s.action === 'ready' ? grab(s) : s, target), 1.3);
+  for (const i of order) {
+    s = tick(moveChute(grab(s), POUR_TARGETS[i]), 1.3);
+    s = resumeHouse(s)!; assert.ok(s); assert.equal(s.pours[i], 1); assert.deepEqual(s.round, round);
+  }
   s = tick(s, 4); assert.equal(s.phase, 'delivery-one');
   for (let batch = 0; batch < 2; batch++) {
     s = tick(s); s = tick(drive(grab(s), DELIVERY_STOP), 2);
     for (let i = 0; i < 3; i++) {
-      if (s.phase === 'roof-color') s = startRoofLift(chooseColor(s, 2));
       s = tick(s); assert.equal(s.action, 'ready');
       s = tick(release(moveLoad(grab(s), HOUSE)), 1.3);
       assert.equal(s.placed, batch * 3 + i + 1);
     }
     s = tick(s, 4);
   }
-  assert.equal(s.phase, 'complete'); assert.equal(s.color, 2); assert.equal(progress(s), 1);
+  assert.equal(s.phase, 'complete'); assert.equal(s.color, 0); assert.equal(progress(s), 1);
 });
-test('the roof waits for a colour choice before pickup and keeps that colour through reload and installation', () => {
-  let s = tick(createHouse('crane-two'));
+test('the fifth placement picks up the roof automatically and preserves its matched colour through reload', () => {
+  let s = tick(createHouse('crane-two', { ...DEFAULT_ROUND, palette: 2 }));
   for (let i = 0; i < 2; i++) s = tick(release(moveLoad(grab(s), HOUSE)), 3);
-  assert.equal(s.phase, 'roof-color'); assert.equal(s.placed, 5);
-  assert.deepEqual(tick(s, 10), s);
-  assert.deepEqual(grab(s), s);
-  assert.deepEqual(chooseColor(s, -1), s); assert.deepEqual(chooseColor(s, 3), s);
-  s = resumeHouse(chooseColor(s, 2))!;
-  assert.equal(s.phase, 'roof-color'); assert.equal(s.color, 2);
-  s = startRoofLift(s); assert.equal(s.action, 'pickup'); assert.equal(s.color, 2);
+  assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5); assert.equal(s.action, 'ready');
   s = tick(resumeHouse(s)!);
-  assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5);
+  assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5); assert.equal(s.color, 2);
   s = tick(release(moveLoad(grab(s), HOUSE)), 4);
   assert.equal(s.phase, 'complete'); assert.equal(s.placed, 6); assert.equal(s.color, 2);
-  assert.deepEqual(chooseColor(s, 0), s);
 });
 test('welcome completes without input only after the crane leaves, including restored doorbell saves', () => {
-  let s = tick(startRoofLift(chooseColor(createHouse('roof-color'), 1)));
+  let s = tick({ ...createHouse('roof-color'), color: 1 });
   s = tick(release(moveLoad(grab(s), HOUSE)), 1.3);
   assert.equal(s.placed, 6); assert.equal(s.action, 'leaving');
   s = tick(s, 2);
@@ -55,10 +54,16 @@ test('welcome completes without input only after the crane leaves, including res
     assert.equal(complete.placed, 6); assert.equal(progress(complete), 1);
   }
 });
-test('old saves preserve completed homes and bring unfinished roofs back to colour selection', () => {
+test('old colour-selection saves continue automatically with their existing colour', () => {
   const legacy = { ...createHouse('crane-two'), version: 1, placed: 5, action: 'ready', color: 1 };
   const restored = resumeHouse(legacy)!;
-  assert.equal(restored.version, 2); assert.equal(restored.phase, 'roof-color'); assert.equal(restored.color, 1);
+  assert.equal(restored.version, 3); assert.equal(restored.phase, 'roof-color'); assert.equal(restored.color, 1);
+  const ready = tick(restored); assert.equal(ready.phase, 'crane-two'); assert.equal(ready.placed, 5); assert.equal(ready.color, 1);
+  for (const version of [1, 2]) {
+    const legacyChoice = { ...createHouse('roof-color'), version, color: 2 };
+    const pickedUp = tick(resumeHouse(legacyChoice)!);
+    assert.equal(pickedUp.phase, 'crane-two'); assert.equal(pickedUp.action, 'ready'); assert.equal(pickedUp.color, 2);
+  }
   const complete = resumeHouse({ ...createHouse('complete'), version: 1, color: 2 })!;
   assert.equal(complete.phase, 'complete'); assert.equal(complete.color, 2);
   assert.equal(resumeHouse({ ...createHouse('roof-color'), placed: 6 }), undefined);
@@ -69,12 +74,16 @@ test('short or cancelled tipping does not fill gravel', () => {
   s = release(dragGravel(grab(s), 25), true); s = tick(s, 3);
   assert.equal(s.gravel, 0); assert.equal(s.phase, 'gravel'); assert.equal(s.dragPx, 0);
 });
-test('concrete fills only the current broad target, with partial work retained after cancellation', () => {
+test('concrete can switch between unfinished regions, retaining each partial fill after cancellation and reload', () => {
   let s = tick(createHouse('concrete'));
-  s = tick(moveChute(grab(s), POUR_TARGETS[2]), 2); assert.deepEqual(s.pours, [0, 0, 0]);
+  s = tick(moveChute(grab(s), POUR_TARGETS[2]), 0.4); assert.ok(s.pours[2] > 0 && s.pours[2] < 1);
   s = tick(moveChute(s, POUR_TARGETS[0]), 0.4); assert.ok(s.pours[0] > 0 && s.pours[0] < 1);
-  const partial = s.pours[0]; s = tick(release(s, true), 3); assert.equal(s.pours[0], partial);
-  s = tick(moveChute(grab(s), POUR_TARGETS[0]), 1); assert.equal(s.pours[0], 1);
+  const partial = [...s.pours]; s = tick(resumeHouse(release(s, true))!, 3); assert.deepEqual(s.pours, partial);
+  s = tick(moveChute(grab(s), POUR_TARGETS[1]), 1.3); assert.equal(s.pours[1], 1);
+  assert.equal(s.phase, 'concrete'); assert.equal(s.pours[0], partial[0]); assert.equal(s.pours[2], partial[2]);
+  s = tick(moveChute(s, POUR_TARGETS[1]), 2); assert.equal(s.phase, 'concrete'); // A filled zone cannot complete the others.
+  s = tick(moveChute(s, POUR_TARGETS[2]), 1); s = tick(moveChute(s, POUR_TARGETS[0]), 1);
+  assert.deepEqual(s.pours, [1, 1, 1]); assert.equal(s.action, 'working');
 });
 test('transport can pause and never unloads before it reaches the parking position', () => {
   let s = tick(createHouse('delivery-one'));
@@ -120,6 +129,7 @@ test('snapshots recover dragging, reject malformed values and preserve completed
   assert.equal(resumeHouse(null), undefined);
   assert.equal(resumeHouse({ ...createHouse('complete'), gravel: 0 }), undefined);
   assert.equal(resumeHouse({ ...createHouse('crane-one'), action: 'leaving' }), undefined);
-  assert.equal(resumeHouse({ ...createHouse('concrete'), pours: [0, 1, 0] }), undefined);
+  assert.equal(resumeHouse({ ...createHouse('concrete'), version: 2, pours: [0, 1, 0] }), undefined);
+  assert.deepEqual(resumeHouse({ ...createHouse('concrete'), pours: [0, 1, 0] })!.pours, [0, 1, 0]);
   assert.equal(resumeHouse(createHouse('complete'))!.placed, 6);
 });

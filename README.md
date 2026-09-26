@@ -131,21 +131,29 @@ All emergency vehicles leave before the final celebration.
 
 1. Drag the gravel truck's bed upward to fill the prepared foundation.
 2. Drag the concrete mixer's chute toward the centre of each outlined foundation
-   region. Its ring rests on the gravel/concrete surface; aiming there aligns
+   region, in any order. All unfinished regions show rings on the gravel/concrete surface; aiming there aligns
    the outlet and stream with that region's centre. Holding the raised outlet
    above the region also works. Stopping or cancellation preserves partial filling.
-3. Drag the flatbed truck right along the independent foreground lane into its parking bay.
+3. Drag the flatbed along the independent foreground lane into its parking bay. The direction follows this round's left/right site layout.
 4. The crane automatically picks up each part. Drag toward the actual assembly
    base or ghost outline; the site turns green and a short 0.4-second dwell
    automatically aligns and lowers the load without releasing. Releasing at a
    valid destination also works. Two L-shaped wall
    sections and an upper floor slab complete the first storey.
 5. A second flatbed delivery brings the second storey's two wall sections and roof.
-   After installing both walls, preview coral, green or blue on the roof waiting on
-   the truck. Press the crane button to start the final lift in the chosen colour.
+   After installing both walls, the crane automatically picks up the coordinated-colour roof.
+   Drag it into place without a colour-selection screen or another confirmation.
    There are six lifts across the two deliveries, with a celebration after the first floor.
 6. After the crane leaves the site, the welcome begins automatically. Windows light up,
    residents wave, and the mission can be replayed or left through the selection screen.
+
+Each fresh round changes the roof style (gable, shed or flat), mirrors the site to the
+opposite side and changes the wall/door palette. Three family arrangements and an
+optional cat or dog greet the finished house. The illustrated plan previews the
+actual roof and palette without requiring a tap. All variants remain two-storey homes
+with four vehicle types, two deliveries and six lifts. Reload retains the same home,
+family, pet, colour and partial work. Old colour-selection saves automatically pick up
+the roof in the previously chosen colour; completed old homes keep their appearance.
 
 Crane loads travel above the completed structure before automatically lowering.
 Misses and cancelled placements gently reset without installing a part. Taps and
@@ -209,7 +217,10 @@ and roller drums rotate according to vehicle displacement.
 
 House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,
-`roof-color`, `decorate`, and `complete`. The development panel can jump to or reset each stage,
+`decorate`, and `complete`. The legacy `roof-color` entry automatically starts the final pickup.
+Add `roof=gable|shed|flat`, `layout=0|1`, `palette=0..3`, `family=0..2`, and
+`pet=none|cat|dog` to select a development round. The panel exposes the same selectors;
+changing or resetting stages retains the configuration. The development panel can jump to or reset each stage,
 with snapshots isolated from normal gameplay.
 
 Fire-brigade entries use `?dev=1&mission=fire-rescue&stage=…`:
@@ -251,7 +262,7 @@ Start each new mission proposal with the [mission design principles and checklis
 Plan replay variation and child choices alongside the core interaction: define valid configurations,
 which main variation avoids repeating the previous round, and how reload preserves the current round.
 Keep gestures familiar and coordinate routes, targets and hints for every configuration.
-The same document records the planned house-building variants separately from shipped behaviour.
+The same document records implemented house variants and the playtest-driven removal of the blocking colour picker.
 
 Before designing or implementing new models, read the [model catalog](docs/model-catalog.md).
 It lists existing vehicles, props and scenery, their source locations, and whether they
@@ -272,7 +283,9 @@ road-repair sequence.
 - `src/missions/road-repair/devtools.ts`: versioned development snapshots.
 - `src/runtime/`: reusable pointer ownership, audio resources, and shape builders.
   These modules do not import road-repair rules.
-- `src/missions/house-build/`: independent house rules, vehicle models, scene and session.
+- `src/missions/house-build/`: independent house rules, persisted round configuration, house/roof
+  variants, residents, vehicle models, scene and session.
+- `src/runtime/pets.ts`: the original fire-rescue cat, now shared with house-building, and a new dog.
 - `src/missions/fire-rescue/`: independent fire, rescue and transport rules, emergency
   vehicles, characters, scene, HUD, controller and continuous water audio.
 - `src/missions/traffic-rescue/`: independent collision, policing, two-car towing,
@@ -302,7 +315,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The five missions have 72 domain tests, covering fixed arm lengths,
+The five missions have 111 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,

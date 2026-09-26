@@ -83,30 +83,36 @@ test('road cleanup development entry preserves cargo and a partial drive across 
   await expect(app).toHaveAttribute('data-loaded', '0');
 });
 
-test('house development stages, reload and HMR preserve the second floor', async ({ page }) => {
+test('house development stages, reload and HMR preserve the round and second floor', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/?dev=1&mission=house-build&stage=crane-two');
+  await page.goto('/?dev=1&mission=house-build&stage=crane-two&roof=flat&layout=1&palette=2&family=2&pet=dog');
   const app = page.locator('#app');
   await expect(app).toHaveAttribute('data-phase', 'crane-two');
   await expect(app).toHaveAttribute('data-action', 'ready');
   await expect(app).toHaveAttribute('data-placed', '3');
+  await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
   await page.reload();
   await expect(app).toHaveAttribute('data-placed', '3');
+  await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
   const world = await page.locator('.world').elementHandle();
   const now = new Date();
   await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
   await page.waitForFunction(element => !element.isConnected, world);
   await expect(app).toHaveAttribute('data-placed', '3');
+  await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
   await expect(app).toHaveAttribute('data-action', 'ready');
   await expect(page.locator('canvas')).toHaveCount(1);
   await page.locator('#stage').selectOption('concrete');
+  await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1');
   await expect(app).toHaveAttribute('data-pours', '0');
   await expect(app).toHaveAttribute('data-placed', '0');
   await expect(app).toHaveAttribute('data-action', 'ready');
   await page.getByRole('button', { name: '重設目前階段' }).click();
   await expect(app).toHaveAttribute('data-action', 'entering');
   await expect(app).toHaveAttribute('data-action', 'ready');
+  await page.locator('#house-roof').selectOption('shed'); await expect(app).toHaveAttribute('data-roof', 'shed');
+  await expect(app).toHaveAttribute('data-layout', '1');
   await page.getByRole('button', { name: '回到選關', exact: true }).click();
   await page.getByRole('button', { name: '修馬路', exact: true }).click();
   await expect(app).toHaveAttribute('data-phase', 'excavator');

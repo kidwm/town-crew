@@ -70,17 +70,4 @@ export function createLadder(shapes: Shapes) {
     supports.forEach(({ root, side }) => { root.position.z = side * (0.85 + deployed * 0.52); root.position.y = (1 - deployed) * 0.6; root.scale.y = 0.3 + deployed * 0.7; });
   } };
 }
-export function createCat(shapes: Shapes) {
-  const root = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.29, 12, 8), shapes.material('#dcaa76')); body.position.y = 0.3; body.scale.set(0.7, 1, 1); root.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 8), shapes.material('#e5b985')); head.position.set(0, 0.67, 0.1); root.add(head);
-  for (const x of [-0.14, 0.14]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.105, 0.24, 4), shapes.material('#d7a173')); ear.position.set(x, 0.86, 0.1); root.add(ear);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.025, 8, 6), shapes.material('#536d68')); eye.position.set(x * 0.58, 0.7, 0.3); root.add(eye);
-    shapes.box(root, [0.12, 0.13, 0.2], [x, 0.08, 0.12], '#f3dbb2');
-  }
-  const tail = new THREE.Group(); tail.position.set(0.19, 0.2, -0.08); root.add(tail);
-  const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(), new THREE.Vector3(0.35, 0.1, -0.3), new THREE.Vector3(0.42, 0.5, -0.25)]);
-  tail.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.055, 7, false), shapes.material('#c79668')));
-  return { root, tail };
-}
+export { createCat } from '../../runtime/pets.ts';
