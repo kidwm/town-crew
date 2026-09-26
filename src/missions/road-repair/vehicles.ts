@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Shapes } from '../../runtime/geometry.ts';
-import { BOOM, STICK, PIVOT, elbow, hasBucketLoad, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import { BOOM, STICK, PIVOT, elbow, hasBucketLoad, nearestChunk, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import { DAMAGE } from './domain/round.ts';
+import type { RoadDamage } from './domain/round.ts';
 import { createAsphaltChunk } from '../../runtime/rocks.ts';
 import { cargoLocal, cargoLanding, HAUL_SCALE } from './domain/hauling.ts';
 import type { Point, ExcavatorState } from './domain/excavator.ts';
@@ -40,8 +42,11 @@ export function createExcavatorVisual(shapes: Shapes) {
     chunk.position.set(position.x, position.y, position.z);
     return chunk;
   });
-  const halo = new THREE.Mesh(new THREE.RingGeometry(0.64, 0.82, 32), new THREE.MeshBasicMaterial({ color: '#fff0a6', side: THREE.DoubleSide }));
-  halo.rotation.x = -Math.PI / 2;
+  const halos = ROAD_CHUNKS.map(() => {
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.68, 0.77, 32), new THREE.MeshBasicMaterial({ color: '#fff0a6', side: THREE.DoubleSide, transparent: true, opacity: 0.65 }));
+    halo.rotation.x = -Math.PI / 2;
+    return halo;
+  });
   const loaded = ROAD_CHUNKS.map((_, i) => {
     const chunk = createAsphaltChunk(shapes, i), p = cargoLocal(i);
     chunk.position.set(p.x, p.y, p.z);
@@ -54,8 +59,8 @@ export function createExcavatorVisual(shapes: Shapes) {
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
   };
   return {
-    root, hitbox, chunks, halo, loaded,
-    render(state: ExcavatorState, active: boolean, offset: number, time: number, canInteract = true) {
+    root, hitbox, chunks, halos, loaded,
+    render(state: ExcavatorState, active: boolean, offset: number, time: number, canInteract = true, damage: RoadDamage = DAMAGE.staggered) {
       root.visible = active;
       root.position.x = offset;
       const armElbow = elbow(state.bucket);
@@ -69,26 +74,35 @@ export function createExcavatorVisual(shapes: Shapes) {
       bucket.position.copy(vec(state.bucket));
       bucket.rotation.z = state.action === 'unloading' ? -0.28 - smooth((state.elapsed - 0.65) / 0.2) * 0.8 : hasBucketLoad(state) ? -0.28 : 0;
       const ready = active && canInteract && state.action === 'ready';
-      const target = ROAD_CHUNKS[state.cleared];
-      halo.visible = active && canInteract && ['ready', 'dragging'].includes(state.action) && !!target;
-      if (target) {
-        halo.position.set(target.x, 0.12, target.z);
-        halo.scale.setScalar(1 + Math.sin(time * 4) * 0.08);
-      }
+      const suggested = nearestChunk(state, state.bucket, damage.chunks);
+      halos.forEach((halo, i) => {
+        halo.visible = active && canInteract && ['ready', 'dragging'].includes(state.action) && !state.delivered.includes(i);
+        const target = damage.chunks[i]; halo.position.set(target.x, 0.12, target.z);
+        halo.material.opacity = i === suggested ? 0.85 : 0.45;
+        halo.scale.setScalar(1 + (i === suggested ? Math.sin(time * 4) * 0.05 : 0));
+      });
       chunks.forEach((rock, i) => {
-        rock.visible = active && i >= state.cleared;
-        rock.position.copy(vec(ROAD_CHUNKS[i]));
-        rock.scale.setScalar(1);
-        if (i === state.cleared && hasBucketLoad(state)) {
+        rock.visible = active && !state.delivered.includes(i);
+        rock.position.copy(vec(damage.chunks[i]));
+        rock.rotation.y = damage.rotations[i];
+        let scale = 1;
+        if (i === state.carried && hasBucketLoad(state)) {
           rock.position.copy(vec(state.bucket)).add(new THREE.Vector3(0.2, -0.1, 0));
           if (state.action === 'unloading') {
             const fall = smooth((state.elapsed - 0.7) / 0.2);
-            rock.position.lerp(vec(cargoLanding(i)), fall);
-            rock.scale.setScalar(1 + (HAUL_SCALE - 1) * fall);
+            rock.position.lerp(vec(cargoLanding(state.cleared)), fall);
+            scale = 1 + (HAUL_SCALE - 1) * fall;
           }
-        } else if (ready && i === state.cleared) rock.scale.setScalar(1 + Math.sin(time * 4) * 0.07);
+        } else if (ready && i === suggested) scale = 1 + Math.sin(time * 4) * 0.04;
+        rock.scale.set(damage.scales[i][0] * scale, scale, damage.scales[i][1] * scale);
       });
-      loaded.forEach((rock, i) => { rock.visible = i < state.cleared; });
+      loaded.forEach((rock, i) => {
+        const slot = state.delivered.indexOf(i); rock.visible = slot >= 0;
+        if (slot >= 0) {
+          const p = cargoLocal(slot); rock.position.set(p.x, p.y, p.z);
+          rock.rotation.y = damage.rotations[i]; rock.scale.set(damage.scales[i][0], 1, damage.scales[i][1]);
+        }
+      });
     },
   };
 }

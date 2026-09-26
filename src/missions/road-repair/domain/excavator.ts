@@ -1,20 +1,22 @@
+import { DAMAGE } from './round.ts';
 export interface Point { x: number; y: number; z: number }
 export const HOME: Point = { x: -1.25, y: 0.85, z: 0 };
 export const PIVOT: Point = { x: -4, y: 2.35, z: 0 };
 export const UNLOAD: Point = { x: 1.76, y: 2.25, z: -2 };
 export const CARRY_HEIGHT = 2.8;
+// Briefly settle at the intended piece so passing nearer pieces stays possible.
+export const PICKUP_PAUSE = 0.35;
 export const BOOM = 3.6;
 export const STICK = 4;
-export const ROAD_CHUNKS: Point[] = [
-  { x: 1.15, y: 0, z: -0.65 },
-  { x: 2.35, y: 0, z: 0.55 },
-  { x: 3.35, y: 0, z: -0.45 },
-];
+export const ROAD_CHUNKS = DAMAGE.staggered.chunks;
 export type ExcavatorAction = 'entering' | 'ready' | 'dragging' | 'scooping' | 'carrying' | 'carrying-drag' | 'unloading' | 'returning' | 'complete';
 export interface ExcavatorState {
   action: ExcavatorAction;
   elapsed: number;
   cleared: number;
+  delivered: number[];
+  carried: number | null;
+  aimed: number | null;
   bucket: Point;
   target: Point;
   from: Point;
@@ -23,7 +25,7 @@ export interface ExcavatorState {
 export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
 export const smooth = (t: number) => { const v = Math.max(0, Math.min(1, t)); return v * v * (3 - 2 * v); };
 export function createExcavator(): ExcavatorState {
-  return { action: 'entering', elapsed: 0, cleared: 0, bucket: { ...HOME }, target: { ...HOME }, from: { ...HOME }, control: 'none' };
+  return { action: 'entering', elapsed: 0, cleared: 0, delivered: [], carried: null, aimed: null, bucket: { ...HOME }, target: { ...HOME }, from: { ...HOME }, control: 'none' };
 }
 export function reachable(target: Point): Point {
   const dx = target.x - PIVOT.x, dy = target.y - PIVOT.y, dz = target.z - PIVOT.z;
@@ -44,21 +46,30 @@ export function elbow(target: Point): Point {
   return { x: PIVOT.x + unit.x * along + bend.x * height, y: PIVOT.y + unit.y * along + bend.y * height, z: PIVOT.z + unit.z * along + bend.z * height };
 }
 export function grabBucket(state: ExcavatorState): ExcavatorState {
-  if (state.action === 'ready') return { ...state, action: 'dragging', control: 'pointer' };
+  if (state.action === 'ready') return { ...state, action: 'dragging', control: 'pointer', aimed: null, elapsed: 0 };
   if (state.action === 'carrying') return { ...state, action: 'carrying-drag', control: 'pointer' };
   return state;
 }
 export const hasBucketLoad = (state: ExcavatorState) => ['scooping', 'carrying', 'carrying-drag', 'unloading'].includes(state.action);
 export const overTruck = (point: Point) => Math.abs(point.x - UNLOAD.x) <= 0.95 && Math.abs(point.z - UNLOAD.z) <= 0.85;
-export function moveBucket(state: ExcavatorState, target: Point): ExcavatorState {
+export const availableChunks = (state: ExcavatorState, chunks: readonly Point[] = ROAD_CHUNKS) => chunks.map((_, i) => i).filter(i => !state.delivered.includes(i) && state.carried !== i);
+export function nearestChunk(state: ExcavatorState, point: Point, chunks: readonly Point[] = ROAD_CHUNKS): number | undefined {
+  return availableChunks(state, chunks).sort((a, b) => Math.hypot(chunks[a].x - point.x, chunks[a].z - point.z) - Math.hypot(chunks[b].x - point.x, chunks[b].z - point.z))[0];
+}
+export function moveBucket(state: ExcavatorState, target: Point, chunks: readonly Point[] = ROAD_CHUNKS): ExcavatorState {
   if (!['dragging', 'carrying-drag'].includes(state.action) || ![target.x, target.y, target.z].every(Number.isFinite)) return state;
   const loaded = hasBucketLoad(state);
-  return { ...state, target: reachable({ x: Math.max(-2, Math.min(4.3, target.x)), y: loaded ? CARRY_HEIGHT : HOME.y, z: Math.max(loaded ? -3 : -1.65, Math.min(1.65, target.z)) }) };
+  const aimed = loaded ? null : nearestChunk(state, target, chunks) ?? null;
+  return { ...state, aimed, elapsed: 0, target: reachable({ x: Math.max(-2, Math.min(4.3, target.x)), y: loaded ? CARRY_HEIGHT : HOME.y, z: Math.max(loaded ? -3 : -1.65, Math.min(1.65, target.z)) }) };
+}
+function aimedChunk(state: ExcavatorState, chunks: readonly Point[]) {
+  const index = state.aimed, chunk = index === null ? undefined : chunks[index];
+  return chunk && !state.delivered.includes(index!) && Math.hypot(state.target.x - chunk.x, state.target.z - chunk.z) <= 0.9 ? index : null;
 }
 function unloadBucket(state: ExcavatorState): ExcavatorState {
   return { ...state, action: 'unloading', control: 'none', elapsed: 0, from: state.bucket };
 }
-export function releaseBucket(state: ExcavatorState, cancelled = false): ExcavatorState {
+export function releaseBucket(state: ExcavatorState, cancelled = false, chunks: readonly Point[] = ROAD_CHUNKS): ExcavatorState {
   if (state.action === 'scooping') return { ...state, control: 'none' };
   if (state.action === 'carrying-drag') {
     // Use the intended destination so releasing a quick drag does not lose to
@@ -66,24 +77,29 @@ export function releaseBucket(state: ExcavatorState, cancelled = false): Excavat
     if (!cancelled && overTruck(state.target)) return unloadBucket(state);
     return { ...state, action: 'carrying', control: 'none', target: state.bucket };
   }
+  // A deliberate release over a piece also accepts it. Moving across another
+  // piece en route must not scoop before the child reaches their destination.
+  if (state.action === 'dragging' && !cancelled && aimedChunk(state, chunks) !== null) return { ...state, control: 'tap' };
   return state.action === 'dragging' ? { ...state, action: 'ready', control: 'none', target: state.bucket } : state;
 }
 /** A selected bucket can also be sent to the current destination by a tap/key. */
-export function tapBucketTarget(state: ExcavatorState): ExcavatorState {
+export function tapBucketTarget(state: ExcavatorState, chunks: readonly Point[] = ROAD_CHUNKS, index = nearestChunk(state, state.bucket, chunks)): ExcavatorState {
   if (!['ready', 'carrying'].includes(state.action)) return state;
-  const target = state.action === 'carrying' ? UNLOAD : ROAD_CHUNKS[state.cleared];
-  return target ? { ...moveBucket(grabBucket(state), target), control: 'tap' } : state;
+  const target = state.action === 'carrying' ? UNLOAD : index !== undefined && availableChunks(state, chunks).includes(index) ? chunks[index] : undefined;
+  return target ? { ...moveBucket(grabBucket(state), target, chunks), control: 'tap' } : state;
 }
-export function advanceExcavator(state: ExcavatorState, delta: number): ExcavatorState {
+export function advanceExcavator(state: ExcavatorState, delta: number, chunks: readonly Point[] = ROAD_CHUNKS): ExcavatorState {
   const elapsed = state.elapsed + delta;
   if (state.action === 'entering') return elapsed >= 0.9 ? { ...state, action: 'ready', elapsed: 0 } : { ...state, elapsed };
   if (state.action === 'dragging') {
     const bucket = mix(state.bucket, state.target, 1 - Math.exp(-24 * delta));
-    const chunk = ROAD_CHUNKS[state.cleared];
-    if (chunk && Math.hypot(bucket.x - chunk.x, bucket.z - chunk.z) <= 1.1) {
-      return { ...state, bucket, from: bucket, action: 'scooping', elapsed: 0 };
+    const index = aimedChunk(state, chunks);
+    // Follow the piece the finger is aiming at, not an earlier piece crossed
+    // by the arm on its way there. The finger still has a broad landing area.
+    if (index !== null && (state.control === 'tap' || elapsed >= PICKUP_PAUSE) && Math.hypot(bucket.x - state.target.x, bucket.z - state.target.z) <= 0.25) {
+      return { ...state, bucket, from: bucket, carried: index, action: 'scooping', elapsed: 0 };
     }
-    return { ...state, bucket };
+    return { ...state, bucket, elapsed };
   }
   if (state.action === 'scooping') {
     const bucket = reachable(mix(state.from, { ...state.from, y: CARRY_HEIGHT }, smooth(elapsed / 0.45)));
@@ -98,7 +114,7 @@ export function advanceExcavator(state: ExcavatorState, delta: number): Excavato
     // Align while high enough to clear the cab, then lower over the open bed.
     const above = { ...UNLOAD, y: CARRY_HEIGHT };
     const bucket = reachable(elapsed < 0.5 ? mix(state.from, above, smooth(elapsed / 0.5)) : mix(above, UNLOAD, smooth((elapsed - 0.5) / 0.2)));
-    return elapsed >= 0.9 ? { ...state, bucket, from: bucket, cleared: state.cleared + 1, action: 'returning', elapsed: 0 } : { ...state, bucket, elapsed };
+    return elapsed >= 0.9 && state.carried !== null ? { ...state, bucket, from: bucket, cleared: state.cleared + 1, delivered: [...state.delivered, state.carried], carried: null, aimed: null, action: 'returning', elapsed: 0 } : { ...state, bucket, elapsed };
   }
   if (state.action === 'returning') {
     const t = smooth(elapsed / 0.55), returning = mix(state.from, HOME, t);
@@ -114,7 +130,8 @@ export function resumeExcavator(state: ExcavatorState): ExcavatorState {
   if (state.control === undefined) {
     // Old automatic pickup animations restart that unfinished piece only.
     const interrupted = ['dragging', 'scooping', 'unloading', 'returning'].includes(state.action);
-    return { ...state, control: 'none', ...(interrupted ? { action: state.cleared === 3 ? 'complete' as const : 'ready' as const, elapsed: 0, bucket: { ...HOME }, target: { ...HOME }, from: { ...HOME } } : {}) };
+    state = { ...state, control: 'none', ...(interrupted ? { action: state.cleared === 3 ? 'complete' as const : 'ready' as const, elapsed: 0, bucket: { ...HOME }, target: { ...HOME }, from: { ...HOME } } : {}) };
   }
+  if (!state.delivered) state = { ...state, delivered: Array.from({ length: state.cleared }, (_, i) => i), carried: hasBucketLoad(state) ? state.cleared : null, aimed: null };
   return { ...releaseBucket(state, true), control: 'none' };
 }

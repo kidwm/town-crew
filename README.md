@@ -176,9 +176,16 @@ clear access routes; the flatbed travels forward on the road in front of the hou
 ## Repair the road
 
 The town road has cracked, flat pieces of old asphalt, not natural mountain boulders.
+Each new round selects one of three damage patterns (staggered, split, clustered)
+and mirrors the whole worksite. The next round changes both pattern and side;
+reload and HMR retain the current configuration. Hole, fill and finished patch
+share the same outline. The workload stays at three loads, one cleanup trip,
+one filling operation and two roller passes.
 
-1. Drag the outlined excavator bucket toward each broken road surface. It lifts
-   the piece, then stays under the same finger's control. Drag the loaded bucket
+1. Drag the outlined excavator bucket toward any of the three broken surfaces,
+   in the child's chosen order. Pause briefly over a piece to lift it and keep
+   control with the same finger. Releasing over a piece also lifts it and waits
+   for the next drag. Crossing another piece on the way does not choose it. Drag the loaded bucket
    to the highlighted bed of the green cleanup truck and release when the target
    turns green to align and tip it in. The bucket travels above the cab. Releasing
    elsewhere or cancelling pauses in place with the load; grab again to continue.
@@ -186,20 +193,20 @@ The town road has cracked, flat pieces of old asphalt, not natural mountain boul
    visible in the truck before cleanup starts.
    A hand demonstrates the initial drag and changes destination after pickup;
    it hides during interaction and reappears after three idle seconds. Tapping
-   the bucket selects it, then tapping the current destination performs that
+   the bucket selects it, then tapping any remaining piece or the truck performs that
    pickup or delivery. With the canvas focused, Enter/Space selects the bucket
    and activates its destination; Escape cancels selection.
-2. After the excavator leaves, drag the loaded cleanup truck left through the
+2. After the excavator leaves, drag the loaded cleanup truck through the
    open gate. Taps cannot complete the trip; release or reload retains its position
    and load. The blue delivery truck waits until cleanup has fully departed.
 3. Drag the delivery truck's bed at the front, farthest from its rear hinge,
    upward. Crossing the threshold triggers automatic tipping. The animation fills
    the base and spreads darker road material before the roller arrives.
-4. Drag the roller right across the repair area, then back left. Either pass
+4. Drag the roller across the repair area, then back. Hints follow the site's orientation. Either pass
    can be paused and resumed. The second pass leaves a smooth road patch.
 5. The vehicles leave, cones and barriers are cleared, and a car passes with a
    horn cue. The finished surface sits below the restored centre marking.
-   Restart clears all loading and hauling progress.
+   Restart clears all loading and hauling progress and changes the worksite.
 
 The original natural boulder model is preserved in `src/runtime/rocks.ts` as
 `createBoulder`, with its original geometry, colour and size. The same module
@@ -207,7 +214,8 @@ provides the separate flat `createAsphaltChunk`. Both are in the model catalog.
 Old saves retain completed work: former roadside piles become truck cargo;
 unfinished automatic scoops from earlier versions restart on the road and later
 stages do not replay cleanup. New saves preserve paused, loaded buckets; an
-already committed tipping animation finishes only once after reload.
+already committed tipping animation finishes only once after reload. Delivered
+piece identities and their loading order are preserved, including each piece's appearance.
 
 The entry barrier opens fully before a construction vehicle moves. It closes
 after the vehicle parks, before interaction begins. On departure it opens
@@ -231,12 +239,16 @@ and roller drums rotate according to vehicle displacement.
 `?dev=1` enables the development panel in Vite development mode. Direct entries:
 
 - `stage=excavator`: excavator entrance, three asphalt chunks and an empty cleanup truck.
-- `stage=haul-away`: all three chunks loaded, excavator gone, drag the cleanup truck left.
+- `stage=haul-away`: all three chunks loaded, excavator gone, drag the cleanup truck out.
 - `stage=dump-truck`: cleanup gone, delivery truck entrance.
 - `stage=roller`: material filled, first roller pass.
-- `stage=roller-return`: first pass complete, roller at the right edge.
+- `stage=roller-return`: first pass complete, roller at the far edge.
 - `stage=traffic`: repaired road and the opening traffic sequence.
 - `stage=complete`: restored road with all vehicles and equipment cleared.
+
+Add `pattern=staggered|split|clustered` and `layout=0|1` to select a road worksite.
+The panel exposes the same choices. Changing or resetting stages preserves them;
+restarting the mission draws a new round. Normal gameplay ignores these shortcuts.
 
 House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,

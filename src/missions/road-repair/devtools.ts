@@ -5,6 +5,8 @@ import type { Point } from './domain/excavator.ts';
 import { resumeRoad, stages } from './domain/road.ts';
 import type { RoadState, EntryStage } from './domain/road.ts';
 import { HAUL_EXIT, HAUL_START } from './domain/hauling.ts';
+import { validRound } from './domain/round.ts';
+import { hasBucketLoad } from './domain/excavator.ts';
 
 interface Snapshot { key: string; state: RoadState; tuning: Tuning; targetStage: EntryStage }
 
@@ -16,6 +18,12 @@ export function restoreRoadSnapshot(value: unknown, snapshotKey: string) {
       const settings = data.tuning as Tuning;
       const pointOK = (p: Point) => p && [p.x, p.y, p.z].every(v => Number.isFinite(v) && Math.abs(v) < 30);
       const e = candidate.excavator, r = candidate.roller, t = candidate.truck;
+      const legacy = candidate.version === undefined;
+      const piecesOK = legacy || Array.isArray(e.delivered) && e.delivered.length === e.cleared
+        && new Set(e.delivered).size === e.delivered.length && e.delivered.every(i => Number.isInteger(i) && i >= 0 && i < 3)
+        && (hasBucketLoad(e) ? Number.isInteger(e.carried) && e.carried! >= 0 && e.carried! < 3 && !e.delivered.includes(e.carried!) : e.carried === null)
+        && (e.aimed === null || Number.isInteger(e.aimed) && e.aimed >= 0 && e.aimed < 3)
+        && (e.action !== 'complete' || e.cleared === 3);
       const h = candidate.hauler;
       const haulerOK = h === undefined ? candidate.phase !== 'haul-away' :
         ['ready', 'dragging', 'leaving', 'complete'].includes(h.action) && Number.isFinite(h.elapsed) && h.elapsed >= 0
@@ -23,6 +31,7 @@ export function restoreRoadSnapshot(value: unknown, snapshotKey: string) {
         && (candidate.phase === 'haul-away' ? e.cleared === 3 && e.action === 'complete' && candidate.access === 'working' && h.action !== 'complete'
           : candidate.phase === 'excavator' ? h.action === 'ready' && h.x === HAUL_START : h.action === 'complete');
       if (['excavator', 'haul-away', 'dump-truck', 'roller', 'traffic', 'complete'].includes(candidate.phase)
+        && (legacy ? candidate.round === undefined : candidate.version === 1 && validRound(candidate.round)) && piecesOK
         && haulerOK
         && ['entering', 'ready', 'dragging', 'scooping', 'carrying', 'carrying-drag', 'unloading', 'returning', 'complete'].includes(e.action)
         && (e.control === undefined || ['none', 'pointer', 'tap'].includes(e.control))

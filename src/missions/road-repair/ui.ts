@@ -1,3 +1,5 @@
+import { DAMAGE, DAMAGE_PATTERNS } from './domain/round.ts';
+
 export const icons = {
   excavator: '<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="3" y="29" width="26" height="8" rx="4" fill="#536665"/><rect x="6" y="20" width="23" height="10" rx="2" fill="#e9b24d"/><rect x="7" y="10" width="11" height="13" rx="2" fill="#edc367"/><path d="M23 22L25 5L37 13L40 27" fill="none" stroke="#d89b35" stroke-width="4" stroke-linecap="round"/><path d="M35 26L44 25L43 32L36 32Z" fill="#e9b24d"/></svg>',
   'haul-away': '<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 14H17V29H4Z" fill="#74a28b"/><path d="M7 16H14V22H7Z" fill="#c3e6e3"/><rect x="3" y="27" width="41" height="5" rx="2" fill="#4b6864"/><path d="M19 12H44L40 26H19Z" fill="#ad7761"/><path d="M22 12l6-4 6 3 7-2 2 4Z" fill="#535f65"/><circle cx="11" cy="32" r="5" fill="#536665"/><circle cx="35" cy="32" r="5" fill="#536665"/></svg>',
@@ -29,6 +31,8 @@ export function mountUI(app: HTMLElement, dev: boolean) {
     <p class="dev-intro">挖除 → 清運 → 填料 → 壓平 → 通車<br>各階段可直接進入與重設。</p>
     <label class="field">直達階段<select id="stage"><option value="excavator">挖土機 · 清除舊路面</option><option value="haul-away">清運車 · 載走舊路面</option><option value="dump-truck">運料車 · 填補路基</option><option value="roller">壓路機 · 第一趟</option><option value="roller-return">壓路機 · 回程</option><option value="traffic">完工通車</option><option value="complete">慶祝完成</option></select></label>
     <button class="reset-stage">重設目前階段</button>
+    <label class="field">破損配置<select id="road-pattern">${DAMAGE_PATTERNS.map(pattern => `<option value="${pattern}">${DAMAGE[pattern].name}</option>`).join('')}</select></label>
+    <label class="field">施工方向<select id="road-layout"><option value="0">怪手在左</option><option value="1">怪手在右</option></select></label>
     <div class="divider"></div>
     <label class="field">車斗拖曳門檻 <output id="threshold-value"></output><input id="threshold" type="range" min="30" max="140" step="5"></label>
     <label class="field">車斗最大傾角 <output id="tilt-value"></output><input id="tilt" type="range" min="40" max="70" step="1"></label>

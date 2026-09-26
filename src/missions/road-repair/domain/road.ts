@@ -2,6 +2,8 @@ import { advance as advanceTruck, createState, defaultTuning, pose as truckPose 
 import type { TruckState, Tuning } from './dump-truck.ts';
 import { advanceExcavator, createExcavator, HOME, resumeExcavator, smooth } from './excavator.ts';
 import type { ExcavatorState } from './excavator.ts';
+import { DEFAULT_ROUND, roadDamage } from './round.ts';
+import type { RoadRound } from './round.ts';
 import { HAUL_START, HAUL_EXIT, HAUL_OFFSCREEN, HAUL_DURATION } from './hauling.ts';
 export { HAUL_START, HAUL_EXIT, HAUL_Z, HAUL_SCALE } from './hauling.ts';
 
@@ -23,6 +25,8 @@ export interface RollerState {
   passes: number;
 }
 export interface RoadState {
+  version: 1;
+  round: RoadRound;
   phase: MissionPhase;
   access: SiteAccess;
   elapsed: number;
@@ -31,12 +35,12 @@ export interface RoadState {
   roller: RollerState;
   hauler: { action: 'ready' | 'dragging' | 'leaving' | 'complete'; x: number; elapsed: number };
 }
-export function createRoad(stage: EntryStage = 'excavator'): RoadState {
+export function createRoad(stage: EntryStage = 'excavator', round: RoadRound = DEFAULT_ROUND): RoadState {
   const phase = stage === 'roller-return' ? 'roller' : stage;
   return {
-    phase, elapsed: 0,
+    version: 1, round: { ...round }, phase, elapsed: 0,
     access: phase === 'haul-away' || phase === 'traffic' || phase === 'complete' || stage === 'roller-return' ? 'working' : 'opening-entry',
-    excavator: { ...createExcavator(), ...(phase === 'excavator' ? {} : { action: 'complete' as const, cleared: 3 }) },
+    excavator: { ...createExcavator(), ...(phase === 'excavator' ? {} : { action: 'complete' as const, cleared: 3, delivered: [0, 1, 2] }) },
     truck: createState(phase === 'excavator' || phase === 'haul-away' || phase === 'dump-truck' ? 'entering' : 'complete'),
     hauler: { action: phase === 'excavator' || phase === 'haul-away' ? 'ready' : 'complete', x: phase === 'excavator' || phase === 'haul-away' ? HAUL_START : HAUL_EXIT, elapsed: 0 },
     roller: { action: phase === 'traffic' || phase === 'complete' ? 'complete' : stage === 'roller-return' ? 'ready' : 'entering', elapsed: 0, x: stage === 'roller-return' ? ROLLER_RIGHT : ROLLER_LEFT, passes: phase === 'traffic' || phase === 'complete' ? 2 : stage === 'roller-return' ? 1 : 0 },
@@ -89,7 +93,7 @@ function tick(state: RoadState, delta: number, tuning: Tuning): RoadState {
     return { ...state, phase, access: phase === 'haul-away' || phase === 'traffic' ? 'working' : 'entering', elapsed: 0 };
   }
   if (state.phase === 'excavator') {
-    const excavator = advanceExcavator(state.excavator, delta);
+    const excavator = advanceExcavator(state.excavator, delta, roadDamage(state.round).chunks);
     const access = state.access === 'entering' && excavator.action === 'ready' ? 'closing-entry' : excavator.action === 'complete' ? 'opening-exit' : state.access;
     return { ...state, excavator, access, elapsed: 0 };
   }
@@ -163,6 +167,7 @@ export function resumeRoad(state: RoadState, tuning: Tuning = defaultTuning): Ro
   // Pointer capture never survives module replacement or document reload.
   return {
     ...state,
+    version: 1, round: state.round ?? { ...DEFAULT_ROUND },
     excavator: resumeExcavator(state.excavator),
     truck: state.truck.phase === 'dragging' ? { ...state.truck, phase: 'resetting', elapsed: 0, fromTilt: truckPose(state.truck, tuning).tilt } : state.truck,
     roller: releaseRoller(state.roller),

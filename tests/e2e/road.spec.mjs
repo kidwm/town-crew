@@ -17,7 +17,8 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
     const height = Math.max(10.5, 16 / aspect);
     const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
     camera.position.set(6, 8, 16); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
-    const point = new THREE.Vector3(x, y, z).project(camera);
+    const mirrored = await page.locator('#app').getAttribute('data-layout') === '1';
+    const point = new THREE.Vector3(mirrored ? -x : x, y, z).project(camera);
     return { x: rect.x + (point.x + 1) * rect.width / 2, y: rect.y + (1 - point.y) * rect.height / 2 };
   };
   const down = async point => {
@@ -112,7 +113,8 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await wait('haul-away', 'ready');
   await expect(page.locator('#app')).toHaveAttribute('data-loaded', '3');
   await page.screenshot({ path: testInfo.outputPath('loaded-hauler.png') });
-  let hauling = await gesture(page, 'left');
+  const mirrored = await page.locator('#app').getAttribute('data-layout') === '1';
+  let hauling = await gesture(page, mirrored ? 'right' : 'left');
   await down(hauling.from); await up(); await wait('haul-away', 'ready');
   await down(hauling.from);
   await move({ x: (hauling.from.x + hauling.to.x) / 2, y: (hauling.from.y + hauling.to.y) / 2 });
@@ -123,7 +125,7 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await page.reload(); await wait('haul-away', 'ready');
   await expect(page.locator('#app')).toHaveAttribute('data-haul-x', haulX);
   await expect(page.locator('#app')).toHaveAttribute('data-loaded', '3');
-  hauling = await gesture(page, 'left');
+  hauling = await gesture(page, mirrored ? 'right' : 'left');
   await down(hauling.from); await move(hauling.to);
   await wait('dump-truck', 'ready');
   await expect(page.locator('#app')).toHaveAttribute('data-loaded', '0');
@@ -141,7 +143,7 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await down(bed); await move(tipping.to); await up();
   await wait('roller', 'ready');
 
-  const outward = await gesture(page, 'right');
+  const outward = await gesture(page, mirrored ? 'left' : 'right');
   await page.screenshot({ path: testInfo.outputPath('roller-gesture.png') });
   await down(outward.from);
   await move({ x: (outward.from.x + outward.to.x) / 2, y: (outward.from.y + outward.to.y) / 2 });
@@ -149,11 +151,11 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await up();
   await wait('roller', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
-  const remaining = await gesture(page, 'right');
+  const remaining = await gesture(page, mirrored ? 'left' : 'right');
   await down(remaining.from);
   await move(remaining.to); await up();
   await page.locator('#app[data-phase="roller"][data-action="ready"][data-passes="1"]').waitFor();
-  const returning = await gesture(page, 'left');
+  const returning = await gesture(page, mirrored ? 'right' : 'left');
   await page.screenshot({ path: testInfo.outputPath('roller-return-gesture.png') });
   await down(returning.from);
   await move(returning.to); await up();
@@ -166,12 +168,15 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await page.screenshot({ path: testInfo.outputPath('complete.png') });
   await page.reload(); await wait('complete');
   await page.screenshot({ path: testInfo.outputPath('complete-reloaded.png') });
+  const previousPattern = await page.locator('#app').getAttribute('data-pattern');
   await page.getByRole('button', { name: '重新開始修路任務' }).click();
   await wait('excavator', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
   await expect(page.locator('#app')).toHaveAttribute('data-loaded', '0');
   assert.equal(await page.locator('#app').getAttribute('data-passes'), '0');
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '0');
+  await expect(page.locator('#app')).not.toHaveAttribute('data-pattern', previousPattern);
+  await expect(page.locator('#app')).toHaveAttribute('data-layout', mirrored ? '0' : '1');
   await page.screenshot({ path: testInfo.outputPath('site-restored.png') });
   assert.deepEqual(errors, []);
 });
@@ -182,7 +187,8 @@ test('excavator supports tap destinations and keyboard without a drag', async ({
   const app = page.locator('#app');
   await expect(app).toHaveAttribute('data-action', 'ready');
   await expect(page.locator('.drag-hint')).toBeVisible();
-  const digging = await gesture(page, 'right');
+  const mirrored = await app.getAttribute('data-layout') === '1';
+  const digging = await gesture(page, mirrored ? 'left' : 'right');
   const tap = async point => testInfo.project.name === 'tablet-touch'
     ? page.touchscreen.tap(point.x, point.y) : page.mouse.click(point.x, point.y);
   await tap(digging.from);

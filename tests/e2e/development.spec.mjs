@@ -2,6 +2,37 @@ import { test, expect } from '@playwright/test';
 import { utimes } from 'node:fs/promises';
 import { fireControls } from './fire-controls.mjs';
 import { withPausedClock } from './timing.mjs';
+import * as THREE from 'three';
+
+test('mirrored road lets the child drag past nearer pieces and retains the chosen load through reload and HMR', async ({ page }) => {
+  await page.goto('/?dev=1&stage=excavator&pattern=split&layout=1');
+  const app = page.locator('#app');
+  await expect(app).toHaveAttribute('data-action', 'ready');
+  const rect = await page.locator('canvas').boundingBox();
+  const aspect = rect.width / rect.height, height = Math.max(10.5, 16 / aspect);
+  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
+  camera.position.set(6, 8, 16); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
+  const far = new THREE.Vector3(-3.5, 0.11, 0.1).project(camera);
+  const grip = await page.locator('.excavator-grip').boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2); await page.mouse.down();
+  await page.mouse.move(rect.x + (far.x + 1) * rect.width / 2, rect.y + (1 - far.y) * rect.height / 2, { steps: 12 });
+  await page.mouse.up();
+  await expect(app).toHaveAttribute('data-action', 'carrying');
+  await expect(app).toHaveAttribute('data-carried', '2');
+  await page.reload();
+  await expect(app).toHaveAttribute('data-action', 'carrying');
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+  await page.waitForFunction(element => !element.isConnected, world);
+  await expect(app).toHaveAttribute('data-action', 'carrying');
+  await expect(app).toHaveAttribute('data-carried', '2');
+  await expect(app).toHaveAttribute('data-pattern', 'split');
+  await expect(app).toHaveAttribute('data-layout', '1');
+  await expect(app).toHaveAttribute('data-loaded', '0');
+  await page.locator('canvas').focus(); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect(app).toHaveAttribute('data-delivered', '2');
+  await expect(app).toHaveAttribute('data-action', 'ready');
+});
 
 test('fire rescue reload, HMR and stage reset preserve the selected passenger progress', async ({ page }) => {
   const errors = [];
@@ -63,10 +94,10 @@ test('development entry, reload, HMR and stage reset retain useful progress', as
 
 test('road cleanup development entry preserves cargo and a partial drive across reload and HMR', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
-  await page.goto('/?dev=1&stage=haul-away');
+  await page.goto('/?dev=1&stage=haul-away&pattern=clustered&layout=1');
   const app = page.locator('#app'), { wait, down, move, cancel } = await fireControls(page);
   await wait('haul-away'); await expect(app).toHaveAttribute('data-loaded', '3');
-  const hint = await gesture(page, 'left');
+  const hint = await gesture(page, 'right');
   await down(hint.from); await move({ x: (hint.from.x + hint.to.x) / 2, y: (hint.from.y + hint.to.y) / 2 });
   await cancel(); await page.mouse.up(); await wait('haul-away');
   const x = await app.getAttribute('data-haul-x');
@@ -81,6 +112,13 @@ test('road cleanup development entry preserves cargo and a partial drive across 
   await wait('haul-away'); await expect(app).toHaveAttribute('data-haul-x', '1.8');
   await page.locator('#stage').selectOption('excavator'); await wait('excavator');
   await expect(app).toHaveAttribute('data-loaded', '0');
+  await expect(app).toHaveAttribute('data-pattern', 'clustered');
+  await expect(app).toHaveAttribute('data-layout', '1');
+  await page.locator('#road-pattern').selectOption('split');
+  await expect(app).toHaveAttribute('data-pattern', 'split');
+  await expect(app).toHaveAttribute('data-layout', '1');
+  await page.locator('#road-layout').selectOption('0');
+  await expect(app).toHaveAttribute('data-layout', '0');
 });
 
 test('house development stages, reload and HMR preserve the round and second floor', async ({ page }) => {

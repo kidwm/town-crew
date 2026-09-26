@@ -13,7 +13,20 @@ import { HOME, CARRY_HEIGHT, grabBucket, hasBucketLoad, moveBucket, overTruck, r
 import type { Point } from './domain/excavator.ts';
 import { advanceRoad, createRoad, stages, grabHauler, moveHauler, releaseHauler, grabRoller, moveRoller, releaseRoller, roadPose } from './domain/road.ts';
 import type { EntryStage, RoadState, MissionPhase } from './domain/road.ts';
+import { chooseRound, validRound, DEFAULT_ROUND, roadDamage, haulDirection, rollerDirection } from './domain/round.ts';
+import type { RoadRound } from './domain/round.ts';
 import { mountUI, icons } from './ui.ts';
+
+const roundKey = 'town-crew:road:last-round:v1';
+let previousRound: RoadRound | undefined;
+function rememberRound(round: RoadRound) {
+  previousRound = { ...round };
+  try { sessionStorage.setItem(roundKey, JSON.stringify(round)); } catch { /* Optional storage. */ }
+}
+function newRound(previous?: RoadRound) {
+  try { const saved: unknown = JSON.parse(sessionStorage.getItem(roundKey) ?? 'null'); if (validRound(saved)) previousRound = saved; } catch { /* Optional storage. */ }
+  const round = chooseRound(previous ?? previousRound); rememberRound(round); return round;
+}
 
 export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}, fresh = false) {
   const bootStartedAt = performance.now();
@@ -24,21 +37,24 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
   // Preserve existing truck experiment bookmarks; a plain URL starts the whole road mission.
   const entry: EntryStage = stages.includes(queryStage as EntryStage) ? queryStage as EntryStage : queryStage === 'ready' || queryStage === 'dumping' ? 'dump-truck' : 'excavator';
   let state = createRoad(entry);
-  if (queryStage === 'ready' || queryStage === 'dumping') {
-    state.truck.phase = queryStage;
-    state.access = 'working';
-  }
+  let restoredRound = false;
   let tuning = { ...defaultTuning };
   let targetStage: EntryStage = entry;
   const snapshotKey = `town-crew:road:v2:${location.search}`;
   if (dev && !fresh) {
     const restored = restoreDevelopment(snapshotKey, hot);
-    if (restored) ({ state, tuning, targetStage } = restored);
+    if (restored) { ({ state, tuning, targetStage } = restored); restoredRound = true; }
   }
   if (!dev && !fresh) {
     const restored = restoreRoadSnapshot(loadProgress('road-repair'), 'play');
-    if (restored) ({ state, tuning, targetStage } = restored);
+    if (restored) { ({ state, tuning, targetStage } = restored); restoredRound = true; }
   }
+  if (!restoredRound) {
+    const configured = { pattern: params.get('pattern') ?? DEFAULT_ROUND.pattern, layout: Number(params.get('layout') ?? 0) };
+    state = createRoad(entry, dev ? validRound(configured) ? configured : DEFAULT_ROUND : newRound());
+    if (queryStage === 'ready' || queryStage === 'dumping') { state.truck.phase = queryStage; state.access = 'working'; }
+  }
+  if (!dev) rememberRound(state.round);
   function save() {
     if (dev) saveDevelopment({ key: snapshotKey, state, tuning, targetStage }, hot);
     else saveProgress('road-repair', { key: 'play', state, tuning, targetStage });
@@ -67,7 +83,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     const fillBar = app.querySelector<HTMLElement>('.progress span')!;
     const success = app.querySelector<HTMLElement>('.success')!;
     const phaseNames = { excavator: '挖土機 · 清除舊路面', 'haul-away': '清運車 · 載走舊路面', 'dump-truck': '運料車 · 補好道路', roller: '壓路機 · 壓平路面', traffic: '開放通車', complete: '道路修好了！' };
-    const actions: Record<string, string> = { 'opening-entry': '移開入口路障', 'closing-entry': '封閉施工區', 'opening-exit': '開放工程車離場', leaving: '工程車離場', entering: '進場', ready: '等待操作', dragging: '跟手拖曳', scooping: '挖起舊路面', unloading: '裝入清運車', returning: '挖斗復位', resetting: '車斗復位', dumping: '填補路基', lowering: '鋪上路面材料', settling: '第一趟完成', flattening: '整平路面', complete: '完成', traffic: '移開路障／通車' };
+    const actions: Record<string, string> = { 'opening-entry': '移開入口路障', 'closing-entry': '封閉施工區', 'opening-exit': '開放工程車離場', leaving: '工程車離場', entering: '進場', ready: '等待操作', dragging: '跟手拖曳', carrying: '等待搬運', 'carrying-drag': '搬到車斗', scooping: '挖起舊路面', unloading: '裝入清運車', returning: '挖斗復位', resetting: '車斗復位', dumping: '填補路基', lowering: '鋪上路面材料', settling: '第一趟完成', flattening: '整平路面', complete: '完成', traffic: '移開路障／通車' };
     const stageSelect = app.querySelector<HTMLSelectElement>('#stage');
     if (stageSelect) stageSelect.value = targetStage;
     const threshold = app.querySelector<HTMLInputElement>('#threshold');
@@ -85,7 +101,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
           const point = scene.onPlane(context.lastX, context.lastY, context.height);
           if (point) context.offset = { x: next.excavator.bucket.x - point.x, y: 0, z: next.excavator.bucket.z - point.z };
           if (scene.excavationTargetHit(context.lastX, context.lastY, next)) {
-            next = { ...next, excavator: moveBucket(next.excavator, scene.excavationAim(context.lastX, context.lastY, next, next.excavator.bucket)) };
+            next = { ...next, excavator: moveBucket(next.excavator, scene.excavationAim(context.lastX, context.lastY, next, next.excavator.bucket), roadDamage(next.round).chunks) };
           }
         }
       }
@@ -101,7 +117,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         void Effect.runPromise(Effect.tryPromise(() => promise).pipe(Effect.catch(() => Effect.void)));
       } catch { /* A missing audio device must not block the game. */ }
     }
-    const pointer = bindPrimaryDrag<{ phase: MissionPhase; startX: number; startY: number; lastX: number; lastY: number; height: number; offset: Point; moved: boolean; destination: boolean }>(canvas, {
+    const pointer = bindPrimaryDrag<{ phase: MissionPhase; startX: number; startY: number; lastX: number; lastY: number; height: number; offset: Point; moved: boolean; destination: boolean; chunk: number | undefined }>(canvas, {
       start(event) {
         unlock();
         if (!ready()) return;
@@ -111,7 +127,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         const point = scene.onPlane(event.clientX, event.clientY, height);
         if (!point) return;
         const context = {
-          phase: state.phase, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY, height, moved: false, destination,
+          phase: state.phase, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY, height, moved: false, destination, chunk: destination && !hasBucketLoad(state.excavator) ? scene.excavationChunkHit(event.clientX, event.clientY, state) : undefined,
           offset: state.phase === 'excavator'
             ? { x: state.excavator.bucket.x - point.x, y: 0, z: state.excavator.bucket.z - point.z }
             : { x: (state.phase === 'haul-away' ? state.hauler.x : state.roller.x) - point.x, y: 0, z: 0 },
@@ -139,7 +155,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         } else {
           const point = scene.onPlane(event.clientX, event.clientY, context.height);
           if (!point) return;
-          if (state.phase === 'excavator') setState({ ...state, excavator: moveBucket(state.excavator, scene.excavationAim(event.clientX, event.clientY, state, { x: point.x + context.offset.x, y: context.height, z: point.z + context.offset.z })) });
+          if (state.phase === 'excavator') setState({ ...state, excavator: moveBucket(state.excavator, scene.excavationAim(event.clientX, event.clientY, state, { x: point.x + context.offset.x, y: context.height, z: point.z + context.offset.z }), roadDamage(state.round).chunks) });
           if (state.phase === 'haul-away') setState(moveHauler(state, point.x + context.offset.x));
           if (state.phase === 'roller') setState({ ...state, roller: moveRoller(state.roller, point.x + context.offset.x) });
         }
@@ -149,12 +165,12 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         if (state.phase === 'excavator') {
           lastBucketInput = visualTime;
           if (context.destination) {
-            if (!cancelled && !context.moved) setState({ ...state, excavator: tapBucketTarget(state.excavator) });
+            if (!cancelled && !context.moved) setState({ ...state, excavator: tapBucketTarget(state.excavator, roadDamage(state.round).chunks, context.chunk) });
             else bucketSelected = false;
             return;
           }
           bucketSelected = !cancelled && !context.moved;
-          setState({ ...state, excavator: releaseBucket(state.excavator, cancelled || !context.moved) });
+          setState({ ...state, excavator: releaseBucket(state.excavator, cancelled || !context.moved, roadDamage(state.round).chunks) });
           return;
         }
         setState(releaseHauler({ ...state, truck: truckInput(state.truck, { type: cancelled ? 'cancel' : 'release' }, tuning), roller: releaseRoller(state.roller) }));
@@ -168,12 +184,12 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       event.preventDefault();
       if (event.repeat || pointer.context() || !ready()) return;
       unlock(); lastBucketInput = visualTime;
-      if (bucketSelected) setState({ ...state, excavator: tapBucketTarget(state.excavator) });
+      if (bucketSelected) setState({ ...state, excavator: tapBucketTarget(state.excavator, roadDamage(state.round).chunks) });
       else { bucketSelected = true; audio.play('grab'); }
     }, options);
     document.addEventListener('visibilitychange', () => { if (document.hidden) save(); previousTime = performance.now(); }, options);
     window.addEventListener('pagehide', save, options);
-    app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', () => { unlock(); cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad(); save(); }, options));
+    app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', () => { unlock(); cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad('excavator', dev ? chooseRound(state.round) : newRound(state.round)); syncRound(); save(); }, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { cancelPointer(); save(); onHome(); }, options));
     const soundButton = app.querySelector<HTMLButtonElement>('.sound')!;
     soundButton.textContent = muted ? '♩' : '♪';
@@ -185,9 +201,21 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       soundButton.setAttribute('aria-pressed', String(muted));
       soundButton.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效');
     }, options);
-    function jump(stage: EntryStage) { cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad(stage); save(); }
+    function jump(stage: EntryStage) { cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad(stage, state.round); save(); }
     stageSelect?.addEventListener('change', () => { targetStage = stageSelect.value as EntryStage; jump(targetStage); }, options);
     app.querySelector('.reset-stage')?.addEventListener('click', () => jump(targetStage), options);
+    const patternSelect = app.querySelector<HTMLSelectElement>('#road-pattern');
+    const layoutSelect = app.querySelector<HTMLSelectElement>('#road-layout');
+    function syncRound() {
+      if (patternSelect) patternSelect.value = state.round.pattern;
+      if (layoutSelect) layoutSelect.value = String(state.round.layout);
+    }
+    for (const select of [patternSelect, layoutSelect]) select?.addEventListener('change', () => {
+      const round = { pattern: patternSelect!.value, layout: Number(layoutSelect!.value) };
+      if (!validRound(round)) return;
+      cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad(targetStage, round); save();
+    }, options);
+    syncRound();
     function label(selector: string, text: string) { const element = app.querySelector(selector); if (element && element.textContent !== text) element.textContent = text; }
     function syncTuning() {
       if (!threshold || !tilt || !duration) return;
@@ -232,7 +260,9 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       gestureCaption.hidden = state.access !== 'working' || !['ready', 'dragging', 'carrying', 'carrying-drag'].includes(action());
       const bucketInstruction = bucketSelected ? loaded ? '點一下車斗，倒進去' : '點一下破損路面，挖起來'
         : canDrop ? '放開，倒進車斗' : loaded ? '拖到車斗，放開' : '拖過去，挖起來';
-      label('.gesture-instruction', state.phase === 'excavator' ? bucketInstruction : state.phase === 'haul-away' ? '按住清運車，往左拖，把舊路面載走' : state.phase === 'dump-truck' ? '按住車斗前端，往上拉' : state.roller.passes === 0 ? '按住車子，往右拖' : '按住車子，往左拖');
+      label('.gesture-instruction', state.phase === 'excavator' ? bucketInstruction : state.phase === 'haul-away' ? `按住清運車，往${haulDirection(state.round) === 'left' ? '左' : '右'}拖，把舊路面載走` : state.phase === 'dump-truck' ? '按住車斗前端，往上拉' : `按住車子，往${rollerDirection(state.round, state.roller.passes) === 'right' ? '右' : '左'}拖`);
+      app.dataset.pattern = state.round.pattern; app.dataset.layout = String(state.round.layout);
+      app.dataset.delivered = state.excavator.delivered.join(','); app.dataset.carried = String(state.excavator.carried ?? '');
       app.dataset.phase = state.phase; app.dataset.action = action();
       app.dataset.cleared = String(state.excavator.cleared); app.dataset.passes = String(state.roller.passes);
       app.dataset.haulX = String(state.hauler.x); app.dataset.loaded = String(state.hauler.action === 'complete' ? 0 : state.excavator.cleared);

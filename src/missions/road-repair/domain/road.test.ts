@@ -156,15 +156,14 @@ test('the empty bucket returns above the cleanup cab rather than crossing throug
 
 test('legacy rubble piles migrate to cargo; new saves cannot skip loading or revive departed cargo', () => {
   const restore = (state: unknown) => restoreRoadSnapshot({ key: 'play', state, tuning: defaultTuning, targetStage: 'excavator' }, 'play');
-  const { hauler: _h, ...legacy } = createRoad();
-  legacy.access = 'working';
-  legacy.excavator = { ...legacy.excavator, action: 'unloading', elapsed: 0.4, cleared: 1 };
-  const migrated = restore(legacy)!.state;
+  const { hauler: _h, version: _version, round: _round, excavator, ...legacy } = createRoad();
+  const { control: _control, delivered: _delivered, carried: _carried, aimed: _aimed, ...oldExcavator } = excavator;
+  const migrated = restore({ ...legacy, access: 'working', excavator: { ...oldExcavator, action: 'unloading', elapsed: 0.4, cleared: 1 } })!.state;
   assert.equal(migrated.excavator.cleared, 1);
   assert.equal(migrated.excavator.action, 'ready');
   assert.deepEqual(migrated.excavator.bucket, HOME);
   assert.equal(migrated.hauler.action, 'ready');
-  const { hauler: _done, ...finished } = createRoad('complete');
+  const { hauler: _done, version: _v, round: _r, ...finished } = createRoad('complete');
   assert.equal(restore(finished)!.state.hauler.action, 'complete');
   assert.equal(restore(finished)!.state.phase, 'complete');
   const halfway = moveHauler(grabHauler(createRoad('haul-away')), 0);
