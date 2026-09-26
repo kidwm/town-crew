@@ -5,6 +5,7 @@ import type { HouseState, Point } from './house.ts';
 export const GARAGE = { x: -5.65, z: 0.15, width: 4, depth: 3.9, floor: 0.12, height: 2.35 };
 export const FAMILY_CAR_SCALE = 0.82;
 export const ARRIVAL = { parked: 3.8, doors: 4.05, exit: 4.45, walk: 5.25, shut: 5.9, duration: 10 };
+export const SITE_FINISH_SECONDS = 0.7;
 export const FAMILIES = [[1, 1, 0.65], [1, 0.65, 0.5], [1, 1, 0.65, 0.5]] as const;
 const clamp = (t: number) => Math.max(0, Math.min(1, t));
 const ease = (t: number) => { t = clamp(t); return t * t * (3 - 2 * t); };
@@ -65,6 +66,11 @@ export function arrivingPet(t: number) {
 }
 
 export function garageBuild(s: HouseState) {
-  const part = (index: number) => s.placed > index ? 1 : s.placed === index && s.action === 'placing' ? ease((s.elapsed - 0.35) / 0.8) : 0;
-  return { gravel: s.gravel, slab: s.pours.reduce((a, b) => a + b, 0) / 3, walls: [part(0), part(1)], roof: part(5) };
+  // Each addition belongs to a vehicle handoff, never to active pouring or a
+  // crane placement. The next vehicle waits until the addition is complete.
+  const step = ({ gravel: 0, concrete: 1, 'delivery-one': 2, 'crane-one': 2,
+    'delivery-two': 3, 'crane-two': 3, 'roof-color': 3, decorate: 4, complete: 4 })[s.phase];
+  const amount = s.action === 'finishing' ? ease(s.elapsed / SITE_FINISH_SECONDS) : 0;
+  const finished = (index: number) => step > index ? 1 : step === index ? amount : 0;
+  return { gravel: finished(0), slab: finished(1), walls: [finished(2), finished(2)], roof: finished(3) };
 }

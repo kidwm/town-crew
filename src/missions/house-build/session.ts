@@ -7,7 +7,7 @@ import { createHouse, resumeHouse, grab, release, dragGravel, moveChute, drive, 
 import { advanceCraneSettle, CRANE_SETTLE_SECONDS } from './domain/crane-target.ts';
 import { chooseRound, validRound, DEFAULT_ROUND, ROOF_TYPES, ROOF_NAMES, HOUSE_PALETTES } from './domain/round.ts';
 import type { HouseRound } from './domain/round.ts';
-import { arrivalTime, arrivalStep } from './domain/arrival.ts';
+import { arrivalTime, arrivalStep, garageBuild } from './domain/arrival.ts';
 import { housePlan } from './round-card.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { HouseState, Stage, Point } from './domain/house.ts';
@@ -58,7 +58,8 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       if (next.placed > state.placed) audio.play(next.placed === 3 ? 'floor' : 'placed');
       if (next.pours.filter(v => v === 1).length > state.pours.filter(v => v === 1).length) audio.play('pour');
       if (isCrane(next) && isDelivery(state)) audio.play('delivered');
-      const checkpoint = next.phase !== state.phase || next.placed !== state.placed;
+      const checkpoint = next.phase !== state.phase || next.placed !== state.placed
+        || (next.action !== state.action && (next.action === 'finishing' || state.action === 'finishing'));
       const completed = next.phase === 'complete' && state.phase !== 'complete';
       if (completed) { audio.play('complete'); if (!dev) markCompleted('house-build'); }
       state = next;
@@ -147,7 +148,9 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         settleRing.style.strokeDashoffset = String(1 - (pointer.context()?.settle ?? 0) / CRANE_SETTLE_SECONDS);
         label('.crane-drop-label', drop.accepted ? '停一下，幫你放好！' : '拖到房子上');
       }
-      label('.house-instruction', state.phase === 'crane-two' && state.action === 'leaving'
+      label('.house-instruction', state.action === 'finishing'
+        ? ({ gravel: '補好車庫地基', concrete: '鋪好車庫地板與走道', 'crane-one': '補好車庫牆面', 'crane-two': '蓋好車庫屋頂' } as Partial<Record<Stage, string>>)[state.phase] ?? ''
+        : state.phase === 'crane-two' && state.action === 'leaving'
         ? '房子蓋好了！工程車收工囉'
         : state.phase === 'decorate' ? ({ driving: '一家人開車來囉！', parked: '停好車，準備下車', unloading: '一起下車，搬進新家', walking: '走到門口，歡迎回家！', waiting: '', home: '歡迎搬進新家！' })[arrivalStep(arrivalTime(state))]
         : state.action === 'placing' ? '吊車正在幫忙放好'
@@ -159,6 +162,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       app.dataset.pourValues = JSON.stringify(state.pours);
       app.dataset.arrival = arrivalStep(arrivalTime(state));
       app.dataset.arrivalTime = String(arrivalTime(state));
+      app.dataset.garage = JSON.stringify(garageBuild(state));
       const nextPlanKey = `${state.round.roof}/${state.round.palette}/${state.color}/${state.round.layout}`;
       if (planKey !== nextPlanKey) { plan.innerHTML = housePlan(state); plan.setAttribute('aria-label', `這次蓋${ROOF_NAMES[state.round.roof]}兩層小樓`); planKey = nextPlanKey; }
       const value = progress(state);
@@ -166,7 +170,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
       app.querySelector<HTMLElement>('.finish-actions')!.hidden = state.phase !== 'complete';
       scene.canvas.style.cursor = state.action === 'dragging' ? 'grabbing' : state.action === 'ready' && !['roof-color', 'decorate', 'complete'].includes(state.phase) ? 'grab' : 'default';
-      label('.house-detail', state.phase === 'roof-color' ? '屋頂 · 6 / 6' : isCrane(state) && state.action !== 'leaving' ? `${PARTS[state.placed]?.name ?? ''} · ${state.placed + 1} / 6` : state.phase === 'concrete' ? `${state.pours.filter(v => v === 1).length} / 3` : state.phase === 'crane-one' && state.action === 'leaving' ? '一樓完成了！二樓的材料正在路上' : '');
+      label('.house-detail', state.action === 'finishing' ? '' : state.phase === 'roof-color' ? '屋頂 · 6 / 6' : isCrane(state) && state.action !== 'leaving' ? `${PARTS[state.placed]?.name ?? ''} · ${state.placed + 1} / 6` : state.phase === 'concrete' ? `${state.pours.filter(v => v === 1).length} / 3` : state.phase === 'crane-one' && state.action === 'leaving' ? '一樓完成了！二樓的材料正在路上' : '');
       if (displayed !== state.phase) {
         label('#vehicle-name', names[state.phase]);
         app.querySelector('.badge-icon')!.innerHTML = iconFor(state.phase);

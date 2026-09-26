@@ -70,7 +70,7 @@ sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
 pointer gestures through `resumeRoad`, `resumeHouse` and `resumeFire`. Development snapshots
 use separate versioned keys and do not award completion badges.
-House snapshots use schema version 4 and include roof style, mirrored layout,
+House snapshots use schema version 5 and include roof style, mirrored layout,
 palette, family and pet. Work coordinates remain in the original site's local frame;
 the scene mirrors its entire site group and converts input/projection at that boundary.
 The same transform drives vehicles, buildings, crane targets and hints. Each concrete
@@ -85,8 +85,15 @@ now holds a ten-second arrival clock: car route, door opening, passengers and pe
 are derived from its persisted `elapsed`. Reload/HMR resumes the same instant; a
 completed snapshot renders the parked car and family at home without replaying.
 Version 1–3 unfinished welcome saves start this clock at zero; version 3 retains
-its round configuration. The garage grows from existing gravel, pours and placements,
-so it introduces no separate work counter. A rear crane lane clears the garage;
+its round configuration; version 4 arrival clocks retain their exact progress.
+A persisted 0.7-second `finishing` action separates each work vehicle's departure
+from the next arrival. Garage gravel, floor/path, walls and roof grow only in these
+four gaps, after the dump truck, mixer, first flatbed and final crane leave respectively.
+The crane remains parked during the first flatbed handoff. Departed vehicles and
+interaction prompts stay hidden during finishing; phase, placement and finishing
+boundaries are saved immediately. Garage progress derives from phase/action/elapsed,
+without an extra work counter, and reload/HMR resumes a partial addition.
+A rear crane lane clears the garage;
 the shared car's optional opening cabin leaves existing traffic/police cars unchanged.
 Fire snapshots keep each fire's remaining heat, the two independent rescue flags,
 the current passenger and animation progress. Restoration rejects impossible

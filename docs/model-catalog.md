@@ -80,7 +80,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 水泥出料槽及出口 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `chute`、`chuteTip` | 蓋房子 | 場景內可拖道具，與地面澆灌分區對準。 |
 | 兩層樓組件 | [house-build/house-model.ts](../src/missions/house-build/house-model.ts) · `createHouseParts` | 蓋房子 | 沿用四組 L 形牆板、一塊樓板；屋頂有尖頂、單斜頂、平頂變體，搭配窗格／比例及四組牆面門窗色。實體與半透明輪廓共用幾何；屋頂色由本局配色決定。 |
 | 房屋地基、砂石及水泥面 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `gravelFill`、`stones`、`slabs`、`completeSlab` | 蓋房子 | 場景內分區表面及填料模型。 |
-| 開放式單車庫、車道與步道 | [house-build/garage.ts](../src/missions/house-build/garage.ts) · `createGarage` | 蓋房子 | 新增地基、側牆、後牆、柱子與平屋頂，面向主屋的一側採矮牆；配色沿用房屋，隨地基／牆面／屋頂工作成形。入口敞開，容納共用小客車、車門及下車空間；路線在 [arrival.ts](../src/missions/house-build/domain/arrival.ts)。 |
+| 開放式單車庫、車道與步道 | [house-build/garage.ts](../src/missions/house-build/garage.ts) · `createGarage` | 蓋房子 | 新增地基、側牆、後牆、柱子與平屋頂，面向主屋的一側採矮牆；配色沿用房屋，只在車輛離場後、下一台進場前的交接空檔成形。入口敞開，容納共用小客車、車門及下車空間；路線在 [arrival.ts](../src/missions/house-build/domain/arrival.ts)。 |
 | 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`asphalt`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |

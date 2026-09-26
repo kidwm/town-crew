@@ -213,6 +213,64 @@ for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: 
   expect(errors).toEqual([]);
 });
 
+for (const { phase, next, placed, before, after } of [
+  { phase: 'gravel', next: 'concrete', placed: 0, before: [0, 0, 0, 0], after: [1, 0, 0, 0] },
+  { phase: 'concrete', next: 'delivery-one', placed: 0, before: [1, 0, 0, 0], after: [1, 1, 0, 0] },
+  { phase: 'crane-one', next: 'delivery-two', placed: 3, before: [1, 1, 0, 0], after: [1, 1, 1, 0] },
+  { phase: 'crane-two', next: 'decorate', placed: 6, before: [1, 1, 1, 0], after: [1, 1, 1, 1] },
+]) test(`garage additions wait for ${phase} to leave, survive reload and finish before ${next}`, async ({ page }, info) => {
+  const { createHouse, leavingDuration } = await import('../../src/missions/house-build/domain/house.ts');
+  const { SITE_FINISH_SECONDS } = await import('../../src/missions/house-build/domain/arrival.ts');
+  const { DEFAULT_ROUND } = await import('../../src/missions/house-build/domain/round.ts');
+  const touch = info.project.name === 'tablet-touch';
+  if (touch) await page.setViewportSize({ width: 390, height: 844 });
+  const round = { ...DEFAULT_ROUND, layout: touch ? 1 : 0, roof: touch ? 'shed' : 'gable' };
+  const fixture = { ...createHouse(phase, round), placed, gravel: 1, pours: phase === 'gravel' ? [0, 0, 0] : [1, 1, 1], action: 'leaving' };
+  fixture.elapsed = leavingDuration(fixture) - 0.25;
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install(); await page.clock.pauseAt(Date.now() + 1000);
+  await page.addInitScript(state => {
+    if (sessionStorage.getItem('handoff-fixture')) return;
+    sessionStorage.setItem('town-crew:play:v1:house-build', JSON.stringify(state)); sessionStorage.setItem('handoff-fixture', '1');
+  }, fixture);
+  async function mounted() {
+    await expect(page.locator('canvas')).toHaveCount(1); await expect(page.locator('.loading')).toHaveCount(0);
+    await page.clock.runFor(32);
+  }
+  const app = page.locator('#app');
+  const garage = async () => {
+    const { gravel, slab, walls, roof } = JSON.parse(await app.getAttribute('data-garage'));
+    expect(walls[0]).toBe(walls[1]); return [gravel, slab, walls[0], roof];
+  };
+  await page.goto('/#house-build'); await mounted();
+  await page.clock.runFor(150);
+  await expect(app).toHaveAttribute('data-action', 'leaving'); expect(await garage()).toEqual(before);
+  await page.clock.runFor(400);
+  await expect(app).toHaveAttribute('data-phase', phase); await expect(app).toHaveAttribute('data-action', 'finishing');
+  await expect(app).toHaveAttribute('data-arrival', 'waiting');
+  await expect(page.locator('.drag-hint')).toBeHidden();
+  await expect(page.getByRole('img', { name: '吊車放置位置' })).toBeHidden();
+  await expect(page.locator('.house-detail')).toBeEmpty();
+  const partial = await garage();
+  partial.forEach((value, i) => {
+    if (before[i] === after[i]) expect(value).toBe(before[i]);
+    else { expect(value).toBeGreaterThan(before[i]); expect(value).toBeLessThan(after[i]); }
+  });
+  await page.screenshot({ path: info.outputPath(`${phase}-handoff.png`) });
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const saved = await page.evaluate(() => JSON.parse(sessionStorage.getItem('town-crew:play:v1:house-build')));
+  await page.reload(); await mounted();
+  await expect(app).toHaveAttribute('data-action', 'finishing');
+  const resumed = await garage(); resumed.forEach((value, i) => expect(Math.abs(value - partial[i])).toBeLessThan(0.1));
+  await page.clock.runFor(Math.ceil((SITE_FINISH_SECONDS - saved.elapsed + 0.08) * 1000));
+  await expect(app).toHaveAttribute('data-phase', next);
+  await expect(app).toHaveAttribute('data-action', next === 'decorate' ? 'ready' : 'entering');
+  await expect(app).toHaveAttribute('data-arrival', next === 'decorate' ? 'driving' : 'waiting');
+  expect(await garage()).toEqual(after);
+  await page.screenshot({ path: info.outputPath(`${next}-begins.png`) });
+  expect(errors).toEqual([]);
+});
+
 test('garage arrival parks, unloads and walks home automatically, with reload during the journey', async ({ page }, info) => {
   const { createHouse } = await import('../../src/missions/house-build/domain/house.ts');
   const { DEFAULT_ROUND } = await import('../../src/missions/house-build/domain/round.ts');

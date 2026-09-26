@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { advance, createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, resumeHouse, progress, PARTS, HOUSE, POUR_TARGETS, DELIVERY_STOP, DELIVERY_START } from './house.ts';
 import type { HouseState } from './house.ts';
 import { DEFAULT_ROUND, ROOF_TYPES } from './round.ts';
-import { ARRIVAL, arrivalStep, arrivalTime } from './arrival.ts';
+import { ARRIVAL, SITE_FINISH_SECONDS, arrivalStep, arrivalTime } from './arrival.ts';
 function tick(s: HouseState, seconds = 2) { for (let i = 0; i < Math.ceil(seconds * 60); i++) s = advance(s, 1 / 60); return s; }
 
 const orders = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
@@ -11,7 +11,7 @@ for (const roof of ROOF_TYPES) for (const layout of [0, 1] as const) for (const 
 test(`${roof}/${layout}: four vehicles and six lifts complete after pouring ${order}`, () => {
   const round = { ...DEFAULT_ROUND, roof, layout };
   let s = tick(createHouse('gravel', round));
-  s = tick(dragGravel(grab(s), 75), 4); assert.equal(s.phase, 'concrete');
+  s = tick(dragGravel(grab(s), 75), 4 + SITE_FINISH_SECONDS); assert.equal(s.phase, 'concrete');
   s = tick(s);
   for (const i of order) {
     s = tick(moveChute(grab(s), POUR_TARGETS[i]), 1.3);
@@ -37,7 +37,7 @@ test('the fifth placement picks up the roof automatically and preserves its matc
   assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5); assert.equal(s.action, 'ready');
   s = tick(resumeHouse(s)!);
   assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5); assert.equal(s.color, 2);
-  s = tick(release(moveLoad(grab(s), HOUSE)), 4 + ARRIVAL.duration);
+  s = tick(release(moveLoad(grab(s), HOUSE)), 4 + SITE_FINISH_SECONDS + ARRIVAL.duration);
   assert.equal(s.phase, 'complete'); assert.equal(s.placed, 6); assert.equal(s.color, 2);
 });
 test('parking and walking finish without input after the crane leaves, including old doorbell saves', () => {
@@ -47,6 +47,8 @@ test('parking and walking finish without input after the crane leaves, including
   s = tick(s, 2);
   assert.equal(s.phase, 'crane-two'); assert.ok(progress(s) < 1);
   s = tick(resumeHouse(s)!, 1);
+  assert.equal(s.phase, 'crane-two'); assert.equal(s.action, 'finishing'); assert.equal(arrivalStep(arrivalTime(s)), 'waiting');
+  s = tick(resumeHouse(s)!, SITE_FINISH_SECONDS);
   assert.equal(s.phase, 'decorate'); assert.equal(arrivalStep(arrivalTime(s)), 'driving'); assert.ok(progress(s) < 1);
   s = tick(s, ARRIVAL.duration);
   assert.equal(s.phase, 'complete'); assert.equal(s.color, 1); assert.equal(progress(s), 1);
@@ -63,7 +65,7 @@ test('parking and walking finish without input after the crane leaves, including
 test('old colour-selection saves continue automatically with their existing colour', () => {
   const legacy = { ...createHouse('crane-two'), version: 1, placed: 5, action: 'ready', color: 1 };
   const restored = resumeHouse(legacy)!;
-  assert.equal(restored.version, 4); assert.equal(restored.phase, 'roof-color'); assert.equal(restored.color, 1);
+  assert.equal(restored.version, 5); assert.equal(restored.phase, 'roof-color'); assert.equal(restored.color, 1);
   const ready = tick(restored); assert.equal(ready.phase, 'crane-two'); assert.equal(ready.placed, 5); assert.equal(ready.color, 1);
   for (const version of [1, 2]) {
     const legacyChoice = { ...createHouse('roof-color'), version, color: 2 };

@@ -37,6 +37,7 @@ export function createGarage(shapes: Shapes, parent: THREE.Group) {
     slab.visible = build.slab > 0; slab.scale.z = Math.max(0.001, build.slab);
     walls.forEach((wall, i) => { wall.visible = build.walls[i] > 0; wall.scale.y = Math.max(0.001, build.walls[i]); });
     roof.visible = build.roof > 0; roof.position.y = (1 - build.roof) * 0.6;
-    apron.visible = walk.visible = build.slab === 1;
+    apron.visible = walk.visible = build.slab > 0;
+    apron.scale.z = walk.scale.x = Math.max(0.001, build.slab);
   } };
 }

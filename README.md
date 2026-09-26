@@ -149,11 +149,15 @@ All emergency vehicles leave before the final celebration.
    residents and optional pet get out and walk along the path to the front door.
    Windows then light up, residents wave, and replay/selection buttons appear.
 
-The open single-car garage grows with the existing gravel, concrete, wall and roof
-work, without extra gestures or lifts. Its palette matches the house; the entire
-garage, approach and walking route mirror with the site. A rear service lane keeps
-the crane and its supports clear. The welcome clock survives reload/HMR; completed
-homes stay completed with the car parked and the family at the door.
+The open single-car garage takes shape during short, automatic vehicle handoffs:
+gravel after the dump truck exits, floor/driveway/path after the mixer exits, walls
+after the first flatbed exits, and roof after the final crane exits. Each addition
+finishes in 0.7 seconds before the next vehicle or family car enters; it stays still
+during the child's work. No extra gestures or lifts are needed. Its palette matches
+the house; the entire garage, approach and walking route mirror with the site.
+A rear service lane keeps the crane and its supports clear. Handoff and welcome
+clocks survive reload/HMR; completed homes stay completed with the car parked and
+the family at the door.
 
 Each fresh round changes the roof style (gable, shed or flat), mirrors the site to the
 opposite side and changes the wall/door palette. Three family arrangements and an
@@ -323,14 +327,14 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The five missions have 115 domain tests, covering fixed arm lengths,
+The five missions have 119 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
 exit clearance and waiting for the loaded cleanup truck to fully leave. House tests also cover
 all concrete pouring orders, partial delivery, cancelled placement, automatic roof pickup,
 legacy snapshot migration, assembly target geometry, continuous placement dwell,
-load clearance, garage construction, whole-car turning clearance and the family walking
+load clearance, garage construction between vehicle departures/arrivals, whole-car turning clearance and the family walking
 route. Arrival checks cover automatic completion, mid-animation reload and completed saves.
 Fire tests cover both rescue orders, continuous extinguishing, interruption,
 one passenger per trip, transport, and rejection of contradictory snapshots.

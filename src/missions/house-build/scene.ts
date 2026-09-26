@@ -165,17 +165,18 @@ export function createHouseScene(host: HTMLElement) {
     render(s: HouseState, time: number) {
       site.scale.x = siteX(s.round, 1); home.update(s); residents.update(s, time); garage.update(s);
       const craneStage = isCrane(s), delivery = isDelivery(s), roofChoosing = s.phase === 'roof-color';
+      const finishing = s.action === 'finishing';
       const interactive = s.action === 'ready' || s.action === 'dragging';
       const arriving = s.action === 'entering' ? 1 - smooth(s.elapsed / 1.2) : 0;
       const departing = s.action === 'leaving' ? smooth(s.elapsed / leavingDuration(s)) : 0;
       const craneLeaving = s.phase === 'crane-two' && s.action === 'leaving';
       const craneTravel = craneLeaving ? smooth((s.elapsed - 0.9) / (leavingDuration(s) - 0.9)) : 0;
-      crane.root.visible = s.phase !== 'decorate' && s.phase !== 'complete';
+      crane.root.visible = s.phase !== 'decorate' && s.phase !== 'complete' && !(s.phase === 'crane-two' && finishing);
       // The rear service lane clears the garage, its pillars and the fence.
       crane.root.position.set(-2.6 - craneTravel * 17, 0, -4.2);
       crane.retract(craneLeaving ? smooth((s.elapsed - 0.5) / 0.4) : 0);
       crane.roll(-craneTravel * 17);
-      dump.root.visible = s.phase === 'gravel'; dump.root.position.set(-2.6 - arriving * 12 - departing * 12, 0, 0); dump.roll(dump.root.position.x);
+      dump.root.visible = s.phase === 'gravel' && !finishing; dump.root.position.set(-2.6 - arriving * 12 - departing * 12, 0, 0); dump.roll(dump.root.position.x);
       dump.bed.rotation.z = s.action === 'dragging' ? -s.dragPx / 60 * 0.85 : s.action === 'working' ? -0.95 : s.action === 'leaving' ? -0.95 * (1 - Math.min(s.elapsed * 3, 1)) : 0;
       dump.cargo.scale.y = Math.max(0.01, 1 - s.gravel); dump.cargo.visible = s.gravel < 1;
       gravelFill.scale.x = Math.max(0.001, s.gravel); gravelFill.visible = s.gravel > 0;
@@ -186,8 +187,8 @@ export function createHouseScene(host: HTMLElement) {
       slabs.forEach((slab, i) => { slab.visible = s.pours[i] > 0; slab.scale.z = Math.max(0.001, s.pours[i]); });
       pourZones.forEach((zone, i) => { zone.visible = s.phase === 'concrete' && s.pours[i] < 1; zone.position.y = pourSurface(s, i); });
       completeSlab.visible = s.pours.every(v => v >= 1);
-      mixer.root.visible = s.phase === 'concrete'; mixer.root.position.set(-3.2 - arriving * 12 - departing * 12, 0, 0.3); mixer.roll(mixer.root.position.x); mixer.drum.rotation.y = time * 1.1;
-      chute.visible = chuteTip.visible = s.phase === 'concrete' && arriving === 0 && departing === 0;
+      mixer.root.visible = s.phase === 'concrete' && !finishing; mixer.root.position.set(-3.2 - arriving * 12 - departing * 12, 0, 0.3); mixer.roll(mixer.root.position.x); mixer.drum.rotation.y = time * 1.1;
+      chute.visible = chuteTip.visible = s.phase === 'concrete' && !finishing && arriving === 0 && departing === 0;
       chuteTip.position.set(s.chute.x, 1.1, s.chute.z);
       link(chute, new THREE.Vector3(-1.6, 1.82, 0.3), chuteTip.position);
       const pouring = s.phase === 'concrete' && s.action === 'dragging' && pourIndex(s) >= 0;
@@ -198,7 +199,7 @@ export function createHouseScene(host: HTMLElement) {
         particle.position.set(-1.05 + t * 3.6, 1.3 * (1 - t * t), Math.sin(i * 4) * t * 1.5);
         particle.rotation.set(time + i, time * 2, i);
       });
-      flatbed.root.visible = delivery || craneStage || roofChoosing;
+      flatbed.root.visible = (delivery || craneStage || roofChoosing) && !finishing;
       const truckX = delivery ? s.truckX - arriving * 10 : DELIVERY_STOP + departing * 15;
       flatbed.root.position.set(truckX, 0, 5.1); flatbed.root.rotation.y = Math.PI; flatbed.roll(-truckX);
       const delivered = s.placed % 3;
@@ -218,7 +219,7 @@ export function createHouseScene(host: HTMLElement) {
         const align = smooth(s.elapsed / 0.35), lower = smooth((s.elapsed - 0.35) / 0.8);
         load.set(s.from.x + (HOUSE.x - s.from.x) * align, definition.lift + (definition.base - definition.lift) * lower, s.from.z + (HOUSE.z - s.from.z) * align);
       }
-      const holding = craneStage && s.action !== 'leaving';
+      const holding = craneStage && s.action !== 'leaving' && !finishing;
       parts.forEach((piece, i) => {
         piece.visible = i < s.placed || (holding && i === s.placed) || (roofChoosing && i === 5);
         piece.position.set(HOUSE.x, PARTS[i].base, HOUSE.z);

@@ -1,10 +1,10 @@
 import { DEFAULT_ROUND, ROOF_HEIGHTS, validRound } from './round.ts';
 import type { HouseRound } from './round.ts';
-import { ARRIVAL } from './arrival.ts';
+import { ARRIVAL, SITE_FINISH_SECONDS } from './arrival.ts';
 
 export const stages = ['gravel', 'concrete', 'delivery-one', 'crane-one', 'delivery-two', 'crane-two', 'roof-color', 'decorate', 'complete'] as const;
 export type Stage = typeof stages[number];
-export type Action = 'entering' | 'ready' | 'dragging' | 'working' | 'leaving' | 'pickup' | 'placing' | 'resetting';
+export type Action = 'entering' | 'ready' | 'dragging' | 'working' | 'leaving' | 'finishing' | 'pickup' | 'placing' | 'resetting';
 export interface Point { x: number; z: number }
 export const HOUSE = { x: 2, z: -0.4 };
 export const POUR_TARGETS = [{ x: 0.4, z: -0.4 }, { x: 2, z: -0.4 }, { x: 3.6, z: -0.4 }];
@@ -26,7 +26,7 @@ export const LOAD_HOME: Point = { x: -3.1, z: -0.4 };
 export const DELIVERY_START = -6;
 export const DELIVERY_STOP = 0.5;
 export interface HouseState {
-  version: 4; round: HouseRound; phase: Stage; action: Action; elapsed: number;
+  version: 5; round: HouseRound; phase: Stage; action: Action; elapsed: number;
   gravel: number; pours: number[]; chute: Point; placed: number;
   truckX: number; dragPx: number; load: Point; from: Point; color: number;
 }
@@ -39,7 +39,7 @@ export const isDelivery = (s: HouseState) => s.phase === 'delivery-one' || s.pha
 export function createHouse(phase: Stage = 'gravel', round: HouseRound = DEFAULT_ROUND): HouseState {
   const index = stages.indexOf(phase);
   return {
-    version: 4, round: { ...round }, phase, action: index >= 6 ? 'ready' : phase.startsWith('crane') ? 'pickup' : 'entering', elapsed: 0,
+    version: 5, round: { ...round }, phase, action: index >= 6 ? 'ready' : phase.startsWith('crane') ? 'pickup' : 'entering', elapsed: 0,
     gravel: index > 0 ? 1 : 0, pours: index > 1 ? [1, 1, 1] : [0, 0, 0], chute: { x: -0.8, z: 1.8 },
     placed: phase === 'roof-color' ? 5 : index >= 7 ? 6 : index >= 4 ? 3 : 0, truckX: DELIVERY_START,
     dragPx: 0, load: { ...LOAD_HOME }, from: { ...LOAD_HOME }, color: round.palette % ROOF_COLORS.length,
@@ -91,6 +91,11 @@ export function advance(s: HouseState, delta: number): HouseState {
   if (s.phase === 'decorate') return elapsed >= ARRIVAL.duration
     ? { ...s, phase: 'complete', elapsed: 0 } : { ...s, elapsed };
   let next = { ...s, elapsed };
+  if (s.action === 'finishing') {
+    if (elapsed < SITE_FINISH_SECONDS) return next;
+    const phase: Stage = s.phase === 'gravel' ? 'concrete' : s.phase === 'concrete' ? 'delivery-one' : s.phase === 'crane-one' ? 'delivery-two' : 'decorate';
+    return { ...next, phase, action: phase === 'decorate' ? 'ready' : 'entering', elapsed: 0, truckX: DELIVERY_START, dragPx: 0 };
+  }
   if (s.action === 'entering' && elapsed >= 1.2) return { ...next, action: 'ready', elapsed: 0 };
   if (s.phase === 'gravel' && s.action === 'working') {
     next.gravel = clamp(elapsed / 1.9);
@@ -118,8 +123,7 @@ export function advance(s: HouseState, delta: number): HouseState {
     }
   }
   if (s.action === 'leaving' && elapsed >= leavingDuration(s)) {
-    const phase: Stage = s.phase === 'gravel' ? 'concrete' : s.phase === 'concrete' ? 'delivery-one' : s.phase === 'crane-one' ? 'delivery-two' : 'decorate';
-    return { ...next, phase, action: phase === 'decorate' ? 'ready' : 'entering', elapsed: 0, truckX: DELIVERY_START, dragPx: 0 };
+    return { ...next, action: 'finishing', elapsed: 0 };
   }
   return next;
 }
@@ -127,9 +131,9 @@ function finitePoint(p: Point) { return p && Number.isFinite(p.x) && Number.isFi
 export function resumeHouse(value: unknown): HouseState | undefined {
   if (!value || typeof value !== 'object') return;
   const version = (value as { version: unknown }).version;
-  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) return;
-  const s = { ...value, version: 4, round: version >= 3 ? (value as HouseState).round : { ...DEFAULT_ROUND } } as HouseState;
-  if (!validRound(s.round) || !stages.includes(s.phase) || !['entering', 'ready', 'dragging', 'working', 'leaving', 'pickup', 'placing', 'resetting'].includes(s.action)
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4 && version !== 5) return;
+  const s = { ...value, version: 5, round: version >= 3 ? (value as HouseState).round : { ...DEFAULT_ROUND } } as HouseState;
+  if (!validRound(s.round) || !stages.includes(s.phase) || !['entering', 'ready', 'dragging', 'working', 'leaving', 'finishing', 'pickup', 'placing', 'resetting'].includes(s.action)
     || ![s.elapsed, s.gravel, s.truckX, s.dragPx, s.placed, s.color].every(Number.isFinite)
     || s.elapsed < 0 || s.elapsed > 1e7 || s.gravel < 0 || s.gravel > 1
     || !Array.isArray(s.pours) || s.pours.length !== 3 || !s.pours.every(v => Number.isFinite(v) && v >= 0 && v <= 1)
@@ -138,17 +142,18 @@ export function resumeHouse(value: unknown): HouseState | undefined {
     || s.dragPx < 0 || s.dragPx > 60) return;
   const minPlaced = s.phase === 'roof-color' ? 5 : stages.indexOf(s.phase) >= 7 ? 6 : stages.indexOf(s.phase) >= 4 ? 3 : 0;
   const maxPlaced = isCrane(s) ? (s.phase === 'crane-one' ? 3 : 6) : minPlaced;
-  if (s.placed < minPlaced || s.placed > maxPlaced || (isCrane(s) && (s.placed === maxPlaced) !== (s.action === 'leaving'))) return;
+  if (s.placed < minPlaced || s.placed > maxPlaced || (isCrane(s) && (s.placed === maxPlaced) !== (s.action === 'leaving' || s.action === 'finishing'))) return;
   const index = stages.indexOf(s.phase);
   if ((index > 0 && s.gravel !== 1) || (index > 1 && !s.pours.every(v => v === 1)) || (index === 0 && s.pours.some(v => v !== 0))) return;
   if (version < 3) {
     const firstIncomplete = s.pours.findIndex(v => v < 1);
     if (firstIncomplete >= 0 && s.pours.slice(firstIncomplete + 1).some(v => v !== 0)) return;
   }
-  const allowed: readonly Action[] = isCrane(s) ? ['pickup', 'ready', 'dragging', 'placing', 'resetting', 'leaving']
+  const allowed: readonly Action[] = isCrane(s) ? ['pickup', 'ready', 'dragging', 'placing', 'resetting', 'leaving', 'finishing']
     : isDelivery(s) ? ['entering', 'ready', 'dragging', 'working']
-    : index >= 6 ? ['ready'] : ['entering', 'ready', 'dragging', 'working', 'leaving'];
-  if (!allowed.includes(s.action) || (s.phase === 'concrete' && ['working', 'leaving'].includes(s.action) && s.pours.some(v => v < 1))) return;
+    : index >= 6 ? ['ready'] : ['entering', 'ready', 'dragging', 'working', 'leaving', 'finishing'];
+  if (!allowed.includes(s.action) || (s.phase === 'concrete' && ['working', 'leaving', 'finishing'].includes(s.action) && s.pours.some(v => v < 1))) return;
+  if (s.action === 'finishing' && (version < 5 || s.elapsed >= SITE_FINISH_SECONDS || s.gravel !== 1)) return;
   if (s.phase === 'decorate') {
     if (version < 4) s.elapsed = 0; // Old doorbell/welcome clocks did not describe an arrival.
     else if (s.elapsed >= ARRIVAL.duration) return;
