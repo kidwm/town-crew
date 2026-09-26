@@ -161,3 +161,25 @@ test('traffic reload during wheel lifting keeps the same car, rig and animation 
   });
   await wait('tow-exit'); await expect(app).toHaveAttribute('data-tow-side', 'left');
 });
+
+test('police development reload, HMR and stage resets retain configuration and partial motorcycle travel', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/?dev=1&mission=police-patrol&stage=bikes&layout=3');
+  const app = page.locator('#app'), { down, move, cancel, wait } = await fireControls(page);
+  await wait('bikes'); await expect(app).toHaveAttribute('data-layout', '3');
+  const h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await move(h.to);
+  await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).bike0).toBeGreaterThan(0.1);
+  await cancel(); const work = await app.getAttribute('data-work'); await page.reload(); await wait('bikes'); await expect(app).toHaveAttribute('data-work', work);
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now); await page.waitForFunction(element => !element.isConnected, world);
+  await wait('bikes'); await expect(app).toHaveAttribute('data-work', work); await expect(app).toHaveAttribute('data-layout', '3'); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).bike0).toBe(0);
+  await page.locator('#stage').selectOption('door'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '3');
+  await page.locator('#layout').selectOption('1'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '1');
+  await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '小小警察隊', exact: true }).click(); await wait('pursuit');
+  await expect(app).toHaveAttribute('data-order', ''); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '消防隊救火', exact: true }).click();
+  await wait('dispatch'); await expect(app).toHaveAttribute('data-mission', 'fire-rescue'); expect(errors).toEqual([]);
+});

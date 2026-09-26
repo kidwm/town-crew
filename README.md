@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, and clear a traffic collision in four replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, and help the police team in five replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -16,6 +16,7 @@ npm run dev
 - Repair the road: <http://localhost:5173/#road-repair>
 - Help the fire brigade: <http://localhost:5173/#fire-rescue>
 - Help the traffic crew: <http://localhost:5173/#traffic-rescue>
+- Help the police team: <http://localhost:5173/#police-patrol>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -33,12 +34,43 @@ npm run dev
 
 ## Choose a mission
 
-The entrance has four large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has five large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Help the police team
+
+1. A short opening shows a resident's bag being taken to a car. Drag the patrol
+   car around the street corner to secure the southern entrance; both cars pause
+   when the child stops. Four buildings form two alleys and an outer loop.
+2. Choose either police motorcycle first, then drag it toward its destination.
+   One goes around the block to the far end of the alley; the other closes the
+   northern junction.
+   Vehicles follow rounded roads and steer automatically. Both must be in place
+   before officers approach, arrest the person and return the bag. The northern
+   motorcycle then moves into its guard bay.
+3. Drag the patrol car into the opposite alley to clear the walking route, then bring
+   in a distinct blue-grey detective passenger van along the foreground street.
+4. The van parks sideways with its sliding door facing the player; the camera stays
+   fixed throughout the mission. Drag the handle sideways to open it. The officer
+   accompanies the passenger down the cleared central street, around the rear of
+   the van and through the open door; boarding and door closure happen automatically.
+5. Drag the lead motorcycle around the block to the foreground exit, then drive the van
+   out. The remaining motorcycle, patrol car and recovered vehicle leave before
+   the police-station arrival celebration.
+
+Four coordinated route configurations combine left/right interception with
+left/right van arrival. A fresh round always changes configuration and vehicle
+colour; the suspect uses either the existing car or a civilian passenger van.
+The child chooses motorcycle order. Reload retains the configuration, appearance,
+completed dispatches, partial driving, door position and automatic animation.
+There is no timer or penalty. A held pointer cannot dispatch the next vehicle.
+The original traffic car, officer and street models are shared without changing
+that mission's appearance. Motorcycles and the sliding-door passenger van are new
+procedural models; the van has its own passenger body rather than the truck chassis.
 
 ## Help the traffic crew
 
@@ -190,6 +222,12 @@ Traffic-rescue entries use `?dev=1&mission=traffic-rescue&stage=…`:
 `ambulance`, `stretcher`, `boarding`, `departure`, `reopen`, and `complete`.
 Stage reset, reload and HMR retain isolated development saves and the current tow assignment.
 
+Police entries use `?dev=1&mission=police-patrol&stage=…`:
+`intro`, `pursuit`, `bikes`, `arrest`, `clearance`, `van`, `door`, `boarding`,
+`lead`, `transport`, `depart`, and `complete`. Add `layout=0` through `layout=3`
+to inspect a configuration. The panel switches configurations and resets stages;
+reload and HMR retain independent development progress.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -233,6 +271,10 @@ road-repair sequence.
   vehicles, characters, scene, HUD, controller and continuous water audio.
 - `src/missions/traffic-rescue/`: independent collision, policing, two-car towing,
   continuous street cleaning and ambulance transport.
+- `src/missions/police-patrol/`: independent police cooperation, four route configurations,
+  two motorcycle dispatches, sliding-door boarding and escorted transport.
+- `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and
+  bench shared with the police mission; officer colours live in `emergency-models.ts`.
 - `src/runtime/traffic-cone.ts`: the original hollow road-repair cone, shared by
   the road and traffic missions without changing its shape, colours or scale.
 - `src/runtime/emergency-models.ts`: shared emergency chassis, ambulance, stretcher
@@ -254,7 +296,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The four missions have 57 domain tests, covering fixed arm lengths,
+The five missions have 72 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
@@ -267,6 +309,12 @@ one passenger per trip, transport, and rejection of contradictory snapshots.
 Traffic tests cover both towing orders and type assignments, automatic second dispatch,
 wheel-lift ground contact, nonrepeating colours, one load per trip,
 interrupted cleaning, equipment recovery, stage entry and contradictory snapshots.
+Police rules cover all four configurations and both motorcycle orders, interrupted
+driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
+entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
+along all routes against the four buildings.
+The police browser suite exercises all four configurations on mouse and phone touch,
+including cancellation, reload, boarding, badges, replay and development HMR.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and migration of development snapshots from before the gate sequence existed.

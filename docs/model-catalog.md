@@ -1,6 +1,6 @@
 # Town Crew 建模清單
 
-盤點日期：2026-09-25。範圍為目前四個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
+盤點日期：2026-09-26。範圍為目前五個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
 Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式建立，沒有集中存放的外部模型檔。
 
 **新增關卡或物件前，先查本清單，再搜尋原始碼。**
@@ -29,11 +29,11 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 救援車底盤與駕駛室 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `chassis` | 消防車、雲梯車、救護車、拖吊車、清掃車 | 四輪、車窗、後視鏡、警示燈、位移帶動的車輪；上裝由各車型建立。不能因此視為所有工程車底盤都已統一。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 奶油白車身、綠色條紋、可開合後門與中空後艙，擔架可實際進入。 |
 | 擔架 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createStretcher` | 消防救援、交通救援 | 有輪底架、床墊、枕頭、護欄與乘員／毯子顯示狀態。 |
-| 居民與制服人物 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson` | 消防救援、交通救援 | 共用人物輪廓及可動手臂；交通關卡在場景中設定警員與救護員制服配色。蓋房子的住戶另有實作。 |
+| 居民與制服人物 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`、`createOfficer` | 消防救援、交通救援、警察隊 | 共用人物輪廓及可動手臂；警員制服由共用函式設定，救護員由交通場景設定。蓋房子的住戶另有實作。 |
 | 天然大石頭 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder` | 保留供山路等未來關卡使用 | 原修馬路的十二面體大石頭；保留半徑 0.57、原灰褐色材質及旋轉變體。可傳入 0.38 產生原小石頭尺寸。現在市區修路不再擺放天然巨石，模型仍可直接匯入。 |
 | 破損瀝青路面塊 | [rocks.ts](../src/runtime/rocks.ts) · `createAsphaltChunk` | 修馬路的待挖區、挖斗及清運車載料 | 新增扁平不規則路面塊，深灰瀝青表面、淺灰碎料斷面與裂紋；與天然石頭是不同模型，不覆蓋原模型。 |
 | 修路傾卸車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路的運料車、清運車 | 從原修路場景抽取，保留四輪、後鉸鏈車斗、車斗前端抓取點與原運料車配色。清運變體採綠色車頭、棕色空斗，由關卡加入舊路面載料及設定 0.72 倍大小。 |
-| 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 四關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
+| 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 五關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
 
 ## 車輛
 
@@ -50,8 +50,8 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 消防車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createEngine` | 消防救援 | 共用救援底盤，上裝含器材艙、水管捲盤及可瞄準水砲。 |
 | 雲梯車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` | 消防救援 | 共用救援底盤；梯架、工作籃、噴嘴、支撐腳與工作籃互動範圍。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 已共用，詳見上表。 |
-| 事故／通行小客車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createCar` | 交通救援 | 可變車色、雙黃燈、損傷顯示、車輪轉動；尚未與修馬路的小客車整合。 |
-| 警車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createCar(shapes, true)` | 交通救援 | 同關小客車的變體，加入警示燈、藍色車身條紋與徽章。 |
+| 事故／通行小客車 | [car.ts](../src/runtime/car.ts) · `createCar` | 交通救援、警察隊 | 已抽為共用；保留可變車色、雙黃燈、損傷與車輪轉動，尚未與修路小客車整合。 |
+| 警車 | [car.ts](../src/runtime/car.ts) · `createCar(shapes, true)` | 交通救援、警察隊 | 原交通小客車變體，保留警示燈、藍色車身條紋與徽章。 |
 | 平板拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createTowTruck` | 交通救援 | 共用救援底盤；保留原可傾斜平板、斜板、絞盤與固定帶。左右進場共用同一模型並旋轉朝向；掛鉤、鋼索在場景內，裝載位置與角度見 `domain/towing.ts`。 |
 | 吊掛拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createWheelLiftTruck`、`createWheelYoke` | 交通救援 | 沿用救援底盤與平板拖吊車配色；新增低器材車體、後吊臂、液壓桿、吊索與托輪架。托起前輪，後輪接地；不是蓋房子吊車的整車複製。 |
 | 道路清掃車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createSweeper` | 交通救援 | 共用救援底盤；集塵箱、進氣格柵、兩個旋轉圓刷及底部吸入口。 |
@@ -62,7 +62,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 物件 | 來源／搜尋入口 | 使用關卡 | 目前狀態 |
 | --- | --- | --- | --- |
-| 居民、消防員、警員、救護員 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`；制服變體見 [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) | 消防救援、交通救援 | 人物基礎已共用，制服變體由場景設定。 |
+| 居民、消防員、警員、救護員 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`；制服變體見 [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) | 消防救援、交通救援、警察隊 | 人物基礎已共用，警員變體已抽為 `createOfficer`，保留原制服配色；其餘制服由場景設定。 |
 | 蓋房子住戶與小孩 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `residents` | 蓋房子 | 場景內獨立人物模型，含成人與縮小的孩子；與共用人物尚未整合。 |
 | 小貓 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createCat` | 消防救援 | 耳朵、眼睛、腳及可動尾巴。 |
 | 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
@@ -80,10 +80,10 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`asphalt`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |
-| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 四關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |
-| 樹木與背景建築 | 各關 `scene.ts`，搜尋 `IcosahedronGeometry`、`crown` 或背景房屋的 `box` 區段 | 四關 | 多個場景內實作；已有造型參考，不能當作尚未建模。 |
+| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 五關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |
+| 樹木與背景建築 | 各關 `scene.ts`，搜尋 `IcosahedronGeometry`、`crown` 或背景房屋的 `box` 區段 | 五關 | 多個場景內實作；已有造型參考，不能當作尚未建模。 |
 | 工地圍欄 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `Fences stay behind the site` 區段 | 蓋房子 | 場景內模型，位於施工區後方。 |
-| 長椅 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts)、[traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) | 消防救援、交通救援 | 各自以 `box` 建立；尺寸不同，尚未共用。 |
+| 長椅 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts)、[town-scenery.ts](../src/runtime/town-scenery.ts) | 消防救援、交通救援、警察隊 | 交通原版已抽為 `createTownBench`，與警察關卡共用；消防版本尺寸不同，仍獨立。 |
 
 ## 特效與 2D 圖像
 
@@ -91,7 +91,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | --- | --- | --- |
 | 火苗、水柱、水滴、蒸氣及水漬 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `flameGroups`、`water`、`droplets`、`steam` | 由幾何與材質建立的動態效果，不是外部素材。 |
 | 倒料／澆灌粒子、掃地揚塵、完工紙花 | 各關 `scene.ts`，搜尋 `gravel`、`particles`、`stream`、`dust`、`confetti` | 多個場景內實作；依實際共用需求抽取。 |
-| 小手拖曳示範 | [drag-hint.ts](../src/runtime/drag-hint.ts) · `createDragHint` | 四關共用 SVG 提示，屬於操作介面。 |
+| 小手拖曳示範 | [drag-hint.ts](../src/runtime/drag-hint.ts) · `createDragHint` | 五關共用 SVG 提示，屬於操作介面；警察關卡可提供轉彎路徑，原四關維持直線示範。 |
 | 選關插圖 | [menu.ts](../src/app/menu.ts) 的 `roadArt`、`houseArt`；[fire-art.ts](../src/app/fire-art.ts)；[traffic-art.ts](../src/app/traffic-art.ts) | 手寫 SVG，與 3D 模型分開；外觀有辨識性修改時需一起核對。 |
 | 車輛圖示、目標光圈及完成畫面插圖 | 各關 `ui.ts` 與 [style.css](../src/style.css) | 介面資產；不能用圖示是否存在判斷 3D 模型是否存在。 |
 
@@ -101,3 +101,20 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 蓋房子住戶／共用居民，以及各場景的樹木、背景建築、長椅與部分特效。
 這些是盤點結果，不代表已完成整合，也不要求為了清單一次重構全部模型。
 後續任務需要同類物件時，先比較既有版本，選擇來源並記錄沿用或變體的理由。
+
+## 第五關模型沿用與新增（2026-09-26）
+
+| 物件 | 分類與來源 | 保留或新增內容 |
+| --- | --- | --- |
+| 巡邏警車、犯人小客車 | 沿用／共用：[car.ts](../src/runtime/car.ts) | 原 `traffic-rescue/vehicles.ts` 的 `createCar` 原樣抽出，原關卡保留重新匯出入口。車體、警示燈、徽章、配色與比例不變。 |
+| 警員 | 沿用／共用：[emergency-models.ts](../src/runtime/emergency-models.ts) · `createOfficer` | 原交通關卡的人物與制服換色原樣抽出；兩關呼叫同一函式。 |
+| 樹木、背景房屋、長椅 | 沿用／共用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 原交通場景三種物件抽出，交通場景保留原位置、幾何、材質與比例。警察關卡將房屋排成四個街角；北側房屋深度為 0.8 倍，前景店面深度為 0.65 倍、高度為 0.58 倍，讓巷道與車輛保持可見。其它關卡的同類模型仍各自存在。 |
+| 街道路面與路緣 | 關卡場景：[police-patrol/scene.ts](../src/missions/police-patrol/scene.ts) · `pave` | 外圍道路、中央街道、巷道與警戒灣合併鋪面；各層只有一份不重疊的表面，統一道路底色，避免路口色塊與重疊接縫。 |
+| 警用重型機車 | 新增：[police-patrol/vehicles.ts](../src/missions/police-patrol/vehicles.ts) · `createMotorcycle` | 兩輪、前叉、引擎、整流罩、大風鏡、側箱、警示燈、把手及騎警。沿用車輪與制服人物基礎，新增安全帽與乘坐姿勢。兩台以小面積頭盔色標及介面 1／2 區分。 |
+| 偵防廂型車 | 新增：同檔 · `createDetectiveVan` | 深藍灰乘用廂型車，長車頭、連續側窗、後窗與尾燈、獨立乘坐艙、座椅、可滑動側門與小型警示燈。車身獨立建構，不採卡車駕駛室。 |
+| 一般廂型車 | 既有變體：同檔 · `createDetectiveVan(shapes, false)` | 共用新廂型車車體，取消警徽與警示燈，車身採該局隨機車色。 |
+| 犯人 | 既有變體：同檔 · `createSuspect` | 沿用居民基礎，將另一隻手臂改為可動以表現舉手；人物由開場拿包包的行為辨識。 |
+| 包包 | 新增：同檔 · `createBag` | 簡單袋身與半圓提把，四種柔和配色。 |
+| 警局抵達插圖、車輛圖示、選關卡片 | 新增 SVG：[police-art.ts](../src/app/police-art.ts)、[police-patrol/ui.ts](../src/missions/police-patrol/ui.ts) | 沿用現有手寫 SVG 風格，對應三種勤務車型；警局是完成畫面插圖，未新增獨立 3D 警局。 |
+
+第五關目前以車輛包抄為核心，不新增腳印或人物拖曳玩法。

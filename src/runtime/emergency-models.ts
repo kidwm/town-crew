@@ -80,3 +80,14 @@ export function createPerson(shapes: Shapes, uniform = false) {
   box(root, [0.14, 0.38, 0.15], [-0.27, 0.73, 0], uniform ? '#d3a968' : '#8fb4ae');
   return { root, arm };
 }
+
+/** The existing traffic officer, with the original uniform colours. */
+export function createOfficer(shapes: Shapes) {
+  const person = createPerson(shapes, true);
+  person.root.traverse(o => {
+    if (!(o instanceof THREE.Mesh)) return;
+    if (o.material === shapes.material('#d3a968')) o.material = shapes.material('#7195a4');
+    else if (o.material === shapes.material('#efd27d')) o.material = shapes.material('#668b9d');
+  });
+  return person;
+}

@@ -4,7 +4,7 @@ const deployedURL = process.env.PLAYWRIGHT_BASE_URL;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['road.spec.mjs', 'house.spec.mjs', 'dump-grip.spec.mjs', 'crane-assist.spec.mjs', 'fire.spec.mjs', 'traffic.spec.mjs', 'concrete.spec.mjs'],
+  testMatch: ['road.spec.mjs', 'house.spec.mjs', 'dump-grip.spec.mjs', 'crane-assist.spec.mjs', 'fire.spec.mjs', 'traffic.spec.mjs', 'concrete.spec.mjs', 'police.spec.mjs'],
   timeout: process.env.CI ? 240_000 : 120_000,
   expect: { timeout: 15_000 },
   workers: 1,

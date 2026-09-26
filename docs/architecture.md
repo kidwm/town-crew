@@ -20,11 +20,15 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/fire.ts — water, docking, two rescue trips and ambulance transport
        │    ├─ scene.ts + vehicles.ts — shop, emergency vehicles, people, cat and water
        │    └─ session.ts + ui.ts + sounds.ts — input, hints, snapshots and water audio
-       └─ traffic-rescue/
-            ├─ domain/traffic.ts — colours, tow assignment, first-car choice, automatic second trip, cleaning and transport
-            ├─ domain/towing.ts — mirrored approach routes, flatbed loading and wheel-lift ground contact
-            ├─ scene.ts + vehicles.ts — street, police, flatbed and rotating sweeper brushes
-            └─ session.ts + ui.ts — input, hints, snapshots and audio cues
+       ├─ traffic-rescue/
+       │    ├─ domain/traffic.ts — colours, tow assignment, first-car choice, automatic second trip, cleaning and transport
+       │    ├─ domain/towing.ts — mirrored approach routes, flatbed loading and wheel-lift ground contact
+       │    ├─ scene.ts + vehicles.ts — street, police, flatbed and rotating sweeper brushes
+       │    └─ session.ts + ui.ts — input, hints, snapshots and audio cues
+       └─ police-patrol/
+            ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
+            ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
+            └─ session.ts + ui.ts — pointer routes, configuration persistence, hints and developer entry
 ```
 
 Domain modules have no DOM, Three.js, storage, or Effect dependencies. Renderer
@@ -48,6 +52,15 @@ small CSS-pixel margin; the former elevated target remains an alternative.
 A continuous 0.4-second dwell commits placement before releasing pointer
 ownership, so a still-held finger cannot control the next load. This dwell is
 transient drag context; cancellation and reload discard it.
+
+The police mission owns a separate pure domain state machine and four validated
+route configurations. Round identity, eight continuous work fractions, motorcycle
+completion order and automatic animation time are versioned in its snapshot.
+Pointer targets select distance along rounded road paths; the domain advances cars
+at a bounded speed, stops on release, and requires endpoint dwell or valid release.
+The transient desired distance and pointer ownership never survive reload.
+The original traffic car and scenery builders are shared renderer-only functions;
+police motorcycle and passenger-van geometry remains in the police mission.
 
 ## Development and release
 
@@ -103,7 +116,7 @@ sync with additions, moves, changes and deliberate variants.
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the four missions. Further abstractions
+progress storage are shared by the five missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

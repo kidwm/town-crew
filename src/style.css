@@ -218,3 +218,22 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .traffic-tally { right: 14px; bottom: 137px; }
   .traffic-world .finish-actions { gap: 8px; padding: 10px; }.traffic-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
 }
+
+.police-targets { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.police-world .progress { width: 205px; }
+.bike-picker { position: absolute; right: 30px; bottom: 112px; display: flex; gap: 10px; }
+.bike-picker[hidden] { display: none; }
+.bike-picker button { position: relative; width: 72px; height: 64px; border: 2px solid #fff9; border-radius: 17px; background: #f9f3dfed; color: #536f77; }
+.bike-picker button[aria-pressed='true'] { border-color: #7b9d90; background: #fff0bf; }
+.bike-picker button:disabled { opacity: .5; }
+.bike-picker svg { width: 55px; height: 44px; }.bike-picker span { position: absolute; bottom: 1px; right: 7px; font-size: 13px; font-weight: 750; }
+.police-world .drag-hint-line { opacity: 0; }
+.police-arrival { z-index: 2; }
+@media (max-width: 650px) {
+  .police-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }.police-world .mission-badge strong { font-size: 13px; }
+  .police-world .mission-steps { left: 16px; right: auto; bottom: 22px; }.police-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .police-world .drag-hint-hand > * { transform: scale(.75); }
+  .police-target { width: 40px; height: 40px; }.police-target > span { font-size: 10px; padding: 3px 7px; }
+  .bike-picker { bottom: 141px; right: 14px; }.bike-picker button { width: 64px; height: 57px; }
+  .police-world .finish-actions { gap: 8px; padding: 10px; }.police-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}

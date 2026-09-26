@@ -10,7 +10,7 @@ test('traffic crew controls the scene, tows both colours, sweeps and transports 
   // Exercise opposite random assignments as well as opposite child choices.
   await page.addInitScript(sample => { Math.random = () => sample; }, touch ? 0.75 : 0.25);
   page.on('pageerror', e => errors.push(e.message)); await page.clock.install();
-  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(4);
+  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(5);
   await page.getByRole('button', { name: '交通救援隊', exact: true }).click();
   const app = page.locator('#app'), { down, move, up, cancel, wait } = await fireControls(page, touch);
   async function hinted() { const hint = page.locator('.drag-hint'); await expect(hint).toBeVisible(); return gesture(page, await hint.getAttribute('data-direction')); }
@@ -65,7 +65,7 @@ test('traffic crew controls the scene, tows both colours, sweeps and transports 
   await page.getByRole('button', { name: '交通救援隊', exact: true }).click(); await wait('police');
   const next = (await app.getAttribute('data-colors')).split(','); colors.split(',').forEach((color, i) => expect(next[i]).not.toBe(color));
   await expect(app).toHaveAttribute('data-towed', '0'); await expect(app).toHaveAttribute('data-cleaned', '0'); await expect(page.locator('canvas')).toHaveCount(1);
-  await page.getByRole('button', { name: '重新開始交通救援任務' }).click(); await wait('police'); expect(await app.getAttribute('data-colors')).not.toBe(next.join(','));
+  await page.getByRole('button', { name: '重新開始交通救援任務' }).click(); await expect(app).not.toHaveAttribute('data-colors', next.join(',')); await wait('police');
   expect(errors).toEqual([]);
 });
 
@@ -74,6 +74,8 @@ test('traffic ignores shortcuts, rejects contradictory saves and resumes the las
   await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:traffic-rescue', JSON.stringify({ version: 1, phase: 'complete', towed: [false, false] })));
   await page.goto('/#traffic-rescue'); await expect(page.locator('#app')).toHaveAttribute('data-phase', 'police'); await expect(page.locator('.dev-panel')).toHaveCount(0);
   await page.getByRole('button', { name: '回到選關', exact: true }).click();
+  // The old Effect scope finishes saving before the fixture replaces storage.
+  await expect(page.locator('#app')).toHaveAttribute('data-screen', 'menu');
   await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:traffic-rescue', JSON.stringify({
     version: 1, phase: 'tow-exit', action: 'ready', elapsed: 0, colors: [1, 3],
     cones: [true, true], towed: [true, false], selected: 1, cleaned: 0, truckX: 10,

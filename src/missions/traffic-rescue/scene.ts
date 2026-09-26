@@ -1,7 +1,8 @@
 import * as THREE from 'three';
+import { createTownTree, createTownHouse, createTownBench } from '../../runtime/town-scenery.ts';
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
 import { createShapes } from '../../runtime/geometry.ts';
-import { createAmbulance, createStretcher, createPerson, link } from '../../runtime/emergency-models.ts';
+import { createAmbulance, createStretcher, createPerson, createOfficer, link } from '../../runtime/emergency-models.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 import { createCar, createTowTruck, createWheelLiftTruck, createWheelYoke, createSweeper } from './vehicles.ts';
 import { CARS, CONES, PATIENT, DEBRIS, PALETTE, TOW_LANE, towDirection, towType, stages, goals, goalPoint, isDriving, driveEnd, mix, smooth } from './domain/traffic.ts';
@@ -25,16 +26,12 @@ export function createTrafficScene(host: HTMLElement) {
   for (let x = -32; x <= 32; x += 2.5) for (const z of [-2.8, 2.8]) box(scene, [1.1, 0.02, 0.09], [x, 0.02, z], '#f7ebcd');
   box(scene, [100, 0.16, 2.1], [0, 0.02, -6.9], '#e3d8b8');
   for (const [x, z] of [[-12, -8.7], [12, -8.7], [-15, 12], [14, 12]]) {
-    cylinder(scene, 0.14, 1.6, [x, 0.7, z], '#ab9270', 8);
-    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 1), material('#8bb18a')); crown.position.set(x, 2.5, z); scene.add(crown);
+    const tree = createTownTree(shapes); tree.position.set(x, 0, z); scene.add(tree);
   }
   for (const [x, color, roof] of [[-7, '#e4c79e', '#c8917a'], [1, '#e9d9b9', '#9bbcaf'], [8, '#e2c2a3', '#d0b174']] as const) {
-    box(scene, [5.3, 3, 3], [x, 1.45, -11], color); box(scene, [5.65, 0.24, 3.3], [x, 3.02, -11], roof);
-    for (const dx of [-1.6, 1.6]) { box(scene, [1.1, 1.1, 0.08], [x + dx, 1.9, -9.47], '#fff0d2'); box(scene, [0.89, 0.9, 0.08], [x + dx, 1.9, -9.41], '#a9ceca'); }
-    box(scene, [0.9, 1.75, 0.08], [x, 0.86, -9.45], '#8cafaa');
+    const house = createTownHouse(shapes, color, roof); house.position.set(x, 0, -11); scene.add(house);
   }
-  box(scene, [3.1, 0.16, 0.78], [1, 0.48, -7], '#ba9e79'); box(scene, [3.1, 0.7, 0.1], [1, 0.9, -7.35], '#c9af85');
-  for (const x of [-0.15, 2.15]) box(scene, [0.12, 0.5, 0.65], [x, 0.23, -7], '#809889');
+  const bench = createTownBench(shapes); bench.position.set(1, 0, -7); scene.add(bench);
   const cars = [createCar(shapes), createCar(shapes)], police = createCar(shapes, true), flatbed = createTowTruck(shapes), wheelLift = createWheelLiftTruck(shapes), sweeper = createSweeper(shapes), ambulance = createAmbulance(shapes), passing = createCar(shapes);
   [police, flatbed, wheelLift, sweeper, ambulance, passing, ...cars].forEach(v => scene.add(v.root));
   const cones = CONES.map(() => createTrafficCone(shapes)), looseCone = createTrafficCone(shapes); cones.forEach(c => scene.add(c)); scene.add(looseCone);
@@ -46,10 +43,9 @@ export function createTrafficScene(host: HTMLElement) {
   const hookHit = shapes.hitbox(hook, [1.2, 1.2, 1.2], [0.1, 0, 0]);
   const cable = cylinder(scene, 0.04, 1, [0, 0, 0], '#627d7a');
   const stretcher = createStretcher(shapes); scene.add(stretcher.root);
-  const residents = [createPerson(shapes), createPerson(shapes)], officer = createPerson(shapes, true), medic = createPerson(shapes, true);
+  const residents = [createPerson(shapes), createPerson(shapes)], officer = createOfficer(shapes), medic = createPerson(shapes, true);
   [...residents, officer, medic].forEach(p => scene.add(p.root));
   // Make uniforms distinct while keeping the shared character silhouette.
-  officer.root.traverse(o => { if (!(o instanceof THREE.Mesh)) return; if (o.material === material('#d3a968')) o.material = material('#7195a4'); else if (o.material === material('#efd27d')) o.material = material('#668b9d'); });
   medic.root.traverse(o => { if (!(o instanceof THREE.Mesh)) return; if (o.material === material('#d3a968') || o.material === material('#efd27d')) o.material = material('#f1ebd6'); else if (o.material === material('#f1e5ad')) o.material = material('#85b4a3'); });
   const cameraProp = new THREE.Group(); cameraProp.position.set(0.1, 0.96, 0.3); officer.root.add(cameraProp);
   box(cameraProp, [0.34, 0.23, 0.13], [0, 0, 0], '#587678');
