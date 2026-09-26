@@ -114,7 +114,9 @@ export function createPoliceScene(host: HTMLElement) {
     ray.setFromCamera(new THREE.Vector2((x - r.x) / r.width * 2 - 1, 1 - (y - r.y) / r.height * 2), camera);
     const candidates = available(s).map(id => ({ id, hit: ray.intersectObject(vehicles[id].hit, true)[0], distance: Math.hypot(x - r.x - task(s, id).from.x, y - r.y - task(s, id).from.y) }));
     const actual = candidates.filter(c => c.hit).sort((a, b) => a.hit!.distance - b.hit!.distance)[0];
-    return actual?.id ?? candidates.sort((a, b) => a.distance - b.distance).find(c => c.distance < 30)?.id;
+    // Keep a 96 px grab area around the door handle, even at the phone's town scale.
+    const grabRadius = s.phase === 'door' ? 48 : 30;
+    return actual?.id ?? candidates.sort((a, b) => a.distance - b.distance).find(c => c.distance < grabRadius)?.id;
   }
   function target(s: PoliceState, vehicle: Vehicle, point: Screen, startValue = 0) {
     const r = canvas.getBoundingClientRect(), finger = { x: point.x - r.x, y: point.y - r.y }, info = task(s, vehicle);

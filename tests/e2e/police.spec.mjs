@@ -41,7 +41,12 @@ for (const sample of [0.05, 0.3, 0.55, 0.8]) {
     const door = await hinted();
     // The horizontal parking route exposes a lateral door gesture at the fixed town camera.
     expect(Math.abs(door.to.x - door.from.x)).toBeGreaterThan(Math.abs(door.to.y - door.from.y) * 2);
-    await down(door.from); await move({ x: door.from.x + (door.to.x - door.from.x) * 0.3, y: door.from.y + (door.to.y - door.from.y) * 0.3 });
+    // A finger beside the small phone-scale van can grab the door; empty space and taps cannot open it.
+    await down({ x: door.from.x, y: door.from.y + 96 }); await expect(app).toHaveAttribute('data-action', 'ready'); await up();
+    const grip = { x: door.from.x, y: door.from.y + 44 };
+    await down(grip); await expect(app).toHaveAttribute('data-action', 'dragging'); await up(); await wait('door');
+    expect(JSON.parse(await app.getAttribute('data-work')).door).toBe(0);
+    await down(grip); await move({ x: grip.x + (door.to.x - door.from.x) * 0.3, y: grip.y + (door.to.y - door.from.y) * 0.3 });
     await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).door).toBeGreaterThan(0.02);
     await cancel(); await wait('door'); const doorWork = await app.getAttribute('data-work');
     expect(JSON.parse(doorWork).door).toBeLessThan(1);
