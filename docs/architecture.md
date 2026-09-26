@@ -106,6 +106,15 @@ sequential so graphical runs do not compete for the same GPU.
 
 ## Further missions
 
+Read the [mission design principles and proposal checklist](mission-design.md) at the start of design.
+Each proposal defines its fixed task dependencies, round variations, child-controlled choices,
+nonrepetition policy and restore behaviour. Keep validated round configuration in domain state;
+rendering, interaction targets, hints and routes derive from that same configuration. Select it
+once for a fresh round and persist it with progress, rather than rerolling on reload or render.
+Keep the previous-round summary separately so restarting work can still avoid repeating it.
+Provide explicit configurations for development and deterministic tests; validate all main layouts
+and allowed task orders before adding more combinations. No generic randomisation framework is required.
+
 Use the [model catalog](model-catalog.md) before creating vehicles, characters, props
 or scenery. It includes models embedded in scene setup, not just exported builders.
 Search all mission sources and inspect the original appearance before implementing a

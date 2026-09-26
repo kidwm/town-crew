@@ -247,6 +247,12 @@ rendered interactive frame. It excludes earlier dependency loading and is
 
 ## Code boundaries and future town missions
 
+Start each new mission proposal with the [mission design principles and checklist](docs/mission-design.md).
+Plan replay variation and child choices alongside the core interaction: define valid configurations,
+which main variation avoids repeating the previous round, and how reload preserves the current round.
+Keep gestures familiar and coordinate routes, targets and hints for every configuration.
+The same document records the planned house-building variants separately from shipped behaviour.
+
 Before designing or implementing new models, read the [model catalog](docs/model-catalog.md).
 It lists existing vehicles, props and scenery, their source locations, and whether they
 are shared or still built inside a mission scene. Search the source as well: a model
