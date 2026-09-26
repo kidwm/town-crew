@@ -123,10 +123,11 @@ test('build two floors, choose the roof before lifting, reload and restart from 
       if (i === 2) await page.screenshot({ path: info.outputPath('first-floor.png') });
     }
   }
-  await wait('decorate');
+  // The final lift and crane departure lead to the welcome without another tap.
+  await wait('complete');
   await expect(app).toHaveAttribute('data-color', '2');
   await expect(page.locator('.roof-picker')).toBeHidden();
-  await page.getByRole('button', { name: '按門鈴，歡迎入住' }).click(); await wait('complete');
+  await expect(page.getByRole('button', { name: '按門鈴，歡迎入住' })).toHaveCount(0);
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
   await page.screenshot({ path: info.outputPath('complete.png') });
   await page.reload(); await wait('complete'); await expect(app).toHaveAttribute('data-color', '2');

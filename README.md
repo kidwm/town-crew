@@ -144,7 +144,7 @@ All emergency vehicles leave before the final celebration.
    After installing both walls, preview coral, green or blue on the roof waiting on
    the truck. Press the crane button to start the final lift in the chosen colour.
    There are six lifts across the two deliveries, with a celebration after the first floor.
-6. The crane leaves the site. Ring the doorbell to welcome the residents. Windows light up,
+6. After the crane leaves the site, the welcome begins automatically. Windows light up,
    residents wave, and the mission can be replayed or left through the selection screen.
 
 Crane loads travel above the completed structure before automatically lowering.

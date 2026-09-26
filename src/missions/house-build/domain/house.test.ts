@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advance, createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, chooseColor, startRoofLift, finish, resumeHouse, progress, PARTS, HOUSE, POUR_TARGETS, DELIVERY_STOP, DELIVERY_START } from './house.ts';
+import { advance, createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, chooseColor, startRoofLift, resumeHouse, progress, PARTS, HOUSE, POUR_TARGETS, DELIVERY_STOP, DELIVERY_START } from './house.ts';
 import type { HouseState } from './house.ts';
 function tick(s: HouseState, seconds = 2) { for (let i = 0; i < Math.ceil(seconds * 60); i++) s = advance(s, 1 / 60); return s; }
 
@@ -20,15 +20,14 @@ test('four vehicles, two deliveries and six lifts produce a decorated two-storey
     }
     s = tick(s, 4);
   }
-  assert.equal(s.phase, 'decorate');
-  s = finish(s); assert.equal(s.phase, 'complete'); assert.equal(s.color, 2); assert.equal(progress(s), 1);
+  assert.equal(s.phase, 'complete'); assert.equal(s.color, 2); assert.equal(progress(s), 1);
 });
 test('the roof waits for a colour choice before pickup and keeps that colour through reload and installation', () => {
   let s = tick(createHouse('crane-two'));
   for (let i = 0; i < 2; i++) s = tick(release(moveLoad(grab(s), HOUSE)), 3);
   assert.equal(s.phase, 'roof-color'); assert.equal(s.placed, 5);
   assert.deepEqual(tick(s, 10), s);
-  assert.deepEqual(grab(s), s); assert.deepEqual(finish(s), s);
+  assert.deepEqual(grab(s), s);
   assert.deepEqual(chooseColor(s, -1), s); assert.deepEqual(chooseColor(s, 3), s);
   s = resumeHouse(chooseColor(s, 2))!;
   assert.equal(s.phase, 'roof-color'); assert.equal(s.color, 2);
@@ -36,9 +35,25 @@ test('the roof waits for a colour choice before pickup and keeps that colour thr
   s = tick(resumeHouse(s)!);
   assert.equal(s.phase, 'crane-two'); assert.equal(s.placed, 5);
   s = tick(release(moveLoad(grab(s), HOUSE)), 4);
-  assert.equal(s.phase, 'decorate'); assert.equal(s.placed, 6); assert.equal(s.color, 2);
+  assert.equal(s.phase, 'complete'); assert.equal(s.placed, 6); assert.equal(s.color, 2);
   assert.deepEqual(chooseColor(s, 0), s);
-  assert.equal(finish(s).phase, 'complete');
+});
+test('welcome completes without input only after the crane leaves, including restored doorbell saves', () => {
+  let s = tick(startRoofLift(chooseColor(createHouse('roof-color'), 1)));
+  s = tick(release(moveLoad(grab(s), HOUSE)), 1.3);
+  assert.equal(s.placed, 6); assert.equal(s.action, 'leaving');
+  s = tick(s, 2);
+  assert.equal(s.phase, 'crane-two'); assert.ok(progress(s) < 1);
+  s = tick(resumeHouse(s)!, 1);
+  assert.equal(s.phase, 'complete'); assert.equal(s.color, 1); assert.equal(progress(s), 1);
+  assert.deepEqual(tick(s), s);
+  for (const version of [1, 2]) {
+    const restored = resumeHouse({ ...createHouse('decorate'), version, color: 2 })!;
+    assert.equal(advance(restored, 0).phase, 'decorate');
+    const complete = tick(restored);
+    assert.equal(complete.phase, 'complete'); assert.equal(complete.color, 2);
+    assert.equal(complete.placed, 6); assert.equal(progress(complete), 1);
+  }
 });
 test('old saves preserve completed homes and bring unfinished roofs back to colour selection', () => {
   const legacy = { ...createHouse('crane-two'), version: 1, placed: 5, action: 'ready', color: 1 };

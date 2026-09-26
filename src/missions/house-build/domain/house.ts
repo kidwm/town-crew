@@ -69,11 +69,10 @@ export function chooseColor(s: HouseState, color: number): HouseState {
 export function startRoofLift(s: HouseState): HouseState {
   return s.phase === 'roof-color' ? { ...s, phase: 'crane-two', action: 'pickup', elapsed: 0, load: { ...LOAD_HOME }, from: { ...LOAD_HOME } } : s;
 }
-export function finish(s: HouseState): HouseState {
-  return s.phase === 'decorate' ? { ...s, phase: 'complete', elapsed: 0 } : s;
-}
 export function advance(s: HouseState, delta: number): HouseState {
-  if (!Number.isFinite(delta) || delta <= 0 || ['roof-color', 'decorate', 'complete'].includes(s.phase)) return s;
+  if (!Number.isFinite(delta) || delta <= 0 || ['roof-color', 'complete'].includes(s.phase)) return s;
+  // Continue automatically once the crane has left, including old doorbell saves.
+  if (s.phase === 'decorate') return { ...s, phase: 'complete', elapsed: 0 };
   const dt = Math.min(delta, 0.1), elapsed = s.elapsed + dt;
   let next = { ...s, elapsed };
   if (s.action === 'entering' && elapsed >= 1.2) return { ...next, action: 'ready', elapsed: 0 };
