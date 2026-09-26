@@ -8,6 +8,7 @@ import type { ScreenPoint } from './domain/crane-target.ts';
 import { siteX } from './domain/round.ts';
 import { createHouseParts } from './house-model.ts';
 import { createResidents } from './residents.ts';
+import { createGarage } from './garage.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 
 export function createHouseScene(host: HTMLElement) {
@@ -36,7 +37,7 @@ export function createHouseScene(host: HTMLElement) {
     box(site, [2.3, 0.1, 0.12], [x, 1, -6.3], '#c2b494');
     box(site, [0.15, 1.3, 0.15], [x - 1.05, 0.5, -6.3], '#a09275');
   }
-  for (const [x, z, scale] of [[-9, -5, 1.2], [8, -4, 1.1], [9, 2, 0.8]]) {
+  for (const [x, z, scale] of [[-9, -7.5, 1.2], [8, -4, 1.1], [9, 2, 0.8]]) {
     const tree = new THREE.Group(); tree.position.set(x, 0, z); tree.scale.setScalar(scale); site.add(tree);
     cylinder(tree, 0.14, 1.4, [0, 0.6, 0], '#a08761', 7);
     const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2, 1), material('#84ab86')); crown.position.y = 2; tree.add(crown);
@@ -88,6 +89,7 @@ export function createHouseScene(host: HTMLElement) {
   for (const x of [-2.05, 4.15]) box(parking, [0.08, 0.03, 2.5], [x, -0.04, 5.1], '#fff1c7');
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.12, 0.12, 0.06], [0, 0, 0], ['#e8b964', '#85b5ac', '#d88770'][i % 3]));
   const residents = createResidents(shapes, site);
+  const garage = createGarage(shapes, site);
   const ray = new THREE.Raycaster();
   function setRay(x: number, y: number) {
     const rect = canvas.getBoundingClientRect();
@@ -161,7 +163,7 @@ export function createHouseScene(host: HTMLElement) {
       return index >= 0 ? { ...POUR_TARGETS[index] } : aim;
     },
     render(s: HouseState, time: number) {
-      site.scale.x = siteX(s.round, 1); home.update(s); residents.update(s, time);
+      site.scale.x = siteX(s.round, 1); home.update(s); residents.update(s, time); garage.update(s);
       const craneStage = isCrane(s), delivery = isDelivery(s), roofChoosing = s.phase === 'roof-color';
       const interactive = s.action === 'ready' || s.action === 'dragging';
       const arriving = s.action === 'entering' ? 1 - smooth(s.elapsed / 1.2) : 0;
@@ -169,8 +171,8 @@ export function createHouseScene(host: HTMLElement) {
       const craneLeaving = s.phase === 'crane-two' && s.action === 'leaving';
       const craneTravel = craneLeaving ? smooth((s.elapsed - 0.9) / (leavingDuration(s) - 0.9)) : 0;
       crane.root.visible = s.phase !== 'decorate' && s.phase !== 'complete';
-      // Pull into the open work area before passing the tree beside the exit.
-      crane.root.position.set(-4.7 - craneTravel * 17, 0, -3.8 + 1.4 * smooth(craneTravel / 0.18));
+      // The rear service lane clears the garage, its pillars and the fence.
+      crane.root.position.set(-2.6 - craneTravel * 17, 0, -4.2);
       crane.retract(craneLeaving ? smooth((s.elapsed - 0.5) / 0.4) : 0);
       crane.roll(-craneTravel * 17);
       dump.root.visible = s.phase === 'gravel'; dump.root.position.set(-2.6 - arriving * 12 - departing * 12, 0, 0); dump.roll(dump.root.position.x);

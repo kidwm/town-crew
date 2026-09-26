@@ -70,7 +70,7 @@ sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
 pointer gestures through `resumeRoad`, `resumeHouse` and `resumeFire`. Development snapshots
 use separate versioned keys and do not award completion badges.
-House snapshots use schema version 3 and include roof style, mirrored layout,
+House snapshots use schema version 4 and include roof style, mirrored layout,
 palette, family and pet. Work coordinates remain in the original site's local frame;
 the scene mirrors its entire site group and converts input/projection at that boundary.
 The same transform drives vehicles, buildings, crane targets and hints. Each concrete
@@ -80,7 +80,14 @@ selectors retain the round on stage resets, and explicitly select variants for t
 Version 1/2 homes migrate to the original appearance and layout, retaining work and
 roof colour. The old `roof-color` pause automatically starts pickup; new play moves
 directly from the fifth installation to roof pickup. The crane leaves before the
-automatic welcome, and phase/placement checkpoints are saved immediately.
+automatic welcome, and phase/placement checkpoints are saved immediately. `decorate`
+now holds a ten-second arrival clock: car route, door opening, passengers and pets
+are derived from its persisted `elapsed`. Reload/HMR resumes the same instant; a
+completed snapshot renders the parked car and family at home without replaying.
+Version 1–3 unfinished welcome saves start this clock at zero; version 3 retains
+its round configuration. The garage grows from existing gravel, pours and placements,
+so it introduces no separate work counter. A rear crane lane clears the garage;
+the shared car's optional opening cabin leaves existing traffic/police cars unchanged.
 Fire snapshots keep each fire's remaining heat, the two independent rescue flags,
 the current passenger and animation progress. Restoration rejects impossible
 stage/action/heat/rescue combinations and releases stale pointer input. Water

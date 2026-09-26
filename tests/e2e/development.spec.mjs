@@ -143,6 +143,29 @@ test('traffic development reload and HMR retain partial cleaning and colours wit
   await expect(app).toHaveAttribute('data-towed', '0'); expect(errors).toEqual([]);
 });
 
+test('house arrival HMR keeps the parked car and ongoing walk at the same instant', async ({ page }) => {
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install(); await page.clock.pauseAt(Date.now() + 1000);
+  await page.goto('/?dev=1&mission=house-build&stage=decorate&layout=1&family=2&pet=cat');
+  const app = page.locator('#app');
+  async function mounted() {
+    await expect(page.locator('canvas')).toHaveCount(1); await expect(page.locator('.loading')).toHaveCount(0);
+    await page.clock.runFor(32);
+  }
+  await mounted(); await page.clock.runFor(7200);
+  await expect(app).toHaveAttribute('data-arrival', 'walking');
+  const before = Number(await app.getAttribute('data-arrival-time'));
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+  await expect.poll(() => page.evaluate(element => !element.isConnected, world)).toBe(true);
+  await mounted();
+  await expect(app).toHaveAttribute('data-arrival', 'walking');
+  expect(Math.abs(Number(await app.getAttribute('data-arrival-time')) - before)).toBeLessThan(0.05);
+  await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'cat');
+  await page.clock.runFor(3000); await expect(app).toHaveAttribute('data-phase', 'complete');
+  expect(errors).toEqual([]);
+});
+
 test('traffic reload during wheel lifting keeps the same car, rig and animation position', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
   await page.addInitScript(() => { Math.random = () => 0.75; }); await page.clock.install();

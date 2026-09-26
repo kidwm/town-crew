@@ -7,6 +7,7 @@ import { createHouse, resumeHouse, grab, release, dragGravel, moveChute, drive, 
 import { advanceCraneSettle, CRANE_SETTLE_SECONDS } from './domain/crane-target.ts';
 import { chooseRound, validRound, DEFAULT_ROUND, ROOF_TYPES, ROOF_NAMES, HOUSE_PALETTES } from './domain/round.ts';
 import type { HouseRound } from './domain/round.ts';
+import { arrivalTime, arrivalStep } from './domain/arrival.ts';
 import { housePlan } from './round-card.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { HouseState, Stage, Point } from './domain/house.ts';
@@ -148,6 +149,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       }
       label('.house-instruction', state.phase === 'crane-two' && state.action === 'leaving'
         ? '房子蓋好了！工程車收工囉'
+        : state.phase === 'decorate' ? ({ driving: '一家人開車來囉！', parked: '停好車，準備下車', unloading: '一起下車，搬進新家', walking: '走到門口，歡迎回家！', waiting: '', home: '歡迎搬進新家！' })[arrivalStep(arrivalTime(state))]
         : state.action === 'placing' ? '吊車正在幫忙放好'
         : drop?.accepted ? '對準了！吊車幫你放好' : isDelivery(state) ? `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` : instructions[state.phase]);
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.placed = String(state.placed);
@@ -155,7 +157,9 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       app.dataset.layout = String(state.round.layout); app.dataset.roof = state.round.roof;
       app.dataset.palette = String(state.round.palette); app.dataset.family = String(state.round.family); app.dataset.pet = state.round.pet;
       app.dataset.pourValues = JSON.stringify(state.pours);
-      const nextPlanKey = `${state.round.roof}/${state.round.palette}/${state.color}`;
+      app.dataset.arrival = arrivalStep(arrivalTime(state));
+      app.dataset.arrivalTime = String(arrivalTime(state));
+      const nextPlanKey = `${state.round.roof}/${state.round.palette}/${state.color}/${state.round.layout}`;
       if (planKey !== nextPlanKey) { plan.innerHTML = housePlan(state); plan.setAttribute('aria-label', `這次蓋${ROOF_NAMES[state.round.roof]}兩層小樓`); planKey = nextPlanKey; }
       const value = progress(state);
       app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`;
@@ -167,7 +171,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         label('#vehicle-name', names[state.phase]);
         app.querySelector('.badge-icon')!.innerHTML = iconFor(state.phase);
         const active = state.phase === 'gravel' ? 0 : state.phase === 'concrete' ? 1 : isDelivery(state) ? 2 : 3;
-        app.querySelectorAll<HTMLElement>('[data-step]').forEach((el, i) => { el.dataset.state = state.phase === 'complete' || i < active ? 'done' : i === active ? 'active' : 'upcoming'; });
+        app.querySelectorAll<HTMLElement>('[data-step]').forEach((el, i) => { el.dataset.state = state.phase === 'complete' || state.phase === 'decorate' || i < active ? 'done' : i === active ? 'active' : 'upcoming'; });
         if (select) select.value = state.phase;
         displayed = state.phase;
       }

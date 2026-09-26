@@ -144,8 +144,16 @@ All emergency vehicles leave before the final celebration.
    After installing both walls, the crane automatically picks up the coordinated-colour roof.
    Drag it into place without a colour-selection screen or another confirmation.
    There are six lifts across the two deliveries, with a celebration after the first floor.
-6. After the crane leaves the site, the welcome begins automatically. Windows light up,
-   residents wave, and the mission can be replayed or left through the selection screen.
+6. After the crane leaves, a ten-second welcome plays automatically: the family car
+   turns into the garage, parks, switches off its lights and opens its doors. The
+   residents and optional pet get out and walk along the path to the front door.
+   Windows then light up, residents wave, and replay/selection buttons appear.
+
+The open single-car garage grows with the existing gravel, concrete, wall and roof
+work, without extra gestures or lifts. Its palette matches the house; the entire
+garage, approach and walking route mirror with the site. A rear service lane keeps
+the crane and its supports clear. The welcome clock survives reload/HMR; completed
+homes stay completed with the car parked and the family at the door.
 
 Each fresh round changes the roof style (gable, shed or flat), mirrors the site to the
 opposite side and changes the wall/door palette. Three family arrangements and an
@@ -315,14 +323,15 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The five missions have 111 domain tests, covering fixed arm lengths,
+The five missions have 115 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
 exit clearance and waiting for the loaded cleanup truck to fully leave. House tests also cover
-ordered concrete pouring, partial delivery, cancelled placement, roof colour selection before
-lifting, legacy roof snapshot migration, assembly target geometry, continuous
-placement dwell and load clearance above each floor.
+all concrete pouring orders, partial delivery, cancelled placement, automatic roof pickup,
+legacy snapshot migration, assembly target geometry, continuous placement dwell,
+load clearance, garage construction, whole-car turning clearance and the family walking
+route. Arrival checks cover automatic completion, mid-animation reload and completed saves.
 Fire tests cover both rescue orders, continuous extinguishing, interruption,
 one passenger per trip, transport, and rejection of contradictory snapshots.
 Traffic tests cover both towing orders and type assignments, automatic second dispatch,

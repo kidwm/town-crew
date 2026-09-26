@@ -52,7 +52,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 消防車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createEngine` | 消防救援 | 共用救援底盤，上裝含器材艙、水管捲盤及可瞄準水砲。 |
 | 雲梯車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` | 消防救援 | 共用救援底盤；梯架、工作籃、噴嘴、支撐腳與工作籃互動範圍。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 已共用，詳見上表。 |
-| 事故／通行小客車 | [car.ts](../src/runtime/car.ts) · `createCar` | 交通救援、警察隊 | 已抽為共用；保留可變車色、雙黃燈、損傷與車輪轉動，尚未與修路小客車整合。 |
+| 事故／通行／家庭小客車 | [car.ts](../src/runtime/car.ts) · `createCar` | 交通救援、警察隊、蓋房子 | 共用可變車色、雙黃燈、損傷與車輪轉動；蓋房子使用 `openingDoors` 選項，增加中空乘坐艙、透明車窗及四片可開合車門，比例 0.82。預設交通／警察外觀保留。尚未與修路小客車整合。 |
 | 警車 | [car.ts](../src/runtime/car.ts) · `createCar(shapes, true)` | 交通救援、警察隊 | 原交通小客車變體，保留警示燈、藍色車身條紋與徽章。 |
 | 平板拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createTowTruck` | 交通救援 | 共用救援底盤；保留原可傾斜平板、斜板、絞盤與固定帶。左右進場共用同一模型並旋轉朝向；掛鉤、鋼索在場景內，裝載位置與角度見 `domain/towing.ts`。 |
 | 吊掛拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createWheelLiftTruck`、`createWheelYoke` | 交通救援 | 沿用救援底盤與平板拖吊車配色；新增低器材車體、後吊臂、液壓桿、吊索與托輪架。托起前輪，後輪接地；不是蓋房子吊車的整車複製。 |
@@ -65,7 +65,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 物件 | 來源／搜尋入口 | 使用關卡 | 目前狀態 |
 | --- | --- | --- | --- |
 | 居民、消防員、警員、救護員 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`；制服變體見 [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) | 消防救援、交通救援、警察隊 | 人物基礎已共用，警員變體已抽為 `createOfficer`，保留原制服配色；其餘制服由場景設定。 |
-| 蓋房子住戶與小孩 | [house-build/residents.ts](../src/missions/house-build/residents.ts) · `createResidents` | 蓋房子 | 沿用原住戶模型，依本局顯示三種家庭組合；成人與孩子使用不同大小，最多四位。與救援共用人物仍為不同實作。 |
+| 蓋房子住戶與小孩 | [house-build/residents.ts](../src/missions/house-build/residents.ts) · `createResidents` | 蓋房子 | 沿用原住戶模型，三種家庭組合、最多四位；增加乘坐、下車與步行的腿部活動，抵達門口才揮手。與救援共用人物仍為不同實作。 |
 | 小貓 | [pets.ts](../src/runtime/pets.ts) · `createCat` | 消防救援、蓋房子 | 從消防原實作原樣抽出，共用耳朵、眼睛、腳及可動尾巴；消防保留原匯出入口與 1.2 倍比例，蓋房子採 0.8 倍。 |
 | 小狗 | [pets.ts](../src/runtime/pets.ts) · `createDog` | 蓋房子 | 新增共用模型：垂耳、口鼻、四腳、項圈及可動尾巴；蓋房子採 0.85 倍。 |
 | 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
@@ -80,6 +80,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 水泥出料槽及出口 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `chute`、`chuteTip` | 蓋房子 | 場景內可拖道具，與地面澆灌分區對準。 |
 | 兩層樓組件 | [house-build/house-model.ts](../src/missions/house-build/house-model.ts) · `createHouseParts` | 蓋房子 | 沿用四組 L 形牆板、一塊樓板；屋頂有尖頂、單斜頂、平頂變體，搭配窗格／比例及四組牆面門窗色。實體與半透明輪廓共用幾何；屋頂色由本局配色決定。 |
 | 房屋地基、砂石及水泥面 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `gravelFill`、`stones`、`slabs`、`completeSlab` | 蓋房子 | 場景內分區表面及填料模型。 |
+| 開放式單車庫、車道與步道 | [house-build/garage.ts](../src/missions/house-build/garage.ts) · `createGarage` | 蓋房子 | 新增地基、側牆、後牆、柱子與平屋頂，面向主屋的一側採矮牆；配色沿用房屋，隨地基／牆面／屋頂工作成形。入口敞開，容納共用小客車、車門及下車空間；路線在 [arrival.ts](../src/missions/house-build/domain/arrival.ts)。 |
 | 道路坑洞、填料、修補面 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `pit`、`fill`、`fillStones`、`asphalt`、`repairedRoad` | 修馬路 | 場景內道路施工模型。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |

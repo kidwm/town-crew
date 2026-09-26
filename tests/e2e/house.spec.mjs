@@ -200,7 +200,7 @@ for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: 
   await expect(app).toHaveAttribute('data-placed', '5');
   await expect(app).toHaveAttribute('data-roof', roof); await expect(app).toHaveAttribute('data-layout', String(layout));
   await install(5);
-  await expect(app).toHaveAttribute('data-phase', 'complete');
+  await expect(app).toHaveAttribute('data-phase', 'complete', { timeout: 30000 });
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
   await expect(app).toHaveAttribute('data-pet', round.pet);
   await page.screenshot({ path: info.outputPath(`${roof}-complete.png`) });
@@ -210,5 +210,48 @@ for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: 
   await page.locator('.finish-restart').click(); await ready();
   await expect(app).not.toHaveAttribute('data-roof', roof); await expect(app).not.toHaveAttribute('data-layout', String(layout));
   await expect(app).toHaveAttribute('data-placed', '0');
+  expect(errors).toEqual([]);
+});
+
+test('garage arrival parks, unloads and walks home automatically, with reload during the journey', async ({ page }, info) => {
+  const { createHouse } = await import('../../src/missions/house-build/domain/house.ts');
+  const { DEFAULT_ROUND } = await import('../../src/missions/house-build/domain/round.ts');
+  const touch = info.project.name === 'tablet-touch';
+  if (touch) await page.setViewportSize({ width: 390, height: 844 });
+  const round = { ...DEFAULT_ROUND, layout: touch ? 1 : 0, roof: touch ? 'shed' : 'gable', palette: touch ? 2 : 0, family: 2, pet: 'dog' };
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install(); await page.clock.pauseAt(Date.now() + 1000);
+  await page.addInitScript(state => {
+    if (sessionStorage.getItem('arrival-fixture')) return;
+    sessionStorage.setItem('town-crew:play:v1:house-build', JSON.stringify(state)); sessionStorage.setItem('arrival-fixture', '1');
+  }, createHouse('decorate', round));
+  async function mounted() {
+    await expect(page.locator('canvas')).toHaveCount(1); await expect(page.locator('.loading')).toHaveCount(0);
+    await page.clock.runFor(32);
+  }
+  await page.goto('/#house-build'); await mounted();
+  const app = page.locator('#app');
+  await expect(app).toHaveAttribute('data-arrival', 'driving');
+  await expect(page.locator('.finish-actions')).toBeHidden();
+  async function at(seconds, name) {
+    const elapsed = Number(await app.getAttribute('data-arrival-time'));
+    await page.clock.runFor(Math.ceil(Math.max(0, seconds - elapsed) * 1000));
+    await page.screenshot({ path: info.outputPath(`${name}.png`) });
+  }
+  await at(2.5, 'arrival-turn');
+  await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+  const before = await page.evaluate(() => JSON.parse(sessionStorage.getItem('town-crew:play:v1:house-build')));
+  await page.reload(); await mounted();
+  expect(Math.abs(Number(await app.getAttribute('data-arrival-time')) - before.elapsed)).toBeLessThan(0.05);
+  await expect(app).toHaveAttribute('data-layout', String(round.layout));
+  await at(4.4, 'parked-open-doors'); await expect(app).toHaveAttribute('data-arrival', 'parked');
+  await at(5.1, 'family-unloading'); await expect(app).toHaveAttribute('data-arrival', 'unloading');
+  await at(7.2, 'walking-to-door'); await expect(page.locator('.finish-actions')).toBeHidden();
+  await at(10.1, 'garage-complete');
+  await expect(app).toHaveAttribute('data-phase', 'complete');
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  await page.reload(); await mounted(); await expect(app).toHaveAttribute('data-arrival', 'home');
+  await page.locator('.finish-restart').click(); await page.clock.runFor(32);
+  await expect(app).toHaveAttribute('data-arrival', 'waiting'); await expect(app).toHaveAttribute('data-placed', '0');
   expect(errors).toEqual([]);
 });

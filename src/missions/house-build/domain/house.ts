@@ -1,5 +1,6 @@
 import { DEFAULT_ROUND, ROOF_HEIGHTS, validRound } from './round.ts';
 import type { HouseRound } from './round.ts';
+import { ARRIVAL } from './arrival.ts';
 
 export const stages = ['gravel', 'concrete', 'delivery-one', 'crane-one', 'delivery-two', 'crane-two', 'roof-color', 'decorate', 'complete'] as const;
 export type Stage = typeof stages[number];
@@ -25,7 +26,7 @@ export const LOAD_HOME: Point = { x: -3.1, z: -0.4 };
 export const DELIVERY_START = -6;
 export const DELIVERY_STOP = 0.5;
 export interface HouseState {
-  version: 3; round: HouseRound; phase: Stage; action: Action; elapsed: number;
+  version: 4; round: HouseRound; phase: Stage; action: Action; elapsed: number;
   gravel: number; pours: number[]; chute: Point; placed: number;
   truckX: number; dragPx: number; load: Point; from: Point; color: number;
 }
@@ -38,7 +39,7 @@ export const isDelivery = (s: HouseState) => s.phase === 'delivery-one' || s.pha
 export function createHouse(phase: Stage = 'gravel', round: HouseRound = DEFAULT_ROUND): HouseState {
   const index = stages.indexOf(phase);
   return {
-    version: 3, round: { ...round }, phase, action: index >= 6 ? 'ready' : phase.startsWith('crane') ? 'pickup' : 'entering', elapsed: 0,
+    version: 4, round: { ...round }, phase, action: index >= 6 ? 'ready' : phase.startsWith('crane') ? 'pickup' : 'entering', elapsed: 0,
     gravel: index > 0 ? 1 : 0, pours: index > 1 ? [1, 1, 1] : [0, 0, 0], chute: { x: -0.8, z: 1.8 },
     placed: phase === 'roof-color' ? 5 : index >= 7 ? 6 : index >= 4 ? 3 : 0, truckX: DELIVERY_START,
     dragPx: 0, load: { ...LOAD_HOME }, from: { ...LOAD_HOME }, color: round.palette % ROOF_COLORS.length,
@@ -85,9 +86,10 @@ export function advance(s: HouseState, delta: number): HouseState {
   if (!Number.isFinite(delta) || delta <= 0 || s.phase === 'complete') return s;
   // Old colour-choice saves keep their colour and automatically start the final lift.
   if (s.phase === 'roof-color') return startRoofLift(s);
-  // Continue automatically once the crane has left, including old doorbell saves.
-  if (s.phase === 'decorate') return { ...s, phase: 'complete', elapsed: 0 };
   const dt = Math.min(delta, 0.1), elapsed = s.elapsed + dt;
+  // One persisted clock drives driving, parking, disembarking and walking.
+  if (s.phase === 'decorate') return elapsed >= ARRIVAL.duration
+    ? { ...s, phase: 'complete', elapsed: 0 } : { ...s, elapsed };
   let next = { ...s, elapsed };
   if (s.action === 'entering' && elapsed >= 1.2) return { ...next, action: 'ready', elapsed: 0 };
   if (s.phase === 'gravel' && s.action === 'working') {
@@ -125,8 +127,8 @@ function finitePoint(p: Point) { return p && Number.isFinite(p.x) && Number.isFi
 export function resumeHouse(value: unknown): HouseState | undefined {
   if (!value || typeof value !== 'object') return;
   const version = (value as { version: unknown }).version;
-  if (version !== 1 && version !== 2 && version !== 3) return;
-  const s = { ...value, version: 3, round: version === 3 ? (value as HouseState).round : { ...DEFAULT_ROUND } } as HouseState;
+  if (version !== 1 && version !== 2 && version !== 3 && version !== 4) return;
+  const s = { ...value, version: 4, round: version >= 3 ? (value as HouseState).round : { ...DEFAULT_ROUND } } as HouseState;
   if (!validRound(s.round) || !stages.includes(s.phase) || !['entering', 'ready', 'dragging', 'working', 'leaving', 'pickup', 'placing', 'resetting'].includes(s.action)
     || ![s.elapsed, s.gravel, s.truckX, s.dragPx, s.placed, s.color].every(Number.isFinite)
     || s.elapsed < 0 || s.elapsed > 1e7 || s.gravel < 0 || s.gravel > 1
@@ -139,7 +141,7 @@ export function resumeHouse(value: unknown): HouseState | undefined {
   if (s.placed < minPlaced || s.placed > maxPlaced || (isCrane(s) && (s.placed === maxPlaced) !== (s.action === 'leaving'))) return;
   const index = stages.indexOf(s.phase);
   if ((index > 0 && s.gravel !== 1) || (index > 1 && !s.pours.every(v => v === 1)) || (index === 0 && s.pours.some(v => v !== 0))) return;
-  if (version !== 3) {
+  if (version < 3) {
     const firstIncomplete = s.pours.findIndex(v => v < 1);
     if (firstIncomplete >= 0 && s.pours.slice(firstIncomplete + 1).some(v => v !== 0)) return;
   }
@@ -147,6 +149,10 @@ export function resumeHouse(value: unknown): HouseState | undefined {
     : isDelivery(s) ? ['entering', 'ready', 'dragging', 'working']
     : index >= 6 ? ['ready'] : ['entering', 'ready', 'dragging', 'working', 'leaving'];
   if (!allowed.includes(s.action) || (s.phase === 'concrete' && ['working', 'leaving'].includes(s.action) && s.pours.some(v => v < 1))) return;
+  if (s.phase === 'decorate') {
+    if (version < 4) s.elapsed = 0; // Old doorbell/welcome clocks did not describe an arrival.
+    else if (s.elapsed >= ARRIVAL.duration) return;
+  }
   // Keep the old pickup point and chosen colour when upgrading unfinished roofs.
   // The compatibility phase automatically starts pickup on the next frame.
   if (version === 1 && s.phase === 'crane-two' && s.placed === 5) {
@@ -155,5 +161,5 @@ export function resumeHouse(value: unknown): HouseState | undefined {
   return release(structuredClone(s), true);
 }
 export function progress(s: HouseState) {
-  return (s.gravel + s.pours.reduce((a, b) => a + b, 0) / 3 + (stages.indexOf(s.phase) >= 3 ? 1 : 0) + (stages.indexOf(s.phase) >= 5 ? 1 : 0) + s.placed + (s.phase === 'complete' ? 1 : 0)) / 11;
+  return (s.gravel + s.pours.reduce((a, b) => a + b, 0) / 3 + (stages.indexOf(s.phase) >= 3 ? 1 : 0) + (stages.indexOf(s.phase) >= 5 ? 1 : 0) + s.placed + (s.phase === 'complete' ? 1 : s.phase === 'decorate' ? s.elapsed / ARRIVAL.duration : 0)) / 11;
 }
