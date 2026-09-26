@@ -30,8 +30,18 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   };
   const up = async () => mode === 'mouse' ? page.mouse.up() : cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   const cancel = async () => mode === 'mouse' ? page.evaluate(() => window.dispatchEvent(new Event('blur'))) : cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  const center = async selector => {
+    const rect = await page.locator(selector).boundingBox();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  };
+  const excavationGesture = async () => {
+    await expect(page.locator('.drag-hint')).toBeVisible();
+    return gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  };
 
   await wait('excavator', 'ready');
+  await expect(page.locator('.drag-hint')).toHaveAttribute('aria-label', '拖過去，挖起來');
+  await expect(page.locator('.excavator-grip')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('broken-road-and-empty-hauler.png') });
   await page.mouse.click(700, 640);
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
@@ -42,15 +52,42 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   await wait('excavator', 'ready');
   assert.equal(await page.locator('#app').getAttribute('data-cleared'), '0');
 
-  for (const [index, rock] of [[1.15, -0.65], [2.35, 0.55], [3.35, -0.45]].entries()) {
+  for (let index = 0; index < 3; index++) {
     await wait('excavator', 'ready');
-    await down(await project(-1.25, 0.85));
+    const digging = await excavationGesture();
+    await down(digging.from);
     await wait('excavator', 'dragging');
-    await move(await project(rock[0], 0.11, rock[1]));
-    // Software rendering can finish the brief pickup animation before the
-    // last mouse-move event returns. Wait for its durable gameplay result.
-    await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
+    await expect(page.locator('.drag-hint')).toBeHidden();
+    await move(digging.to);
+    await wait('excavator', 'carrying-drag');
+    await expect(page.locator('#app')).toHaveAttribute('data-loaded', String(index));
+    await expect(page.locator('#app')).toHaveAttribute('data-bucket-loaded', 'true');
+    await page.waitForTimeout(550);
+    await expect(page.locator('#app')).toHaveAttribute('data-loaded', String(index));
+    if (index === 0) {
+      await up();
+      await wait('excavator', 'carrying');
+      await expect(page.locator('.drag-hint')).toBeHidden();
+      await expect(page.locator('.drag-hint')).toBeVisible();
+      await expect(page.locator('.drag-hint')).toHaveAttribute('aria-label', '拖到車斗，放開');
+      await page.screenshot({ path: testInfo.outputPath('carrying-hint.png') });
+      await page.reload();
+      await wait('excavator', 'carrying');
+      await expect(page.locator('#app')).toHaveAttribute('data-bucket-loaded', 'true');
+      const delivering = await excavationGesture();
+      await down(delivering.from); await move(delivering.to);
+      await expect(page.locator('.excavator-drop')).toHaveAttribute('data-ready', 'true');
+      await page.screenshot({ path: testInfo.outputPath('ready-to-drop.png') });
+      await cancel(); if (mode === 'mouse') await up();
+      await wait('excavator', 'carrying');
+      await expect(page.locator('#app')).toHaveAttribute('data-loaded', '0');
+      await down(await center('.excavator-grip'));
+    }
+    await move(await center('.excavator-drop'));
+    await expect(page.locator('.excavator-drop')).toHaveAttribute('data-ready', 'true');
+    await expect(page.locator('#app')).toHaveAttribute('data-loaded', String(index));
     await up();
+    await page.locator(`#app[data-cleared="${index + 1}"]`).waitFor();
     if (index === 0) {
       await expect(page.locator('#app')).toHaveAttribute('data-loaded', '1');
       await page.screenshot({ path: testInfo.outputPath('first-chunk-loaded.png') });
@@ -64,10 +101,12 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
       await expect(page.locator('#app')).toHaveAttribute('data-cleared', '0');
       await expect(page.locator('canvas')).toHaveCount(1);
       await wait('excavator', 'ready');
-      await down(await project(-1.25, 0.85));
-      await move(await project(rock[0], 0.11, rock[1]));
-      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
+      const retry = await excavationGesture();
+      await down(retry.from); await move(retry.to);
+      await wait('excavator', 'carrying-drag');
+      await move(await center('.excavator-drop'));
       await up();
+      await expect(page.locator('#app')).toHaveAttribute('data-cleared', '1');
     }
   }
   await wait('haul-away', 'ready');
@@ -135,6 +174,36 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   assert.equal(await page.locator('.progress').getAttribute('aria-valuenow'), '0');
   await page.screenshot({ path: testInfo.outputPath('site-restored.png') });
   assert.deepEqual(errors, []);
+});
+
+test('excavator supports tap destinations and keyboard without a drag', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/#road-repair');
+  const app = page.locator('#app');
+  await expect(app).toHaveAttribute('data-action', 'ready');
+  await expect(page.locator('.drag-hint')).toBeVisible();
+  const digging = await gesture(page, 'right');
+  const tap = async point => testInfo.project.name === 'tablet-touch'
+    ? page.touchscreen.tap(point.x, point.y) : page.mouse.click(point.x, point.y);
+  await tap(digging.from);
+  await expect(app).toHaveAttribute('data-bucket-selected', 'true');
+  await expect(app).toHaveAttribute('data-loaded', '0');
+  await tap(digging.to);
+  await expect(app).toHaveAttribute('data-action', 'carrying');
+  await expect(app).toHaveAttribute('data-loaded', '0');
+  const bed = await page.locator('.excavator-drop').boundingBox();
+  await tap({ x: bed.x + bed.width / 2, y: bed.y + bed.height / 2 });
+  await expect(app).toHaveAttribute('data-loaded', '1');
+  await expect(app).toHaveAttribute('data-action', 'ready');
+  await page.locator('canvas').focus();
+  await page.keyboard.press('Enter');
+  await expect(app).toHaveAttribute('data-bucket-selected', 'true');
+  await page.keyboard.press('Escape');
+  await expect(app).toHaveAttribute('data-bucket-selected', 'false');
+  await page.keyboard.press('Space'); await page.keyboard.press('Enter');
+  await expect(app).toHaveAttribute('data-action', 'carrying');
+  await page.keyboard.press('Enter');
+  await expect(app).toHaveAttribute('data-loaded', '2');
 });
 
 test('production ignores development stage shortcuts', async ({ page }) => {

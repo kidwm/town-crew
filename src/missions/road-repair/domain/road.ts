@@ -1,6 +1,6 @@
 import { advance as advanceTruck, createState, defaultTuning, pose as truckPose } from './dump-truck.ts';
 import type { TruckState, Tuning } from './dump-truck.ts';
-import { advanceExcavator, createExcavator, HOME, smooth } from './excavator.ts';
+import { advanceExcavator, createExcavator, HOME, resumeExcavator, smooth } from './excavator.ts';
 import type { ExcavatorState } from './excavator.ts';
 import { HAUL_START, HAUL_EXIT, HAUL_OFFSCREEN, HAUL_DURATION } from './hauling.ts';
 export { HAUL_START, HAUL_EXIT, HAUL_Z, HAUL_SCALE } from './hauling.ts';
@@ -163,7 +163,7 @@ export function resumeRoad(state: RoadState, tuning: Tuning = defaultTuning): Ro
   // Pointer capture never survives module replacement or document reload.
   return {
     ...state,
-    excavator: state.excavator.action === 'dragging' ? { ...state.excavator, action: 'returning', elapsed: 0, from: state.excavator.bucket } : state.excavator,
+    excavator: resumeExcavator(state.excavator),
     truck: state.truck.phase === 'dragging' ? { ...state.truck, phase: 'resetting', elapsed: 0, fromTilt: truckPose(state.truck, tuning).tilt } : state.truck,
     roller: releaseRoller(state.roller),
     hauler: state.hauler.action === 'dragging' ? { ...state.hauler, action: 'ready' } : state.hauler,

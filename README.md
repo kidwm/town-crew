@@ -177,9 +177,18 @@ clear access routes; the flatbed travels forward on the road in front of the hou
 
 The town road has cracked, flat pieces of old asphalt, not natural mountain boulders.
 
-1. Drag the excavator bucket toward each broken road surface. It automatically
-   lifts the piece and drops it into the waiting green cleanup truck. All three
-   pieces remain visible as cargo. Misses and cancelled drags return the bucket.
+1. Drag the outlined excavator bucket toward each broken road surface. It lifts
+   the piece, then stays under the same finger's control. Drag the loaded bucket
+   to the highlighted bed of the green cleanup truck and release when the target
+   turns green to align and tip it in. The bucket travels above the cab. Releasing
+   elsewhere or cancelling pauses in place with the load; grab again to continue.
+   Reload also retains that load and position. All three delivered pieces remain
+   visible in the truck before cleanup starts.
+   A hand demonstrates the initial drag and changes destination after pickup;
+   it hides during interaction and reappears after three idle seconds. Tapping
+   the bucket selects it, then tapping the current destination performs that
+   pickup or delivery. With the canvas focused, Enter/Space selects the bucket
+   and activates its destination; Escape cancels selection.
 2. After the excavator leaves, drag the loaded cleanup truck left through the
    open gate. Taps cannot complete the trip; release or reload retains its position
    and load. The blue delivery truck waits until cleanup has fully departed.
@@ -196,7 +205,9 @@ The original natural boulder model is preserved in `src/runtime/rocks.ts` as
 `createBoulder`, with its original geometry, colour and size. The same module
 provides the separate flat `createAsphaltChunk`. Both are in the model catalog.
 Old saves retain completed work: former roadside piles become truck cargo;
-uncompleted old scoops restart safely and later stages do not replay cleanup.
+unfinished automatic scoops from earlier versions restart on the road and later
+stages do not replay cleanup. New saves preserve paused, loaded buckets; an
+already committed tipping animation finishes only once after reload.
 
 The entry barrier opens fully before a construction vehicle moves. It closes
 after the vehicle parks, before interaction begins. On departure it opens

@@ -4,7 +4,7 @@ import { pose } from './domain/dump-truck.ts';
 import type { Tuning } from './domain/dump-truck.ts';
 import { HAUL_EXIT, HAUL_Z, HAUL_SCALE, BARRIER_X, ROLLER_LEFT, ROLLER_RIGHT, roadPose } from './domain/road.ts';
 import type { RoadState } from './domain/road.ts';
-import { HOME, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import { HOME, UNLOAD, hasBucketLoad, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
 import type { Point } from './domain/excavator.ts';
 import { createShapes } from '../../runtime/geometry.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
@@ -92,7 +92,7 @@ export function createScene(host: HTMLElement) {
   const gravel: THREE.Mesh[] = [];
   for (let i = 0; i < 12; i++) gravel.push(box(scene, [0.16, 0.15, 0.15], [0, 0, 0], '#c3a077'));
   const excavator = createExcavatorVisual(shapes);
-  scene.add(excavator.root, ...excavator.chunks, excavator.halo, ...excavator.trail);
+  scene.add(excavator.root, ...excavator.chunks, excavator.halo);
   hauler.root.add(...excavator.loaded);
   const roller = createRollerVisual(shapes);
   scene.add(roller.root);
@@ -137,8 +137,29 @@ export function createScene(host: HTMLElement) {
     camera.updateMatrixWorld(true);
     raycaster.setFromCamera(pointer, camera);
   }
+  function excavationControls(state: RoadState) {
+    const bounds = renderer.domElement.getBoundingClientRect();
+    const project = (p: Point) => {
+      const v = new THREE.Vector3(p.x, p.y, p.z).project(camera);
+      return { x: (v.x + 1) * bounds.width / 2, y: (1 - v.y) * bounds.height / 2 };
+    };
+    const loaded = hasBucketLoad(state.excavator);
+    const b = state.excavator.bucket;
+    const from = project({ ...b, x: b.x + 0.15, y: b.y - 0.1 });
+    const target = loaded ? { ...UNLOAD, y: 1.45 } : { ...(ROAD_CHUNKS[state.excavator.cleared] ?? HOME), y: 0.11 };
+    const to = project(target);
+    const bedEdge = project({ ...target, x: target.x + 1 });
+    const width = Math.max(88, Math.abs(bedEdge.x - to.x) * 2 + 24);
+    return { bounds, from, to, gripSize: Math.max(64, Math.abs(project({ ...b, x: b.x + 1 }).x - project(b).x) + 22), width, height: Math.max(60, width * 0.55) };
+  }
+  function excavationTargetHit(clientX: number, clientY: number, state: RoadState) {
+    const { bounds, to, width, height } = excavationControls(state);
+    return ((clientX - bounds.left - to.x) / (width / 2)) ** 2 + ((clientY - bounds.top - to.y) / (height / 2)) ** 2 <= 1;
+  }
   return {
     canvas: renderer.domElement,
+    excavationControls,
+    excavationTargetHit,
     dragHint(state: RoadState, tuning: Tuning): DragHint | undefined {
       if (state.access !== 'working') return;
       const bounds = renderer.domElement.getBoundingClientRect();
@@ -146,6 +167,10 @@ export function createScene(host: HTMLElement) {
         const point = new THREE.Vector3(x, y, z).project(camera);
         return { x: (point.x + 1) * bounds.width / 2, y: (1 - point.y) * bounds.height / 2 };
       };
+      if (state.phase === 'excavator' && ['ready', 'carrying'].includes(state.excavator.action)) {
+        const { from, to } = excavationControls(state);
+        return { from, to, direction: to.x >= from.x ? 'right' : 'left', label: hasBucketLoad(state.excavator) ? '拖到車斗，放開' : '拖過去，挖起來' };
+      }
       if (state.phase === 'dump-truck' && state.truck.phase === 'ready') {
         const from = bedGrip.project(camera, renderer.domElement);
         return { from, to: { x: from.x, y: from.y - tuning.dragThreshold - 20 }, direction: 'up', label: '按住車斗前端，往上拉' };
@@ -159,6 +184,10 @@ export function createScene(host: HTMLElement) {
       }
     },
     hit(clientX: number, clientY: number, state: RoadState) {
+      if (state.phase === 'excavator') {
+        const { bounds, from, gripSize } = excavationControls(state);
+        if (Math.hypot(clientX - bounds.left - from.x, clientY - bounds.top - from.y) <= gripSize / 2) return true;
+      }
       setRay(clientX, clientY);
       if (state.phase === 'dump-truck' && bedGrip.hit(clientX, clientY, camera, renderer.domElement)) return true;
       const target = state.phase === 'excavator' ? excavator.hitbox : state.phase === 'haul-away' ? hauler.driveHitbox : state.phase === 'dump-truck' ? hitbox : state.phase === 'roller' ? roller.hitbox : undefined;
@@ -170,6 +199,7 @@ export function createScene(host: HTMLElement) {
       return point ? { x: point.x, y: point.y, z: point.z } : undefined;
     },
     excavationAim(clientX: number, clientY: number, state: RoadState, aim: Point): Point {
+      if (hasBucketLoad(state.excavator)) return excavationTargetHit(clientX, clientY, state) ? UNLOAD : aim;
       const chunk = ROAD_CHUNKS[state.excavator.cleared];
       if (!chunk) return aim;
       setRay(clientX, clientY);

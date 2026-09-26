@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Shapes } from '../../runtime/geometry.ts';
-import { BOOM, STICK, PIVOT, elbow, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
+import { BOOM, STICK, PIVOT, elbow, hasBucketLoad, ROAD_CHUNKS, smooth } from './domain/excavator.ts';
 import { createAsphaltChunk } from '../../runtime/rocks.ts';
 import { cargoLocal, cargoLanding, HAUL_SCALE } from './domain/hauling.ts';
 import type { Point, ExcavatorState } from './domain/excavator.ts';
@@ -42,7 +42,6 @@ export function createExcavatorVisual(shapes: Shapes) {
   });
   const halo = new THREE.Mesh(new THREE.RingGeometry(0.64, 0.82, 32), new THREE.MeshBasicMaterial({ color: '#fff0a6', side: THREE.DoubleSide }));
   halo.rotation.x = -Math.PI / 2;
-  const trail = Array.from({ length: 5 }, () => new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), new THREE.MeshBasicMaterial({ color: '#fff4c4' })));
   const loaded = ROAD_CHUNKS.map((_, i) => {
     const chunk = createAsphaltChunk(shapes, i), p = cargoLocal(i);
     chunk.position.set(p.x, p.y, p.z);
@@ -55,7 +54,7 @@ export function createExcavatorVisual(shapes: Shapes) {
     mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
   };
   return {
-    root, hitbox, chunks, halo, trail, loaded,
+    root, hitbox, chunks, halo, loaded,
     render(state: ExcavatorState, active: boolean, offset: number, time: number, canInteract = true) {
       root.visible = active;
       root.position.x = offset;
@@ -68,10 +67,10 @@ export function createExcavatorVisual(shapes: Shapes) {
       orient(piston, rodStart, rodEnd);
       piston.scale.y = vec(rodStart).distanceTo(vec(rodEnd));
       bucket.position.copy(vec(state.bucket));
-      bucket.rotation.z = state.action === 'scooping' || state.action === 'unloading' ? -0.28 : 0;
+      bucket.rotation.z = state.action === 'unloading' ? -0.28 - smooth((state.elapsed - 0.65) / 0.2) * 0.8 : hasBucketLoad(state) ? -0.28 : 0;
       const ready = active && canInteract && state.action === 'ready';
       const target = ROAD_CHUNKS[state.cleared];
-      halo.visible = ready && !!target;
+      halo.visible = active && canInteract && ['ready', 'dragging'].includes(state.action) && !!target;
       if (target) {
         halo.position.set(target.x, 0.12, target.z);
         halo.scale.setScalar(1 + Math.sin(time * 4) * 0.08);
@@ -80,7 +79,7 @@ export function createExcavatorVisual(shapes: Shapes) {
         rock.visible = active && i >= state.cleared;
         rock.position.copy(vec(ROAD_CHUNKS[i]));
         rock.scale.setScalar(1);
-        if (i === state.cleared && ['scooping', 'unloading'].includes(state.action)) {
+        if (i === state.cleared && hasBucketLoad(state)) {
           rock.position.copy(vec(state.bucket)).add(new THREE.Vector3(0.2, -0.1, 0));
           if (state.action === 'unloading') {
             const fall = smooth((state.elapsed - 0.7) / 0.2);
@@ -88,14 +87,6 @@ export function createExcavatorVisual(shapes: Shapes) {
             rock.scale.setScalar(1 + (HAUL_SCALE - 1) * fall);
           }
         } else if (ready && i === state.cleared) rock.scale.setScalar(1 + Math.sin(time * 4) * 0.07);
-      });
-      trail.forEach((dot, i) => {
-        dot.visible = ready && !!target;
-        if (target) {
-          const t = (time * 0.45 + i * 0.09) % 1;
-          dot.position.copy(vec(state.bucket)).lerp(vec({ ...target, y: 0.95 }), t);
-          dot.scale.setScalar(Math.sin(t * Math.PI));
-        }
       });
       loaded.forEach((rock, i) => { rock.visible = i < state.cleared; });
     },

@@ -27,14 +27,15 @@ test('IK preserves both arm lengths throughout the work area and unreachable tar
   }
 });
 
-test('missed or cancelled bucket drags softly return without clearing a rock', () => {
+test('missed or cancelled bucket drags pause without clearing a rock', () => {
   let state = until(createRoad(), s => s.excavator.action === 'ready');
   state = { ...state, excavator: moveBucket(grabBucket(state.excavator), { x: -2, y: 0.85, z: -1.65 }) };
   state = advanceRoad(state, 0.15);
+  const paused = state.excavator.bucket;
   state = { ...state, excavator: releaseBucket(state.excavator) };
   state = until(state, s => s.excavator.action === 'ready');
   assert.equal(state.excavator.cleared, 0);
-  assert.deepEqual(state.excavator.bucket, HOME);
+  assert.deepEqual(state.excavator.bucket, paused);
 });
 
 test('roller can pause mid-pass; only opposite full traversals complete compaction', () => {
@@ -59,6 +60,10 @@ test('whole road mission reaches traffic and completion, then restarts cleanly',
   let state = until(createRoad(), s => s.excavator.action === 'ready');
   for (let rock = 0; rock < 3; rock++) {
     state = { ...state, excavator: moveBucket(grabBucket(state.excavator), { ...ROAD_CHUNKS[rock], y: HOME.y }) };
+    state = until(state, s => s.excavator.action === 'carrying-drag');
+    state = advanceRoad(state, 2);
+    assert.equal(state.excavator.cleared, rock, 'pickup alone must not load the truck');
+    state = { ...state, excavator: releaseBucket(moveBucket(state.excavator, UNLOAD)) };
     state = until(state, s => s.excavator.cleared === rock + 1);
     assert.equal(state.phase, 'excavator');
     state = until(state, s => s.excavator.action === (rock === 2 ? 'complete' : 'ready'));

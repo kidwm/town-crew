@@ -24,7 +24,9 @@ export function restoreRoadSnapshot(value: unknown, snapshotKey: string) {
           : candidate.phase === 'excavator' ? h.action === 'ready' && h.x === HAUL_START : h.action === 'complete');
       if (['excavator', 'haul-away', 'dump-truck', 'roller', 'traffic', 'complete'].includes(candidate.phase)
         && haulerOK
-        && ['entering', 'ready', 'dragging', 'scooping', 'unloading', 'returning', 'complete'].includes(e.action)
+        && ['entering', 'ready', 'dragging', 'scooping', 'carrying', 'carrying-drag', 'unloading', 'returning', 'complete'].includes(e.action)
+        && (e.control === undefined || ['none', 'pointer', 'tap'].includes(e.control))
+        && (!['scooping', 'carrying', 'carrying-drag', 'unloading'].includes(e.action) || e.cleared < 3)
         && ['entering', 'ready', 'dragging', 'settling', 'flattening', 'complete'].includes(r.action)
         && ['entering', 'ready', 'dragging', 'resetting', 'dumping', 'lowering', 'complete'].includes(t.phase)
         && [candidate.elapsed, e.elapsed, r.elapsed, t.elapsed, t.dragPx, t.fromTilt].every(v => Number.isFinite(v) && v >= 0)
