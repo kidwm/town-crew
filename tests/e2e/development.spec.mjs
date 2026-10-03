@@ -30,6 +30,35 @@ test('port development retains the chosen fork load through reload, HMR and stag
   await expect(app).toHaveAttribute('data-loaded', ''); expect(errors).toEqual([]);
 });
 
+test('port loading direction preserves carried and suspended cargo and switches development stages safely', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/?dev=1&mission=port-cargo&stage=forklift&direction=load&layout=0&palette=3');
+  const app = page.locator('#app'), { wait, down, up, cancel } = await fireControls(page);
+  await wait('forklift'); await expect(app).toHaveAttribute('data-direction', 'load');
+  let h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await page.mouse.move(h.to.x, h.to.y); await expect(app).toHaveAttribute('data-carrying', 'true'); await wait('forklift'); await up();
+  const selected = await app.getAttribute('data-selected'); await page.reload(); await wait('forklift');
+  await expect(app).toHaveAttribute('data-selected', selected); await expect(app).toHaveAttribute('data-carrying', 'true');
+  const world = await page.locator('.world').elementHandle(), now = new Date(); await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+  await page.waitForFunction(element => !element.isConnected, world); await wait('forklift');
+  await expect(app).toHaveAttribute('data-carrying', 'true'); await expect(app).toHaveAttribute('data-direction', 'load'); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.locator('#stage').selectOption('load-ship'); await wait('load-ship');
+  await expect(app).toHaveAttribute('data-unloaded', '0,1'); await expect(app).toHaveAttribute('data-loaded', '');
+  h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await page.mouse.move((h.from.x + h.to.x) / 2, (h.from.y + h.to.y) / 2); await page.waitForTimeout(600);
+  await cancel(); await wait('load-ship'); const load = await app.getAttribute('data-load');
+  await page.reload(); await wait('load-ship'); await expect(app).toHaveAttribute('data-load', load);
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await wait('load-ship'); await expect(app).toHaveAttribute('data-selected', '');
+  await page.locator('#direction').selectOption('unload'); await wait('boat');
+  await expect(app).toHaveAttribute('data-direction', 'unload'); await expect(page.locator('#stage option[value="load-ship"]')).toHaveCount(0);
+  await page.locator('#stage').selectOption('unload'); await wait('unload');
+  await page.locator('#direction').selectOption('load'); await wait('boat');
+  await expect(page.locator('#stage option[value="unload"]')).toHaveCount(0); await expect(app).toHaveAttribute('data-palette', '3');
+  await page.locator('#stage').selectOption('ship-transport'); await wait('ship-transport'); await expect(app).toHaveAttribute('data-loaded', '0,1');
+  expect(errors).toEqual([]);
+});
+
 test('mirrored road lets the child drag past nearer pieces and retains the chosen load through reload and HMR', async ({ page }) => {
   await page.goto('/?dev=1&stage=excavator&pattern=split&layout=1');
   const app = page.locator('#app');

@@ -26,7 +26,7 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ scene.ts + vehicles.ts — street, police, flatbed and rotating sweeper brushes
        │    └─ session.ts + ui.ts — input, hints, snapshots and audio cues
        ├─ port-cargo/
-       │    ├─ domain/port.ts — mirrored port round, two crane lifts, two fork trips and cargo recovery
+       │    ├─ domain/port.ts — two cargo directions, mirrored dock round, crane/fork trips and cargo recovery
        │    ├─ scene.ts + vehicles.ts — boat, quay, pallet boxes and forklift; shared crane/flatbed
        │    └─ session.ts + ui.ts — pointer intent, cues, independent snapshots and stage entry
        └─ police-patrol/
@@ -129,13 +129,22 @@ CI runs desktop and touch in separate runners, with one graphical browser per
 runner; the desktop job also runs the development checks. Local suites remain
 sequential so graphical runs do not compete for the same GPU.
 
-The port mission owns a version-1 snapshot and separate production/development keys.
+The port mission owns a version-2 snapshot and separate production/development keys.
+Version-1 snapshots migrate as incoming rounds, preserving cargo and animation progress.
+The validated round includes cargo direction, layout and palette. Replay alternates
+direction and independently draws either layout; restore retains the current round.
+Each direction has its own stage sequence: incoming hands crane work to the forklift
+and sends a loaded truck into town; outgoing unloads a truck with the forklift,
+clears the work area, deploys the crane to load the ship, then sends it to the opposite
+town. Outgoing truck pickup raises before insertion, lifts clear, withdraws before
+lowering and turns toward the quay. Cargo sources, destinations, ownership and routes
+derive from direction and the independent unloading/loading ID arrays.
 Its two mirrored layouts use local work coordinates, transformed at the scene boundary
 for rendering, picking, projected hints and destinations. Unloading and loading orders
 are independent cargo-ID arrays; the current suspended box, fork choice/load, drive
 fractions and automatic elapsed time survive reload. Desired input and endpoint dwell
 are cleared. A valid early cargo release runs a safe raise/traverse/lower sequence.
-The first fork pickup approaches from the pallet's outer side, with a curved turn
+The first incoming fork pickup approaches from the pallet's outer side, with a curved turn
 clear of the quay edge and a horizontal final insertion visible in both mirrored
 views. After the first delivery, the forklift parks between the quay bays; its
 second approach changes side to enter through the vacant first bay. This shorter
@@ -144,9 +153,10 @@ Both loaded trips turn forward toward land immediately after pickup; the carried
 box swings clear of the other pallet without reversing the approach. Quay pallet
 orientation matches the approach, and routes remain clear of people. The side loading
 position remains outside the truck: automatic loading raises first, inserts second,
-then withdraws before lowering. Crane departure completes before fork work; forklift
-departure completes before manual hauling. Reaching the exit lane hands off the
-remaining truck departure automatically; scene exit distances account for viewport
+then withdraws before lowering. Incoming crane departure completes before fork work;
+outgoing forklift and empty-truck departure completes before crane loading.
+The last work vehicle clears the dock before manual hauling. Reaching the exit lane hands off the
+remaining truck or boat departure automatically; scene exit distances account for viewport
 width and whole-vehicle lengths in either layout. Town arrival derives SVG animation from
 the saved clock. `runtime/construction-models.ts` preserves the original house chassis,
 crane and flatbed; the flatbed's optional panels default to the original house cargo.

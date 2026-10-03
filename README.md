@@ -102,8 +102,16 @@ Restart clears only the current mission's progress, while its earned badge remai
    and waving workers lead directly into confetti and replay/selection buttons.
 
 Two complete mirrored layouts coordinate the boat, crane supports, two quay
-spaces, forklift routes, truck bay and hints. Fresh rounds alternate layout and
-change the boat palette; reload/HMR retains the current round, unloading/loading
+spaces, forklift routes, truck bay and hints. Fresh rounds alternate cargo direction,
+independently select either layout and change the boat palette. The other direction
+starts with an empty boat and a loaded flatbed: two forklift trips unload to the quay,
+the forklift and empty truck leave, the crane deploys and loads both boxes onto the
+boat, then the child drags the loaded boat toward the opposite town. Truck unloading
+and ship loading orders remain independent. Automatic truck pickup raises before
+inserting, lifts the box clear, withdraws before lowering and turns toward the quay.
+
+Version-2 saves migrate version-1 incoming rounds without losing progress.
+Reload/HMR retains the current direction, layout, unloading/loading
 orders, partial vehicle movement, suspended cargo, fork load and automatic clocks.
 Pointer ownership and uncommitted dwell are discarded on restore. A still-held
 finger cannot start the next box or drive the forklift after automatic pickup.
@@ -354,8 +362,12 @@ reload and HMR retain independent development progress.
 
 Port entries use `?dev=1&mission=port-cargo&stage=…`:
 `boat`, `truck`, `unload`, `crane-exit`, `forklift`, `forklift-exit`, `transport`,
-`departure`, `arrival`, and `complete`. Add `layout=0|1` and `palette=0..3`.
-Stage resets retain the current layout and palette, with independent development saves.
+`departure`, `arrival`, and `complete`. Add `direction=load` for the outgoing flow,
+with `boat`, `truck`, `forklift`, `forklift-exit`, `crane-ready`, `load-ship`,
+`crane-exit`, `ship-transport`, `departure`, `arrival`, and `complete`.
+Add `layout=0|1` and `palette=0..3`. The panel switches direction and lists its valid
+stages; an incompatible stage resets to boat entry. Stage resets retain direction,
+layout and palette, with independent development saves.
 
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
@@ -410,7 +422,7 @@ road-repair sequence.
   continuous street cleaning and ambulance transport.
 - `src/missions/police-patrol/`: independent police cooperation, four route configurations,
   two motorcycle dispatches, sliding-door boarding and escorted transport.
-- `src/missions/port-cargo/`: independent two-pallet unloading, forklift pickup/loading, mirrored port routes, cargo persistence and town delivery.
+- `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/runtime/construction-models.ts`: original house flatbed, crane, chassis and link helper; the flatbed can omit the house material panels.
 - `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and
   bench shared with the police mission; officer colours live in `emergency-models.ts`.
@@ -453,8 +465,8 @@ Police rules cover all four configurations and both motorcycle orders, interrupt
 driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
 entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
 along all routes against the four buildings.
-Port rules cover both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, nonrepeating rounds, side-view pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
-The port browser suite follows the visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried cargo across HMR and stage reset.
+Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1 migration, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
+The port browser suite follows both directions and layouts using visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried and suspended cargo across HMR/reload, direction switching and stage reset.
 The police browser suite exercises all four configurations on mouse and phone touch,
 including cancellation, reload, boarding, badges, replay and development HMR.
 The access tests check vehicle clearance throughout entrance/departure,

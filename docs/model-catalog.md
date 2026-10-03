@@ -49,7 +49,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 砂石車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createDump` | 蓋房子 | 關卡內模型；使用蓋房子自己的底盤、活動車斗與載料。與修馬路砂石車尚未共用整車。 |
 | 水泥車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createMixer` | 蓋房子 | 旋轉攪拌筒與螺旋條紋；出料槽及水泥流在該關 `scene.ts`。 |
 | 材料平板車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createFlatbed`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原六輪材料運送車與三層貨物顯示；碼頭沿用整車與空平板變體，載入兩個棧板貨箱。與交通救援可傾斜拖吊平板車用途及實作不同。 |
-| 吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createCrane`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原黃色吊車，保留伸縮吊臂、吊索、吊鉤與可收回支撐腳；碼頭吊卸物資，不新增另一台近似吊車。 |
+| 吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createCrane`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原黃色吊車，保留伸縮吊臂、吊索、吊鉤與可收回支撐腳；碼頭用同一吊車卸船／裝船，不新增另一台近似吊車。 |
 | 消防車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createEngine` | 消防救援 | 共用救援底盤，上裝含器材艙、水管捲盤及可瞄準水砲。 |
 | 雲梯車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` | 消防救援 | 共用救援底盤；梯架、工作籃、噴嘴、支撐腳與工作籃互動範圍。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 已共用，詳見上表。 |
@@ -130,13 +130,13 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | --- | --- | --- |
 | 黃色吊車、綠色材料平板車 | 沿用／共用：[construction-models.ts](../src/runtime/construction-models.ts) | 從蓋房子原模型抽出；原關卡保留 `vehicles.ts` 重新匯出。黃色吊車與六輪平板車的幾何、配色、比例、活動零件、互動 hitbox 維持原樣。平板車可不建立材料面板，由碼頭顯示兩箱物資。 |
 | 工程底盤與連桿助手 | 沿用／共用：同檔 · `createConstructionChassis`、`link` | 原蓋房子車體與連桿計算原樣抽出；蓋房子的砂石車、水泥車仍用相同底盤，未整併救援或修路底盤。 |
-| 沿岸小貨船 | 新增：[port-cargo/vehicles.ts](../src/missions/port-cargo/vehicles.ts) · `createCargoBoat`、`cargoBoatOutline` | 低多邊形船殼、尖船艏、開放甲板、側端駕駛艙、窗戶、桅桿與防撞輪胎；四種船色。保留可見的兩個甲板貨箱，不是巨型貨櫃船。靠岸泊位沿用同一船殼輪廓描虛線，到位淡出。 |
-| 堆高機 | 新增：同檔 · `createForklift` | 四輪、配重、護頂架、座椅、方向盤、雙立柱升降架與兩支活動貨叉；駕駛沿用制服人物。移動低位叉運，停妥後自動升高／插入／退出／降叉。 |
+| 沿岸小貨船 | 新增：[port-cargo/vehicles.ts](../src/missions/port-cargo/vehicles.ts) · `createCargoBoat`、`cargoBoatOutline` | 低多邊形船殼、尖船艏、開放甲板、側端駕駛艙、窗戶、桅桿與防撞輪胎；四種船色。依運貨方向空船進場或保留可見的兩個甲板貨箱；裝船後載箱離港，不是巨型貨櫃船。靠岸泊位沿用同一船殼輪廓描虛線，到位淡出。 |
+| 堆高機 | 新增：同檔 · `createForklift` | 四輪、配重、護頂架、座椅、方向盤、雙立柱升降架與兩支活動貨叉；駕駛沿用制服人物。移動低位叉運；卸船局裝車，裝船局抬高貨叉卸車，同一模型自動升高／插入／退出／降叉。 |
 | 棧板物資箱 | 新增：同檔 · `createPalletCargo` | 底部木條與可插入的空隙、貨箱、固定條；四面食物蘋果／玩具積木圖樣，轉向後仍可辨識。船上、懸吊、碼頭、叉上與車上共用同一份模型；卸放時轉向對準側面進叉方向。省略貨物身分時建立無圖樣的半透明落點變體，僅提示下一個卸放位置並隨落地淡出。 |
 | 碼頭人員與駕駛 | 沿用／既有變體：[emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson` | 原居民／制服人物與揮手手臂，駕駛以同模型調整顯示比例與位置。未新增另一套人物輪廓。 |
 | 背景房屋與樹木 | 沿用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 原交通街景；房屋降低為 0.52 倍高度、0.65 倍寬、0.45 倍深，樹木採 0.65 倍；移到水岸兩端的陸地，讓前方卡車進出、船身與中央工作區保持可見。 |
 | 碼頭平台、水面、繫纜柱、防撞墊與繫纜 | 新增：[port-cargo/scene.ts](../src/missions/port-cargo/scene.ts) | 平台、水道及低矮碼頭配件；泊位繫纜接上船側，離港前撤除。取消常駐卸貨方框，改用棧板貨箱落點變體；船形虛線泊位只在靠岸時顯示。水面短波紋單向漂移並淡入淡出，船移動時帶短尾波，停船後逐漸消退。 |
 | 吊裝吊帶、提示與紙花 | 沿用形體／效果做法：同檔、[drag-hint.ts](../src/runtime/drag-hint.ts) | 依現有圓柱連桿、小手、光圈及幾何紙花做法，狀態與動線由碼頭獨立控制。 |
-| 選關、四種運具圖示與城鎮收貨插圖 | 新增手寫 SVG：[port-art.ts](../src/app/port-art.ts)、[port-cargo/ui.ts](../src/missions/port-cargo/ui.ts) | 沿用柔和配色與既有 UI；收貨動畫使用持久化時鐘，不新增另一個 3D 城鎮場景。 |
+| 選關、四種運具圖示與城鎮收貨插圖 | 新增手寫 SVG：[port-art.ts](../src/app/port-art.ts)、[port-cargo/ui.ts](../src/missions/port-cargo/ui.ts) | 沿用柔和配色與既有 UI；進城平板車與對岸貨船兩種收貨動畫共用既有運具 SVG 與城鎮外觀，使用持久化時鐘，不新增另一個 3D 城鎮場景。 |
 
 首版四種運具、兩箱物資；貨櫃堆疊與多目的地留待試玩後再討論。

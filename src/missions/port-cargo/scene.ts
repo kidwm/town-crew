@@ -5,7 +5,7 @@ import { createPerson } from '../../runtime/emergency-models.ts';
 import { createTownHouse, createTownTree } from '../../runtime/town-scenery.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 import { cargoBoatOutline, createCargoBoat, createForklift, createPalletCargo } from './vehicles.ts';
-import { DECK, QUAY, ROAD_Z, SHIP_Z, LOAD_HEIGHT, FORK_OFFSET, LOADING_APPROACH, HAUL_END, TRUCK_SLOTS, stages, available, forkPose, forkRoute, pickupYaw, quayYaw, mirror, mix, smooth, clamp, distance, pathLength, loweringDuration, exitDistance } from './domain/port.ts';
+import { DECK, QUAY, ROAD_Z, SHIP_Z, LOAD_HEIGHT, FORK_OFFSET, LOADING_APPROACH, HAUL_END, SHIP_HAUL_END, TRUCK_SLOTS, missionStages, stageIndex, isCraneStage, craneTarget, craneLandingHeight, forkSource, forkDestination, forkHeight, forkLoadingDuration, available, forkPose, forkRoute, pickupYaw, quayYaw, mirror, mix, smooth, clamp, distance, pathLength, loweringDuration, exitDistance } from './domain/port.ts';
 import type { PortState, Cargo, Point } from './domain/port.ts';
 type Screen = { x: number; y: number };
 export type Task = { from: Screen; to: Screen; via: Screen[]; points: Screen[]; route: Point[]; value: number; id?: Cargo; label: string };
@@ -13,7 +13,7 @@ export type Task = { from: Screen; to: Screen; via: Screen[]; points: Screen[]; 
 export function createPortScene(host: HTMLElement) {
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#c9e2dd');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
-  const canvas = renderer.domElement; canvas.setAttribute('aria-label', '碼頭搬貨：貨船靠岸、吊車卸貨、堆高機裝車、平板車送貨'); host.append(canvas);
+  const canvas = renderer.domElement; canvas.setAttribute('aria-label', '碼頭搬貨：貨船、吊車、堆高機、平板車合作搬貨'); host.append(canvas);
   const scene = new THREE.Scene(), site = new THREE.Group(); scene.add(site);
   const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 100); camera.position.set(7, 13, 20); camera.lookAt(0, 0.5, -1);
   scene.add(new THREE.HemisphereLight('#fff8e6', '#97af9b', 2.5));
@@ -82,30 +82,30 @@ export function createPortScene(host: HTMLElement) {
     const q = mirror(s.round, p), r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
     const v = new THREE.Vector3(q.x, y, q.z).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
   }
-  const boatX = (s: PortState) => s.phase === 'departure' ? exitDistance(camera.right) * smooth(s.elapsed / 3.6) : -8.5 * (1 - s.boat);
-  const truckX = (s: PortState) => s.phase === 'transport' ? HAUL_END * s.haul : s.phase === 'departure' ? HAUL_END - (exitDistance(camera.right) + HAUL_END) * smooth(s.elapsed / 3.6) : stages.indexOf(s.phase) > 7 ? -exitDistance(camera.right) : 11.7 * (1 - s.truck);
+  const boatX = (s: PortState) => s.phase === 'ship-transport' ? SHIP_HAUL_END * s.haul : s.phase === 'departure' ? (s.round.direction === 'load' ? SHIP_HAUL_END : 0) + (exitDistance(camera.right) - (s.round.direction === 'load' ? SHIP_HAUL_END : 0)) * smooth(s.elapsed / 3.6) : -8.5 * (1 - s.boat);
+  const truckX = (s: PortState) => s.round.direction === 'load' ? s.phase === 'forklift-exit' ? -exitDistance(camera.right) * smooth(s.elapsed / 3.5) : stageIndex(s) > 3 ? -exitDistance(camera.right) : 11.7 * (1 - s.truck) : s.phase === 'transport' ? HAUL_END * s.haul : s.phase === 'departure' ? HAUL_END - (exitDistance(camera.right) + HAUL_END) * smooth(s.elapsed / 3.6) : stageIndex(s) > 7 ? -exitDistance(camera.right) : 11.7 * (1 - s.truck);
   function cargoPose(s: PortState, id: Cargo) {
-    const index = s.loaded.indexOf(id), unloading = s.phase === 'unload' && s.selected === id;
-    if (index >= 0) return { ...TRUCK_SLOTS[index], x: TRUCK_SLOTS[index].x + truckX(s), y: 1.24 };
-    if (s.phase === 'forklift' && s.selected === id && (s.carrying || s.action === 'picking')) {
-      const p = forkPose(s), lift = s.action === 'loading' ? smooth(s.elapsed / 0.8) : s.action === 'picking' ? smooth(s.elapsed / 0.65) : 1;
-      const y = s.action === 'loading' ? 0.3 + 0.94 * lift : 0.04 + 0.26 * lift;
-      return { x: p.x - Math.sin(p.yaw) * FORK_OFFSET, z: p.z - Math.cos(p.yaw) * FORK_OFFSET, y };
-    }
-    if (s.unloaded.includes(id)) return { ...QUAY[s.unloaded.indexOf(id)], y: 0.04 };
-    if (unloading) {
+    const index = s.loaded.indexOf(id), outgoing = s.round.direction === 'load';
+    if (index >= 0) return outgoing ? { ...DECK[index], x: DECK[index].x + boatX(s), y: 0.62 } : { ...TRUCK_SLOTS[index], x: TRUCK_SLOTS[index].x + truckX(s), y: 1.24 };
+    if (isCraneStage(s) && s.selected === id) {
+      const target = craneTarget(s), landed = craneLandingHeight(s), sourceHeight = outgoing ? 0.04 : 0.62;
       if (s.action === 'lowering' && loweringDuration(s) === 2) {
         const raise = smooth(s.elapsed / 0.6), traverse = smooth((s.elapsed - 0.6) / 0.6), lower = smooth((s.elapsed - 1.2) / 0.8);
-        return { ...mix(s.load, QUAY[s.unloaded.length], traverse), y: (0.62 + (LOAD_HEIGHT - 0.62) * smooth(s.lift)) * (1 - raise) + LOAD_HEIGHT * raise - (LOAD_HEIGHT - 0.04) * lower };
+        return { ...mix(s.load, target, traverse), y: (sourceHeight + (LOAD_HEIGHT - sourceHeight) * smooth(s.lift)) * (1 - raise) + LOAD_HEIGHT * raise - (LOAD_HEIGHT - landed) * lower };
       }
       const t = s.action === 'lowering' ? smooth(s.elapsed / 0.8) : 0;
-      return { ...mix(s.load, QUAY[s.unloaded.length], t), y: s.action === 'lowering' ? LOAD_HEIGHT * (1 - t) + 0.04 * t : 0.62 + (LOAD_HEIGHT - 0.62) * smooth(s.lift) };
+      return { ...mix(s.load, target, t), y: s.action === 'lowering' ? LOAD_HEIGHT * (1 - t) + landed * t : sourceHeight + (LOAD_HEIGHT - sourceHeight) * smooth(s.lift) };
     }
-    return { ...DECK[id], x: DECK[id].x + boatX(s), y: 0.62 };
+    if (s.phase === 'forklift' && s.selected === id && (s.carrying || s.action === 'picking') && (!outgoing || s.action !== 'picking' || s.elapsed >= 1.1)) {
+      const p = forkPose(s); return { x: p.x - Math.sin(p.yaw) * FORK_OFFSET, z: p.z - Math.cos(p.yaw) * FORK_OFFSET, y: forkHeight(s) };
+    }
+    if (s.unloaded.includes(id)) return { ...QUAY[s.unloaded.indexOf(id)], y: 0.04 };
+    return outgoing ? { ...TRUCK_SLOTS[id], x: TRUCK_SLOTS[id].x + truckX(s), y: 1.24 } : { ...DECK[id], x: DECK[id].x + boatX(s), y: 0.62 };
   }
   function cargoYaw(s: PortState, id: Cargo, forkYaw: number) {
     if (s.loaded.includes(id)) return 0;
-    if (s.phase === 'forklift' && s.selected === id && (s.carrying || s.action === 'picking')) return forkYaw;
+    if (s.phase === 'forklift' && s.selected === id && (s.carrying || s.action === 'picking') && (s.round.direction !== 'load' || s.action !== 'picking' || s.elapsed >= 1.1)) return forkYaw;
+    if (s.round.direction === 'load') return 0;
     if (s.unloaded.includes(id)) return pickupYaw(s, id);
     if (s.phase === 'unload' && s.selected === id && s.action === 'lowering') {
       const turning = loweringDuration(s) === 2 ? smooth((s.elapsed - 0.6) / 0.6) : smooth(s.elapsed / 0.8);
@@ -118,24 +118,25 @@ export function createPortScene(host: HTMLElement) {
     const width = canvas.getBoundingClientRect().width;
     let route: Point[], value = 0, y = 1.25, id = candidate;
     let label = '', from: Screen, to: Screen;
-    if (s.phase === 'unload') {
+    if (isCraneStage(s)) {
       id = s.selected ?? candidate ?? available(s)[0]; if (id === undefined) return;
-      const p = cargoPose(s, id); from = screen(s, p, p.y + 0.7); to = screen(s, QUAY[s.unloaded.length], 0.6);
-      return { id, from, to, route: [], points: [], via: [], value: s.elapsed / 0.4, label: '把任一貨箱拖到碼頭上的光圈' };
+      const p = cargoPose(s, id); from = screen(s, p, p.y + 0.7); to = screen(s, craneTarget(s), craneLandingHeight(s) + 0.56);
+      return { id, from, to, route: [], points: [], via: [], value: s.elapsed / 0.4, label: s.round.direction === 'load' ? '把任一岸上貨箱拖到船上的光圈' : '把任一貨箱拖到碼頭上的光圈' };
     }
     if (s.phase === 'boat') { route = [{ x: -8.5, z: SHIP_Z }, { x: 0, z: SHIP_Z }]; value = s.boat; label = '拖貨船靠岸'; }
     else if (s.phase === 'truck') { route = [{ x: 9.6, z: ROAD_Z }, { x: -2.1, z: ROAD_Z }]; value = s.truck; label = '拖平板車停到碼頭'; }
     else if (s.phase === 'transport') { route = [{ x: -2.1, z: ROAD_Z }, { x: HAUL_END - 2.1, z: ROAD_Z }]; value = s.haul; label = '拖載好的平板車，送貨進城'; }
+    else if (s.phase === 'ship-transport') { route = [{ x: 0, z: SHIP_Z }, { x: SHIP_HAUL_END, z: SHIP_Z }]; value = s.haul; label = '拖載好物資的貨船，送往對岸'; }
     else if (s.phase === 'forklift') {
       id = s.selected ?? candidate ?? available(s)[0]; if (id === undefined) return;
       route = forkRoute(s, id); value = s.forkTravel; y = 1;
-      label = s.carrying ? '拖堆高機到平板車側邊的光圈' : '拖堆高機到任一棧板貨箱前';
+      label = s.round.direction === 'load' ? s.carrying ? '拖堆高機，把貨箱放到碼頭' : '拖堆高機到車上任一貨箱前' : s.carrying ? '拖堆高機到平板車側邊的光圈' : '拖堆高機到任一棧板貨箱前';
     } else return;
     const points = route.map(p => screen(s, p, y));
     from = s.phase === 'forklift' ? screen(s, forkPose(s), 1) : { x: points[0].x + (points.at(-1)!.x - points[0].x) * value, y: points[0].y + (points.at(-1)!.y - points[0].y) * value };
     to = points.at(-1)!;
-    if (s.phase === 'forklift') to = screen(s, s.carrying ? { ...TRUCK_SLOTS[s.loaded.length], z: ROAD_Z - LOADING_APPROACH } : QUAY[s.unloaded.indexOf(id!)], 0.75);
-    if (s.phase === 'transport') { from = { x: clamp(from.x, 72, width - 72), y: from.y }; to = { x: clamp(to.x, 32, width - 32), y: to.y }; }
+    if (s.phase === 'forklift') to = screen(s, s.carrying ? s.round.direction === 'load' ? forkDestination(s) : { ...forkDestination(s), z: ROAD_Z - LOADING_APPROACH } : forkSource(s, id!), s.round.direction === 'load' && !s.carrying ? 1.85 : 0.75);
+    if (s.phase === 'transport' || s.phase === 'ship-transport') { from = { x: clamp(from.x, 72, width - 72), y: from.y }; to = { x: clamp(to.x, 32, width - 32), y: to.y }; }
     const length = pathLength(route); let traversed = 0;
     const via = points.slice(1, -1).filter((_, i) => { traversed += distance(route[i], route[i + 1]); return traversed / length > value + 0.015; });
     return { id, from, to, points, via: s.phase === 'forklift' && !s.carrying ? [] : via, value, label, route };
@@ -145,14 +146,14 @@ export function createPortScene(host: HTMLElement) {
     const r = canvas.getBoundingClientRect(), p = { x: x - r.x, y: y - r.y };
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
     ray.setFromCamera(new THREE.Vector2(p.x / r.width * 2 - 1, 1 - p.y / r.height * 2), camera);
-    if (s.phase === 'unload') {
+    if (isCraneStage(s)) {
       const candidates = available(s).map(id => ({ id, p: task(s, id)!.from, actual: ray.intersectObject(cargo[id].hit)[0] }));
       const nearest = candidates.sort((a, b) => Math.hypot(p.x - a.p.x, p.y - a.p.y) - Math.hypot(p.x - b.p.x, p.y - b.p.y))[0];
       if (nearest && (nearest.actual || Math.hypot(p.x - nearest.p.x, p.y - nearest.p.y) <= 34)) return nearest.id;
       return;
     }
     const info = task(s); if (!info) return;
-    const model = s.phase === 'boat' ? boat : s.phase === 'forklift' ? forklift : truck;
+    const model = s.phase === 'boat' || s.phase === 'ship-transport' ? boat : s.phase === 'forklift' ? forklift : truck;
     if (ray.intersectObject(model.hit)[0] || Math.hypot(p.x - info.from.x, p.y - info.from.y) <= 38) return 'vehicle';
   }
   const ray = new THREE.Raycaster();
@@ -180,7 +181,7 @@ export function createPortScene(host: HTMLElement) {
     return { value: value > 0.985 ? 1 : value, id };
   }
   function loadTarget(s: PortState, pointer: Screen, adjusted: Screen): Point {
-    const goal = QUAY[s.unloaded.length], target = screen(s, goal, 0.6), finger = relative(pointer), object = relative(adjusted);
+    const goal = craneTarget(s), target = screen(s, goal, craneLandingHeight(s) + 0.56), finger = relative(pointer), object = relative(adjusted);
     if ([finger, object].some(p => Math.hypot(p.x - target.x, p.y - target.y) < 36)) return goal;
     const r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
     ray.setFromCamera(new THREE.Vector2(object.x / r.width * 2 - 1, 1 - object.y / r.height * 2), camera);
@@ -191,7 +192,7 @@ export function createPortScene(host: HTMLElement) {
     canvas, hit, task, driveTarget, loadTarget,
     sources(s: PortState) {
       if (s.action !== 'ready') return [];
-      if (s.phase === 'unload') return available(s).map(id => ({ id, ...task(s, id)!.from }));
+      if (isCraneStage(s)) return available(s).map(id => ({ id, ...task(s, id)!.from }));
       if (s.phase === 'forklift' && !s.carrying) return available(s).map(id => ({ id, ...task(s, id)!.to }));
       return [];
     },
@@ -201,32 +202,34 @@ export function createPortScene(host: HTMLElement) {
       return { from: info.from, to: info.to, via: info.via, direction: info.to.x < info.from.x ? 'left' : 'right', label: info.label };
     },
     render(s: PortState, time: number) {
-      const i = stages.indexOf(s.phase); site.scale.x = s.round.layout ? -1 : 1;
-      boat.root.visible = i < stages.indexOf('arrival'); boat.root.position.set(boatX(s), 0, SHIP_Z); boat.color(s.round.palette);
+      const i = stageIndex(s), sequence = missionStages(s.round.direction), outgoing = s.round.direction === 'load'; site.scale.x = s.round.layout ? -1 : 1;
+      boat.root.visible = i < sequence.indexOf('arrival'); boat.root.position.set(boatX(s), 0, SHIP_Z); boat.color(s.round.palette);
       berth.visible = s.phase === 'boat'; berthMaterial.opacity = 0.9 * (1 - smooth(s.elapsed / 0.4));
-      preview.root.visible = s.phase === 'unload' && s.unloaded.length < 2;
+      preview.root.visible = isCraneStage(s) || outgoing && s.phase === 'forklift' && s.carrying;
       if (preview.root.visible) {
-        const p = QUAY[s.unloaded.length], fade = s.action === 'lowering' ? 1 - smooth((s.elapsed - loweringDuration(s) + 0.3) / 0.3) : 1;
-        preview.root.position.set(p.x, 0.04, p.z); preview.root.rotation.y = quayYaw(s.unloaded.length);
+        const cranePlacement = isCraneStage(s), p = cranePlacement ? craneTarget(s) : forkDestination(s);
+        const duration = s.action === 'lowering' ? loweringDuration(s) : s.action === 'loading' ? forkLoadingDuration(s) : undefined;
+        const fade = duration === undefined ? 1 : 1 - smooth((s.elapsed - duration + 0.3) / 0.3);
+        preview.root.position.set(p.x, cranePlacement ? craneLandingHeight(s) : 0.04, p.z); preview.root.rotation.y = outgoing ? 0 : quayYaw(s.unloaded.length);
         previewMaterial.opacity = 0.16 * fade; previewEdgeMaterial.opacity = 0.75 * fade;
       }
-      truck.root.visible = i <= stages.indexOf('departure'); truck.root.position.set(truckX(s), 0.05, ROAD_Z); truck.roll(truckX(s)); parking.visible = s.phase === 'truck';
-      const craneLeaving = s.phase === 'crane-exit'; crane.root.visible = i <= stages.indexOf('crane-exit');
+      truck.root.visible = i <= sequence.indexOf(outgoing ? 'forklift-exit' : 'departure'); truck.root.position.set(truckX(s), 0.05, ROAD_Z); truck.roll(truckX(s)); parking.visible = s.phase === 'truck';
+      const craneLeaving = s.phase === 'crane-exit', craneWaiting = outgoing && i < sequence.indexOf('crane-ready'); crane.root.visible = i <= sequence.indexOf('crane-exit');
       crane.root.position.x = craneLeaving ? -4.6 - smooth((s.elapsed - 1.2) / 2.8) * (exitDistance(camera.right) - 4.6) : -4.6;
-      crane.retract(craneLeaving ? smooth(s.elapsed / 1.2) : 0); crane.roll(crane.root.position.x + 4.6);
-      let raised = s.phase === 'unload' && s.selected !== null ? cargoPose(s, s.selected) : { x: -1.3, z: -3.2, y: 2.3 };
+      crane.retract(craneWaiting ? 1 : s.phase === 'crane-ready' ? 1 - smooth(s.elapsed / 1.2) : craneLeaving ? smooth(s.elapsed / 1.2) : 0); crane.roll(crane.root.position.x + 4.6);
+      const stowed = { x: crane.root.position.x + 0.5, z: -1.15, y: 1.1 }, idle = { x: -1.3, z: -3.2, y: 2.3 };
+      let raised = craneWaiting ? stowed : s.phase === 'crane-ready' ? { ...mix(stowed, idle, smooth(s.elapsed / 1.2)), y: 1.1 + smooth(s.elapsed / 1.2) * 1.2 } : isCraneStage(s) && s.selected !== null ? cargoPose(s, s.selected) : idle;
       if (craneLeaving) { const t = smooth(s.elapsed / 1.2); raised = { ...mix(raised, { x: crane.root.position.x + 0.5, z: -1.15 }, t), y: 2.3 - t * 1.2 }; }
       crane.aim(new THREE.Vector3(raised.x, raised.y + 0.9, raised.z), 0.3);
-      sling.forEach((m, n) => { m.visible = s.phase === 'unload' && s.selected !== null && (s.lift > 0 || s.action === 'lowering'); link(m, new THREE.Vector3(raised.x, raised.y + 1.4, raised.z), new THREE.Vector3(raised.x + (n ? 0.45 : -0.45), raised.y + 1.15, raised.z)); });
-      const f = forkPose(s, exitDistance(camera.right)); forklift.root.visible = i <= stages.indexOf('forklift-exit'); forklift.root.position.set(f.x, 0.02, f.z); forklift.root.rotation.y = f.yaw;
-      const height = s.action === 'loading' ? 0.3 + smooth(s.elapsed / 0.8) * 0.94 : s.action === 'returning' ? 0.04 + 1.2 * smooth((f.z - (ROAD_Z - FORK_OFFSET - LOADING_APPROACH)) / LOADING_APPROACH) : s.carrying ? 0.3 : s.action === 'picking' ? 0.04 + smooth(s.elapsed / 0.65) * 0.26 : 0.04;
-      forklift.pose(height, s.forkTravel * (s.selected !== null && s.phase === 'forklift' && s.action !== 'returning' ? pathLength(forkRoute(s)) : 0));
+      sling.forEach((m, n) => { m.visible = isCraneStage(s) && s.selected !== null && (s.lift > 0 || s.action === 'lowering'); link(m, new THREE.Vector3(raised.x, raised.y + 1.4, raised.z), new THREE.Vector3(raised.x + (n ? 0.45 : -0.45), raised.y + 1.15, raised.z)); });
+      const f = forkPose(s, exitDistance(camera.right)); forklift.root.visible = i <= sequence.indexOf('forklift-exit'); forklift.root.position.set(f.x, 0.02, f.z); forklift.root.rotation.y = f.yaw;
+      forklift.pose(forkHeight(s), s.forkTravel * (s.selected !== null && s.phase === 'forklift' && s.action !== 'returning' ? pathLength(forkRoute(s)) : 0));
       cargo.forEach((c, n) => {
-        const p = cargoPose(s, n as Cargo); c.root.visible = !s.loaded.includes(n as Cargo) || truck.root.visible;
+        const p = cargoPose(s, n as Cargo); c.root.visible = !s.loaded.includes(n as Cargo) || (outgoing ? boat.root.visible : truck.root.visible);
         c.root.position.set(p.x, p.y, p.z);
         c.root.rotation.y = cargoYaw(s, n as Cargo, f.yaw);
       });
-      mooring.forEach((m, n) => { m.visible = s.boat === 1 && i < stages.indexOf('departure'); link(m, new THREE.Vector3(n ? 2.4 : -3.5, 0.7, -4.65), new THREE.Vector3(n ? 4 : -5, 0.5, -3.32)); });
+      mooring.forEach((m, n) => { m.visible = s.boat === 1 && i < sequence.indexOf('departure') && (s.phase !== 'ship-transport' || s.haul === 0); link(m, new THREE.Vector3(n ? 2.4 : -3.5, 0.7, -4.65), new THREE.Vector3(n ? 4 : -5, 0.5, -3.32)); });
       workers.forEach(p => { p.arm.rotation.z = s.phase === 'complete' || s.phase === 'arrival' ? -2 + Math.sin(time * 3) * 0.2 : -0.2; });
       waves.forEach((w, n) => {
         const t = (time / 12 + n * 0.137) % 1, fade = Math.sin(t * Math.PI);
