@@ -4,7 +4,7 @@ import { createCrane, createFlatbed, link } from '../../runtime/construction-mod
 import { createPerson } from '../../runtime/emergency-models.ts';
 import { createTownHouse, createTownTree } from '../../runtime/town-scenery.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
-import { createCargoBoat, createForklift, createPalletCargo } from './vehicles.ts';
+import { cargoBoatOutline, createCargoBoat, createForklift, createPalletCargo } from './vehicles.ts';
 import { DECK, QUAY, ROAD_Z, SHIP_Z, LOAD_HEIGHT, FORK_OFFSET, LOADING_APPROACH, HAUL_END, TRUCK_SLOTS, stages, available, forkPose, forkRoute, pickupYaw, quayYaw, mirror, mix, smooth, clamp, distance, pathLength, loweringDuration, exitDistance } from './domain/port.ts';
 import type { PortState, Cargo, Point } from './domain/port.ts';
 type Screen = { x: number; y: number };
@@ -30,14 +30,29 @@ export function createPortScene(host: HTMLElement) {
     box(site, [0.8, 0.22, 0.16], [x, 0.48, -3.32], '#8a9888');
     box(site, [0.85, 0.38, 0.18], [x, -0.22, -3.83], '#768d86');
   }
-  // Low scenery stays behind the truck and outside all four vehicle routes.
-  for (const x of [-6.7, 6.7]) {
-    const house = createTownHouse(shapes); house.position.set(x, 0.03, 12.7); house.scale.set(0.65, 0.52, 0.6); site.add(house);
-    const tree = createTownTree(shapes); tree.position.set(x < 0 ? -10 : 10, 0, 12); site.add(tree);
+  // Shore-side scenery clears the foreground road and the crane's exit lane.
+  for (const side of [-1, 1]) {
+    const house = createTownHouse(shapes); house.position.set(side * 10.5, 0.03, 1.6); house.scale.set(0.65, 0.52, 0.45); site.add(house);
+    const tree = createTownTree(shapes); tree.position.set(side * 13, 0, 0.8); tree.scale.setScalar(0.65); site.add(tree);
   }
-  for (const p of QUAY) for (const offset of [-0.82, 0.82]) {
-    box(site, [1.64, 0.018, 0.05], [p.x, 0.012, p.z + offset], '#f6eccf'); box(site, [0.05, 0.018, 1.64], [p.x + offset, 0.012, p.z], '#f6eccf');
+  const berthMaterial = new THREE.MeshBasicMaterial({ color: '#fff0c7', transparent: true, opacity: 0.9, depthWrite: false });
+  const berth = new THREE.Group(); site.add(berth);
+  const berthPoints = cargoBoatOutline().getPoints().map(p => ({ x: p.x * 1.1, z: SHIP_Z - p.y * 1.12 }));
+  for (let i = 1; i < berthPoints.length; i++) {
+    const a = berthPoints[i - 1], b = berthPoints[i], length = distance(a, b);
+    for (let along = 0; along < length; along += 0.5) {
+      const dash = Math.min(0.32, length - along), p = mix(a, b, (along + dash / 2) / length);
+      const stroke = new THREE.Mesh(new THREE.BoxGeometry(dash, 0.01, 0.07), berthMaterial);
+      stroke.position.set(p.x, -0.435, p.z); stroke.rotation.y = -Math.atan2(b.z - a.z, b.x - a.x); berth.add(stroke);
+    }
   }
+  // The neutral preview shares the real pallet and box geometry, without supply symbols.
+  const preview = createPalletCargo(shapes);
+  const previewMaterial = new THREE.MeshBasicMaterial({ color: '#a3c1ad', transparent: true, opacity: 0.16, depthWrite: false });
+  preview.root.traverse(o => { if (o instanceof THREE.Mesh && o !== preview.hit) { o.material = previewMaterial; o.castShadow = o.receiveShadow = false; } });
+  const previewEdgeMaterial = new THREE.LineBasicMaterial({ color: '#7f9f90', transparent: true, opacity: 0.75, depthWrite: false });
+  const previewEdges = new THREE.LineSegments(new THREE.EdgesGeometry(preview.crate.geometry), previewEdgeMaterial);
+  previewEdges.position.copy(preview.crate.position); preview.root.add(previewEdges); site.add(preview.root);
   const parking = new THREE.Group(); site.add(parking);
   for (const z of [ROAD_Z - 1.18, ROAD_Z + 1.18]) box(parking, [6.4, 0.02, 0.06], [-0.55, 0.058, z], '#fff0c7');
   for (const x of [-3.75, 2.65]) box(parking, [0.06, 0.02, 2.36], [x, 0.058, ROAD_Z], '#fff0c7');
@@ -48,7 +63,13 @@ export function createPortScene(host: HTMLElement) {
   const mooring = [0, 1].map(() => cylinder(site, 0.026, 1, [0, 0, 0], '#9c947b', 8));
   const workers = [createPerson(shapes, true), createPerson(shapes)];
   workers.forEach((p, i) => { p.root.position.set(7.4 + i * 0.85, 0, 5.5); site.add(p.root); });
-  const waves = Array.from({ length: 20 }, (_, i) => box(site, [0.7 + i % 3 * 0.3, 0.012, 0.06], [-13 + i % 8 * 3.7, -0.455, -9.3 - Math.floor(i / 8) * 2.4], '#d0e4d9'));
+  function waterStroke(length: number) {
+    const stroke = new THREE.Mesh(new THREE.BoxGeometry(length, 0.008, 0.045), new THREE.MeshBasicMaterial({ color: '#e0eee2', transparent: true, opacity: 0, depthWrite: false }));
+    site.add(stroke); return stroke;
+  }
+  const waves = Array.from({ length: 24 }, (_, i) => waterStroke(0.7 + i % 3 * 0.35));
+  const wake = Array.from({ length: 12 }, () => waterStroke(0.65));
+  let previousTime: number | undefined, previousBoatX: number | undefined, wakeStrength = 0;
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.13, 0.13, 0.05], [0, 0, 0], ['#e4bc6c', '#84b2a4', '#d5927a'][i % 3]));
   const routeDots = Array.from({ length: 45 }, () => { const mesh = new THREE.Mesh(new THREE.CircleGeometry(0.09, 8), material('#f8edc9')); mesh.rotation.x = -Math.PI / 2; site.add(mesh); return mesh; });
   const resize = new ResizeObserver(() => {
@@ -182,6 +203,13 @@ export function createPortScene(host: HTMLElement) {
     render(s: PortState, time: number) {
       const i = stages.indexOf(s.phase); site.scale.x = s.round.layout ? -1 : 1;
       boat.root.visible = i < stages.indexOf('arrival'); boat.root.position.set(boatX(s), 0, SHIP_Z); boat.color(s.round.palette);
+      berth.visible = s.phase === 'boat'; berthMaterial.opacity = 0.9 * (1 - smooth(s.elapsed / 0.4));
+      preview.root.visible = s.phase === 'unload' && s.unloaded.length < 2;
+      if (preview.root.visible) {
+        const p = QUAY[s.unloaded.length], fade = s.action === 'lowering' ? 1 - smooth((s.elapsed - loweringDuration(s) + 0.3) / 0.3) : 1;
+        preview.root.position.set(p.x, 0.04, p.z); preview.root.rotation.y = quayYaw(s.unloaded.length);
+        previewMaterial.opacity = 0.16 * fade; previewEdgeMaterial.opacity = 0.75 * fade;
+      }
       truck.root.visible = i <= stages.indexOf('departure'); truck.root.position.set(truckX(s), 0.05, ROAD_Z); truck.roll(truckX(s)); parking.visible = s.phase === 'truck';
       const craneLeaving = s.phase === 'crane-exit'; crane.root.visible = i <= stages.indexOf('crane-exit');
       crane.root.position.x = craneLeaving ? -4.6 - smooth((s.elapsed - 1.2) / 2.8) * (exitDistance(camera.right) - 4.6) : -4.6;
@@ -200,7 +228,21 @@ export function createPortScene(host: HTMLElement) {
       });
       mooring.forEach((m, n) => { m.visible = s.boat === 1 && i < stages.indexOf('departure'); link(m, new THREE.Vector3(n ? 2.4 : -3.5, 0.7, -4.65), new THREE.Vector3(n ? 4 : -5, 0.5, -3.32)); });
       workers.forEach(p => { p.arm.rotation.z = s.phase === 'complete' || s.phase === 'arrival' ? -2 + Math.sin(time * 3) * 0.2 : -0.2; });
-      waves.forEach((w, n) => { w.position.x = -13 + n % 8 * 3.7 + Math.sin(time * 0.7 + n) * 0.22; });
+      waves.forEach((w, n) => {
+        const t = (time / 12 + n * 0.137) % 1, fade = Math.sin(t * Math.PI);
+        w.position.set(-13 + n % 8 * 3.7 + (t - 0.5) * 3.2, -0.455, -8.7 - Math.floor(n / 8) * 2.8);
+        w.material.opacity = fade * 0.65; w.scale.x = 0.7 + fade * 0.5;
+      });
+      const dt = previousTime === undefined ? 0 : clamp(time - previousTime, 0, 0.1);
+      const moving = previousBoatX !== undefined && dt > 0 && boat.root.visible && Math.abs(boat.root.position.x - previousBoatX) > 0.0001;
+      wakeStrength += ((moving ? 1 : 0) - wakeStrength) * Math.min(1, dt * 3);
+      previousTime = time; previousBoatX = boat.root.position.x;
+      wake.forEach((w, n) => {
+        const row = Math.floor(n / 2), side = n % 2 ? 1 : -1, ripple = (time * 0.35) % 0.55;
+        w.visible = boat.root.visible && wakeStrength > 0.01;
+        w.position.set(boat.root.position.x - 4.2 - row * 0.55 - ripple, -0.451, SHIP_Z + side * (1.15 + row * 0.16));
+        w.rotation.y = side * 0.28; w.material.opacity = wakeStrength * (1 - row / 6) * 0.45;
+      });
       confetti.forEach((p, n) => { p.visible = s.phase === 'complete'; const t = (time * 0.23 + n / 28) % 1; p.position.set(Math.sin(n * 5) * 8, 7 - t * 6, 1 + Math.cos(n * 7) * 3); p.rotation.set(time, n, time + n); p.scale.setScalar(Math.sin(t * Math.PI)); });
       const info = task(s), path = s.phase === 'forklift' ? info?.route : undefined;
       routeDots.forEach((m, n) => {
@@ -214,7 +256,7 @@ export function createPortScene(host: HTMLElement) {
     },
     dispose() {
       resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
+      scene.traverse(o => { if (o instanceof THREE.Mesh || o instanceof THREE.Line) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
       geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
     },
   };

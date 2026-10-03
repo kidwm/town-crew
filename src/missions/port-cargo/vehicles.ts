@@ -3,10 +3,14 @@ import type { Shapes } from '../../runtime/geometry.ts';
 import { createPerson } from '../../runtime/emergency-models.ts';
 
 export const SHIP_COLORS = ['#77a9b2', '#89ac91', '#c8937f', '#859eaf'];
-export function createCargoBoat(shapes: Shapes) {
-  const root = new THREE.Group(); root.name = 'port-cargo-boat';
+export function cargoBoatOutline() {
   const outline = new THREE.Shape(); outline.moveTo(-3.8, -1.6); outline.lineTo(2.6, -1.6);
   outline.lineTo(4.3, 0); outline.lineTo(2.6, 1.6); outline.lineTo(-3.8, 1.6); outline.closePath();
+  return outline;
+}
+export function createCargoBoat(shapes: Shapes) {
+  const root = new THREE.Group(); root.name = 'port-cargo-boat';
+  const outline = cargoBoatOutline();
   const hull = new THREE.Mesh(new THREE.ExtrudeGeometry(outline, { depth: 0.65, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.14, bevelSegments: 1, steps: 1 }), shapes.material(SHIP_COLORS[0]));
   hull.rotation.x = -Math.PI / 2; hull.position.y = -0.18; hull.castShadow = hull.receiveShadow = true; root.add(hull);
   const deck = new THREE.Mesh(new THREE.ShapeGeometry(outline), shapes.material('#e4d5b3')); deck.rotation.x = -Math.PI / 2; deck.position.y = 0.6; deck.receiveShadow = true; root.add(deck);
@@ -27,14 +31,14 @@ export function createCargoBoat(shapes: Shapes) {
   const hit = shapes.hitbox(root, [8.3, 2.5, 3.5], [0.2, 0.8, 0]);
   return { root, hit, color(index: number) { hull.material = shapes.material(SHIP_COLORS[index]); } };
 }
-export function createPalletCargo(shapes: Shapes, id: number) {
-  const root = new THREE.Group(); root.name = `port-pallet-${id}`;
+export function createPalletCargo(shapes: Shapes, id?: number) {
+  const root = new THREE.Group(); root.name = id === undefined ? 'port-pallet-preview' : `port-pallet-${id}`;
   for (const x of [-0.47, 0, 0.47]) shapes.box(root, [0.17, 0.13, 1.35], [x, 0.08, 0], '#9b805c');
   for (const z of [-0.54, -0.27, 0, 0.27, 0.54]) shapes.box(root, [1.3, 0.08, 0.19], [0, 0.185, z], '#c7a879');
-  shapes.box(root, [1.17, 0.95, 1.18], [0, 0.69, 0], id ? '#b1c8b7' : '#e1c49a');
+  const crate = shapes.box(root, [1.17, 0.95, 1.18], [0, 0.69, 0], id === undefined ? '#fff0c7' : id ? '#b1c8b7' : '#e1c49a');
   for (const x of [-0.41, 0.41]) for (const z of [-0.606, 0.606]) shapes.box(root, [0.09, 0.96, 0.035], [x, 0.69, z], '#efe0b5');
   // Large, distinct shapes identify the two supplies without relying on colour.
-  for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+  for (const angle of id === undefined ? [] : [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
     const face = new THREE.Group(); face.rotation.y = angle; root.add(face);
     const z = 0.63;
     if (id === 0) {
@@ -48,7 +52,7 @@ export function createPalletCargo(shapes: Shapes, id: number) {
     }
   }
   const hit = shapes.hitbox(root, [1.65, 1.5, 1.65], [0, 0.72, 0]);
-  return { root, hit };
+  return { root, hit, crate };
 }
 export function createForklift(shapes: Shapes) {
   const root = new THREE.Group(); root.name = 'port-forklift';

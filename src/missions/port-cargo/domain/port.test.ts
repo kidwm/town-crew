@@ -188,6 +188,18 @@ test('fork steering stays continuous while picking up, carrying, withdrawing and
   }
 });
 
+test('each loaded pallet turns forward toward land immediately instead of reversing the pickup route', () => {
+  for (const order of [[0, 1], [1, 0]] as Cargo[][]) for (const id of [0, 1] as const) for (const second of [false, true]) {
+    const s = createPort('forklift'); s.unloaded = order; s.selected = id; s.carrying = true;
+    if (second) s.loaded = [1 - id as Cargo];
+    const start = forkPose(s), moved = forkPose({ ...s, forkTravel: 0.01 });
+    const forward = (moved.x - start.x) * -Math.sin(start.yaw) + (moved.z - start.z) * -Math.cos(start.yaw);
+    assert.ok(forward > 0, 'the first movement is forward, away from the pickup approach');
+    assert.ok(moved.z > start.z, 'the turn heads toward the truck-side land');
+    assert.ok(forkRoute(s).every(p => p.z >= start.z), 'the loaded route never backs toward the water');
+  }
+});
+
 test('the second pickup uses the vacant first bay with a shorter side approach and retains that route across reload', () => {
   for (const layout of [0, 1] as const) for (const order of [[0, 1], [1, 0]] as Cargo[][]) for (const first of [0, 1] as const) {
     const second = 1 - first as Cargo, s = createPort('forklift', { layout, palette: 0 }); s.unloaded = order;

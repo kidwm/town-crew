@@ -140,8 +140,8 @@ clear of the quay edge and a horizontal final insertion visible in both mirrored
 views. After the first delivery, the forklift parks between the quay bays; its
 second approach changes side to enter through the vacant first bay. This shorter
 route and the parking position derive from loaded cargo IDs, so reload retains them.
-First-trip transport reverses along the pickup route clear of the other pallet;
-the second trip can reverse out and turn directly toward the truck. Quay pallet
+Both loaded trips turn forward toward land immediately after pickup; the carried
+box swings clear of the other pallet without reversing the approach. Quay pallet
 orientation matches the approach, and routes remain clear of people. The side loading
 position remains outside the truck: automatic loading raises first, inserts second,
 then withdraws before lowering. Crane departure completes before fork work; forklift

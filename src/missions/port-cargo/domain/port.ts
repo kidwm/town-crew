@@ -99,16 +99,15 @@ export function pickupRoute(s: PortState, id: Cargo): Point[] {
   return [HOME, { x: arc[0].x, z: HOME.z }, ...arc, { x: stopX, z: p.z }];
 }
 export function deliveryRoute(s: PortState): Point[] {
-  const slot = TRUCK_SLOTS[s.loaded.length];
-  if (s.loaded.length === 1) {
-    // Both quay bays are clear after the second pickup. Reverse out, then
-    // turn toward the truck without retracing the pickup curve.
-    const p = quayFor(s, s.selected!), side = pickupSide(s, s.selected!);
-    const start = { x: p.x + side * FORK_OFFSET, z: p.z }, retreat = { x: start.x + side * 1.2, z: p.z };
-    return [start, retreat, { x: retreat.x, z: HOME.z }, { x: slot.x, z: HOME.z }, { x: slot.x, z: ROAD_Z - FORK_OFFSET - LOADING_APPROACH }];
-  }
-  // Reverse through the same clear approach before turning toward the truck.
-  return [...pickupRoute(s, s.selected!).slice(1).reverse(), { x: slot.x, z: HOME.z }, { x: slot.x, z: ROAD_Z - FORK_OFFSET - LOADING_APPROACH }];
+  const slot = TRUCK_SLOTS[s.loaded.length], p = quayFor(s, s.selected!), side = pickupSide(s, s.selected!);
+  const start = { x: p.x + side * FORK_OFFSET, z: p.z }, radius = 1.6;
+  // Turn forward toward land as soon as the pallet lifts. The carried box
+  // swings away from the remaining bay, without retracing the pickup route.
+  const arc = Array.from({ length: 13 }, (_, i) => {
+    const angle = i / 12 * Math.PI / 2;
+    return { x: start.x - side * radius * Math.sin(angle), z: start.z + radius * (1 - Math.cos(angle)) };
+  });
+  return [...arc, { x: arc.at(-1)!.x, z: HOME.z - 0.8 }, { x: slot.x, z: HOME.z }, { x: slot.x, z: ROAD_Z - FORK_OFFSET - LOADING_APPROACH }];
 }
 export function returnRoute(s: PortState): Point[] {
   const slot = TRUCK_SLOTS[s.loaded.length - 1], home = forkHome(s);
@@ -124,14 +123,10 @@ export function forkPose(s: PortState, exit = 22) {
   }
   if (s.phase === 'forklift-exit') return { ...mix(HOME, { x: -exit, z: HOME.z }, smooth((s.elapsed - 0.4) / 3.1)), yaw: Math.PI / 2 * smooth(s.elapsed / 0.4), segment: 0 };
   if (s.phase !== 'forklift' || s.selected === null) return { ...forkHome(s), yaw: 0, segment: 0 };
-  const route = forkRoute(s), reverseSegments = s.loaded.length === 1 ? 1 : route.length - 3;
-  const headings = s.carrying ? route.slice(1).map((p, i) => {
-    const dx = p.x - route[i].x, dz = p.z - route[i].z;
-    return i < reverseSegments ? Math.atan2(dx, dz) : Math.atan2(-dx, -dz);
-  }) : undefined;
-  const p = pathPose(route, s.forkTravel, headings, s.carrying ? pickupYaw(s, s.selected) : 0, s.carrying ? Math.PI : pickupYaw(s, s.selected));
+  const route = forkRoute(s);
+  const p = pathPose(route, s.forkTravel, undefined, s.carrying ? pickupYaw(s, s.selected) : 0, s.carrying ? Math.PI : pickupYaw(s, s.selected));
   if (s.action === 'loading') p.z += LOADING_APPROACH * smooth((s.elapsed - 0.8) / 0.6);
-  // The loaded approach reverses, then steering blends toward the truck.
+  // Side pickup turns forward toward the truck; loading inserts only after lifting.
   return p;
 }
 export function available(s: PortState): Cargo[] {

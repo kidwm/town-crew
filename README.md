@@ -73,25 +73,29 @@ Restart clears only the current mission's progress, while its earned badge remai
 
 ## Move cargo at the dock
 
-1. Drag the small cargo boat to its berth. It follows the waterway, pauses on
-   release, then automatically moors when it reaches the actual berth.
+1. Drag the small cargo boat into the dashed hull-shaped berth. It follows the
+   waterway, pauses on release, then automatically moors at the actual berth;
+   the outline fades as docking finishes.
 2. Drag the empty green material flatbed into the foreground loading bay.
-3. Drag either of the two pallet boxes from the open deck to the highlighted quay
-   space. The original yellow mobile crane hooks it, raises it clear of the boat,
-   then follows the drag. A 0.4-second hold places it automatically; a valid early
-   release also finishes raising, crossing and lowering safely. A cancelled or
+3. Drag either of the two pallet boxes from the open deck to the translucent
+   pallet-box preview on the quay. Only the next landing position is shown;
+   the preview fades as the real box lands. The original yellow mobile crane
+   hooks it, raises it clear of the boat, then follows the drag. A 0.4-second hold
+   places it automatically; a valid early release also finishes raising, crossing
+   and lowering safely. A cancelled or
    missed delivery retains the suspended box and its position. Choose either
    unloading order. Both boxes must be ashore before the crane stows and leaves.
 4. Drag the forklift toward either pallet. The first pickup uses the outer
    side, then inserts horizontally and lifts with its side visible in either
    mirrored view. Pallets turn into position while unloading; symbols on all
    four faces retain their identity. Start a new drag
-   toward the truck-side loading position. It carries low, reverses clear of the
-   other pallet before turning, stops outside the truck, raises the box, moves
+   toward the truck-side loading position. It carries low and immediately turns
+   forward toward land, swinging the box clear of the other pallet. It stops
+   outside the truck, raises the box, moves
    forward to place it, then reverses and lowers its forks. Choose either loading
    order independently of the crane order. After the first delivery it parks
    between the quay bays. The second pickup uses the vacated first bay and a
-   shorter approach; both bays are then clear for a direct turn toward the truck.
+   shorter approach, followed by the same direct forward turn toward the truck.
    Two trips load both boxes.
 5. The forklift leaves before the child drags the loaded flatbed out. The empty
    boat unmoors and departs along the waterway. A six-second town delivery animation
@@ -111,6 +115,9 @@ The crane and flatbed are the original house-building models extracted into
 The forklift, coastal cargo boat, pallet boxes and quay are new procedural models.
 Workers, trees and houses reuse existing builders. There are two crane lifts and
 two forklift trips in every round, with no container stacking or extra destination.
+Low houses and trees sit at the two shore-side ends, clearing the foreground
+truck approach. Water strokes drift and fade continuously, with a short wake
+while the boat moves; these decorative animations do not change saved progress.
 
 ## Help the police team
 
