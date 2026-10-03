@@ -5,7 +5,7 @@ import { createShapes } from '../../runtime/geometry.ts';
 import { createAmbulance, createStretcher, createPerson, createOfficer, link } from '../../runtime/emergency-models.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 import { createCar, createTowTruck, createWheelLiftTruck, createWheelYoke, createSweeper } from './vehicles.ts';
-import { CARS, CONES, PATIENT, DEBRIS, PALETTE, TOW_LANE, towDirection, towType, stages, goals, goalPoint, isDriving, driveEnd, mix, smooth } from './domain/traffic.ts';
+import { CARS, CONES, PATIENT, DEBRIS, PALETTE, TOW_LANE, AMBULANCE_LANE, REOPEN_PASS_START, reopeningCarX, towDirection, towType, stages, goals, goalPoint, isDriving, driveEnd, mix, smooth } from './domain/traffic.ts';
 import { towingPose, towedCarPose, CAR_AXLE, CAR_WHEEL } from './domain/towing.ts';
 import type { TrafficState, Point } from './domain/traffic.ts';
 const vector = (p: Point) => new THREE.Vector3(p.x, p.y, p.z);
@@ -69,8 +69,8 @@ export function createTrafficScene(host: HTMLElement) {
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
   }); resize.observe(host);
   function screen(p: Point): ScreenPoint { camera.updateMatrixWorld(true); const r = canvas.getBoundingClientRect(), v = vector(p).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 }; }
-  const drivingZ = (s: TrafficState) => s.phase === 'police' || s.phase === 'ambulance' ? -4.7 : s.phase === 'tow-exit' ? TOW_LANE : 0;
-  function anchor(s: TrafficState): Point { return s.phase === 'tow-choice' ? goalPoint(goals(s)[0] ?? 'car-0') : isDriving(s) ? { x: s.truckX, y: 1, z: drivingZ(s) } : s.handle; }
+  const drivingZ = (s: TrafficState) => s.phase === 'police' || s.phase === 'ambulance' ? AMBULANCE_LANE : s.phase === 'tow-exit' ? TOW_LANE : 0;
+  function anchor(s: TrafficState): Point { return isDriving(s) ? { x: s.truckX, y: 1, z: drivingZ(s) } : s.handle; }
   function targets(s: TrafficState, pointer?: ScreenPoint, origin?: ScreenPoint) {
     const r = canvas.getBoundingClientRect(), finger = pointer && { x: pointer.x - r.x, y: pointer.y - r.y }, held = screen(anchor(s));
     const moved = pointer && origin && Math.hypot(pointer.x - origin.x, pointer.y - origin.y) >= 18;
@@ -84,14 +84,6 @@ export function createTrafficScene(host: HTMLElement) {
   function setRay(x: number, y: number) { const r = canvas.getBoundingClientRect(); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); ray.setFromCamera(new THREE.Vector2((x - r.x) / r.width * 2 - 1, 1 - (y - r.y) / r.height * 2), camera); }
   return {
     canvas, screen, targets, anchor,
-    carAt(x: number, y: number, s: TrafficState) {
-      if (s.phase !== 'tow-choice' || !['ready', 'dragging'].includes(s.action)) return;
-      setRay(x, y);
-      const available = goals(s), hits = available.map(id => ({ id, hit: ray.intersectObject(cars[id === 'car-0' ? 0 : 1].hit, true)[0] })).filter(v => v.hit).sort((a, b) => a.hit!.distance - b.hit!.distance);
-      if (hits.length) return hits[0].id;
-      const r = canvas.getBoundingClientRect(), nearest = targets(s).map(t => ({ ...t, distance: Math.hypot(x - r.x - t.x, y - r.y - t.y) })).sort((a, b) => a.distance - b.distance);
-      return nearest[0]?.distance < 24 ? nearest[0].id : undefined;
-    },
     onPlane(x: number, y: number, height = 0.7) { setRay(x, y); const p = new THREE.Vector3(); return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), p) ? { x: p.x, y: p.y, z: p.z } : undefined; },
     hit(x: number, y: number, s: TrafficState) {
       if (s.action !== 'ready' || !(isDriving(s) || goals(s).length)) return false;
@@ -103,16 +95,15 @@ export function createTrafficScene(host: HTMLElement) {
     },
     dragHint(s: TrafficState): DragHint | undefined {
       if (s.action !== 'ready' || !(isDriving(s) || goals(s).length)) return;
-      if (s.phase === 'tow-choice') { const point = screen(goalPoint(goals(s)[0])); return { from: point, to: point, direction: 'up', label: '點一台小客車，呼叫拖吊車' }; }
       const from = screen(anchor(s)), to = screen(isDriving(s) ? { ...anchor(s), x: driveEnd(s) } : goalPoint(goals(s)[0]));
-      return { from, to, direction: isDriving(s) ? s.phase === 'tow-exit' && towDirection(s) < 0 ? 'left' : 'right' : s.phase === 'boarding' ? 'right' : 'up', label: isDriving(s) ? '按住車子，沿箭頭慢慢拖' : s.phase === 'hook' ? towType(s) === 'flatbed' ? '把掛鉤拖到選好的小客車' : '把托輪架拖到選好的小客車' : s.phase === 'cones' ? '把交通錐拖到輪廓' : '把擔架拖到光圈' };
+      return { from, to, direction: isDriving(s) ? s.phase === 'tow-exit' && towDirection(s) < 0 ? 'left' : 'right' : s.phase === 'boarding' ? 'right' : 'up', label: isDriving(s) ? '按住車子，沿箭頭慢慢拖' : s.phase === 'hook' ? towType(s) === 'flatbed' ? '把掛鉤拖到想救的小客車' : '把托輪架拖到想救的小客車' : s.phase === 'cones' ? '把交通錐拖到輪廓' : '把擔架拖到光圈' };
     },
     render(s: TrafficState, time: number) {
       const index = stages.indexOf(s.phase), t = s.elapsed, working = s.action === 'working';
       const entry = s.action === 'entering' ? 7 * (1 - smooth(t / 1.2)) : 0;
       const closing = s.phase === 'reopen' ? smooth(t / 1) : s.phase === 'complete' ? 1 : 0;
       const policeX = s.phase === 'police' ? s.truckX - entry : -7 + (s.phase === 'reopen' ? -18 * smooth((t - 1) / 1.6) : 0);
-      police.root.visible = index >= 1 && s.phase !== 'complete'; police.root.position.set(policeX, 0, -4.7 - (index >= 3 ? 3 : s.phase === 'cones' && working && s.cones.every(Boolean) ? 3 * smooth(t / 0.75) : 0)); police.pose('#f0e8d5', policeX, time, true, false);
+      police.root.visible = index >= 1 && s.phase !== 'complete'; police.root.position.set(policeX, 0, AMBULANCE_LANE - (index >= 3 ? 3 : s.phase === 'cones' && working && s.cones.every(Boolean) ? 3 * smooth(t / 0.75) : 0)); police.pose('#f0e8d5', policeX, time, true, false);
       officer.root.visible = index >= 2; officer.root.position.set(-4, 0.1, -6.4); officer.arm.rotation.z = s.phase === 'complete' ? -2.1 + Math.sin(time * 4) * 0.3 : -0.4;
       cameraProp.visible = s.phase === 'cones' && working && s.cones.every(Boolean); flash.visible = t > 0.25 && t < 0.45;
       const rig = towingPose(s), towVisible = ['tow-arrival', 'hook', 'tow-exit'].includes(s.phase);
@@ -146,7 +137,7 @@ export function createTrafficScene(host: HTMLElement) {
       debris.forEach((piece, i) => { piece.visible = (index > 0 || t > 1.5) && i >= s.cleaned; });
       dust.forEach((p, i) => { p.visible = s.phase === 'sweep' && s.action === 'dragging'; const u = (time * 1.8 + i / 12) % 1; p.position.set(sweepX + 0.5 - u, 0.13 + u * 0.35, Math.sin(i * 7) * 1.5); p.scale.setScalar((1 - u) * 0.8); });
       const ambulanceX = s.phase === 'ambulance' ? s.truckX - entry : 5.6 + (s.phase === 'departure' ? 23 * smooth((t - 0.6) / 2.6) : 0);
-      ambulance.root.visible = index >= stages.indexOf('ambulance') && index <= stages.indexOf('departure'); ambulance.root.position.set(ambulanceX, 0, -4.7); ambulance.roll(ambulanceX); ambulance.beacon(time, true);
+      ambulance.root.visible = index >= stages.indexOf('ambulance') && index <= stages.indexOf('departure'); ambulance.root.position.set(ambulanceX, 0, AMBULANCE_LANE); ambulance.roll(ambulanceX); ambulance.beacon(time, true);
       ambulance.open(s.phase === 'stretcher' || s.phase === 'boarding' ? 1 : s.phase === 'ambulance' && working ? smooth(t / 0.7) : s.phase === 'departure' ? 1 - smooth(t / 0.6) : 0);
       stretcher.root.visible = s.phase === 'stretcher' || s.phase === 'boarding'; stretcher.root.position.copy(vector(s.handle));
       if (s.phase === 'boarding' && working) stretcher.root.position.x += smooth(t / 1.2) * 2;
@@ -162,7 +153,7 @@ export function createTrafficScene(host: HTMLElement) {
       medic.root.visible = s.phase === 'stretcher' || s.phase === 'boarding'; medic.root.position.set(stretcher.root.position.x, 0.1, stretcher.root.position.z - 0.85);
       if (s.phase === 'boarding' && working && t > 0.6) medic.root.visible = false;
       parking.visible = ['police', 'ambulance', 'sweeper'].includes(s.phase); parking.position.set(driveEnd(s), 0.06, drivingZ(s)); parking.scale.x = s.phase === 'police' ? 0.6 : 1;
-      passing.root.visible = s.phase === 'reopen' && t > 2.6; const passX = -22 + 44 * smooth((t - 2.6) / 1.4); passing.root.position.set(passX, 0, 0); passing.pose('#91b7a2', passX, time, false, false);
+      passing.root.visible = s.phase === 'reopen' && t > REOPEN_PASS_START; const passX = reopeningCarX(t); passing.root.position.set(passX, 0, 0); passing.pose('#91b7a2', passX, time, false, false);
       confetti.forEach((p, i) => { p.visible = s.phase === 'complete'; const u = (time * 0.25 + i / confetti.length) % 1; p.position.set(Math.sin(i * 5) * 8, 8 - u * 7, Math.cos(i * 7) * 4); p.rotation.set(time, i, time + i); p.scale.setScalar(Math.sin(u * Math.PI)); });
       renderer.render(scene, camera);
     },

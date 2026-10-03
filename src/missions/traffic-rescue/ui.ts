@@ -8,13 +8,13 @@ export const icons = {
   ambulance: icon('#f0e9d5', '<path d="M3 29h43M14 21h10m-5-5v10" stroke="#80ad9e" stroke-width="4"/><path d="M34 11h8" stroke="#d89779" stroke-width="3"/>'),
 };
 export const liftIcon = icon('#e3b360', '<path d="M29 18 11 5 3 23" fill="none" stroke="#809b93" stroke-width="4"/><path d="M3 23v5h12" fill="none" stroke="#eac87e" stroke-width="3"/>');
-export const names: Record<Stage, string> = { collision: '小碰撞，大家來幫忙', police: '警車 · 安全停靠', cones: '警員 · 圍好事故區', 'tow-choice': '先幫哪台小客車？', 'tow-arrival': '拖吊車來了', hook: '拖吊車 · 接上掛鉤', 'tow-exit': '拖吊車 · 送去修理', sweeper: '清掃車 · 準備清掃', sweep: '清掃車 · 刷乾淨道路', ambulance: '救護車 · 準備接送', stretcher: '救護員來幫忙', boarding: '平安送上救護車', departure: '一起出發去醫院', reopen: '收好交通錐，恢復通車', complete: '道路乾淨，大家平安！' };
-export const instructions: Record<Stage, string> = { collision: '小車停下來，居民到路旁等候', police: '把警車拖到停車位', cones: '把交通錐拖到發亮的輪廓', 'tow-choice': '點一台小客車，呼叫拖吊車', 'tow-arrival': '拖吊車慢慢倒進來', hook: '把拖吊工具拖到選好的小客車', 'tow-exit': '載好了，把拖吊車往外拖', sweeper: '把清掃車拖到道路起點', sweep: '按住清掃車，往右刷乾淨', ambulance: '把救護車拖到接送車位', stretcher: '把擔架拖到居民身旁', boarding: '把擔架拖回救護車後門', departure: '繫好了，平安出發', reopen: '警員收好交通錐，小車可以通過了', complete: '謝謝你，一起讓小鎮恢復通車' };
+export const names: Record<Stage, string> = { collision: '小碰撞，大家來幫忙', police: '警車 · 安全停靠', cones: '警員 · 圍好事故區', 'tow-arrival': '拖吊車來了', hook: '拖吊車 · 接上掛鉤', 'tow-exit': '拖吊車 · 送去修理', sweeper: '清掃車 · 準備清掃', sweep: '清掃車 · 刷乾淨道路', ambulance: '救護車 · 準備接送', stretcher: '救護員來幫忙', boarding: '平安送上救護車', departure: '一起出發去醫院', reopen: '收好交通錐，恢復通車', complete: '道路乾淨，大家平安！' };
+export const instructions: Record<Stage, string> = { collision: '小車停下來，居民到路旁等候', police: '把警車拖到停車位', cones: '把交通錐拖到發亮的輪廓', 'tow-arrival': '拖吊車慢慢倒進來', hook: '把拖吊工具拖到想救的小客車', 'tow-exit': '載好了，把拖吊車往外拖', sweeper: '把清掃車拖到道路起點', sweep: '按住清掃車，往右刷乾淨', ambulance: '把救護車拖到接送車位', stretcher: '把擔架拖到居民身旁', boarding: '把擔架拖回救護車後門', departure: '繫好了，平安出發', reopen: '警員收好交通錐，小車可以通過了', complete: '謝謝你，一起讓小鎮恢復通車' };
 export const goalNames: Record<Goal, string> = { 'cone-left': '交通錐', 'cone-right': '交通錐', 'car-0': '小客車', 'car-1': '小客車', patient: '居民身旁', ambulance: '救護車後門' };
 export function instruction(s: TrafficState, nearGoal: boolean) {
   if (s.phase === 'hook' && s.action === 'working') return towType(s) === 'flatbed' ? '接好了，慢慢拉上平板' : '托好了，慢慢抬起前輪';
   if (nearGoal) return '對準了，幫你接好！';
-  if (s.phase === 'hook') return towType(s) === 'flatbed' ? '把掛鉤拖到選好的小客車' : '把托輪架拖到選好的小客車';
+  if (s.phase === 'hook') return towType(s) === 'flatbed' ? '把掛鉤拖到想救的小客車' : '把托輪架拖到想救的小客車';
   if (s.phase === 'tow-exit') return towDirection(s) < 0 ? '載好了，把拖吊車往左拖' : '載好了，把拖吊車往右拖';
   return instructions[s.phase];
 }

@@ -1,4 +1,5 @@
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
+import { passingCarX } from '../../runtime/passing-car.ts';
 import * as THREE from 'three';
 import { pose } from './domain/dump-truck.ts';
 import type { Tuning } from './domain/dump-truck.ts';
@@ -272,7 +273,7 @@ export function createScene(host: HTMLElement) {
         barrier.visible = state.phase !== 'complete' && trafficTime < 0.85;
       });
       car.root.visible = trafficTime >= 0.85 && trafficTime < 3.9;
-      car.render(-10 + 20 * smooth((trafficTime - 0.85) / 3.0));
+      car.render(passingCarX(trafficTime - 0.85, -10, 10));
       renderer.render(scene, camera);
     },
     dispose() {

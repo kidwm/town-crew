@@ -26,27 +26,37 @@ test('traffic crew controls the scene, tows both colours, sweeps and transports 
   await place('cone-left'); await wait('cones');
   // The original held pointer cannot place the second cone after assistance.
   await move(await target('cone-right')); await page.waitForTimeout(450); await expect(page.locator('.traffic-target')).toHaveCount(1); await up();
-  await place('cone-right'); await wait('tow-choice'); await up();
-  await page.screenshot({ path: info.outputPath('tow-choice.png') });
-  const types = await app.getAttribute('data-tow-types');
+  await place('cone-right'); await wait('hook'); await up();
+  await page.screenshot({ path: info.outputPath('hook-choice.png') });
+  const types = await app.getAttribute('data-tow-types'), firstTow = Number(await app.getAttribute('data-first-tow'));
   expect(types).toBe(touch ? 'wheel-lift,flatbed' : 'flatbed,wheel-lift');
-  const order = touch ? ['car-1', 'car-0'] : ['car-0', 'car-1'];
+  expect(firstTow).toBe(touch ? 1 : 0);
+  // Choose the car opposite the rig's side: car choice must not switch rigs.
+  const order = touch ? ['car-0', 'car-1'] : ['car-1', 'car-0'];
+  await expect(page.locator('.traffic-target')).toHaveCount(2);
+  await down(await target(order[0])); await up();
+  await expect(app).toHaveAttribute('data-selected', 'null');
+  await expect(app).toHaveAttribute('data-phase', 'hook');
+  await withPausedClock(page, async () => { await place(order[1]); await page.clock.runFor(120); await cancel(); });
+  await expect(app).toHaveAttribute('data-selected', 'null');
+  await page.reload(); await wait('hook'); await expect(page.locator('.traffic-target')).toHaveCount(2);
+  await expect(app).toHaveAttribute('data-first-tow', String(firstTow));
   for (let i = 0; i < 2; i++) {
-    if (i === 0) {
-      const chosen = await target(order[i]);
-      // Cancelling a tap must not summon a truck.
-      await down(chosen); await cancel(); await wait('tow-choice');
-      await down(chosen); await up(); await wait('hook');
-    }
+    const rig = i === 0 ? firstTow : 1 - firstTow, type = types.split(',')[rig];
+    await expect(app).toHaveAttribute('data-selected', 'null');
+    await expect(app).toHaveAttribute('data-tow-type', type);
+    await expect(page.locator('.traffic-target')).toHaveCount(i === 0 ? 2 : 1);
+    await place(order[i]); await wait('hook', 'working');
     await expect(app).toHaveAttribute('data-selected', order[i].slice(-1));
-    await expect(app).toHaveAttribute('data-tow-type', types.split(',')[Number(order[i].slice(-1))]);
-    await expect(page.locator('.traffic-target')).toHaveCount(1);
-    await place(order[i]); await wait('hook', 'working'); await page.screenshot({ path: info.outputPath(`loading-${i}.png`) });
-    await wait('tow-exit'); await up();
+    await expect(app).toHaveAttribute('data-tow-type', type);
+    await page.screenshot({ path: info.outputPath(`loading-${i}.png`) });
+    await wait('tow-exit');
+    // Continued holding after automatic pickup cannot drive the loaded truck.
+    await move({ x: 20, y: 700 }); await expect(app).toHaveAttribute('data-action', 'ready'); await up();
     await page.screenshot({ path: info.outputPath(`loaded-${i}.png`) });
-    const exit = await hinted(); expect(exit.to.x < exit.from.x).toBe(order[i] === 'car-0');
+    const exit = await hinted(); expect(exit.to.x < exit.from.x).toBe(rig === 0);
     await down(exit.from); await move({ x: (exit.from.x + exit.to.x) / 2, y: (exit.from.y + exit.to.y) / 2 }); await cancel();
-    await page.reload(); await wait('tow-exit'); await expect(app).toHaveAttribute('data-tow-type', types.split(',')[Number(order[i].slice(-1))]);
+    await page.reload(); await wait('tow-exit'); await expect(app).toHaveAttribute('data-tow-type', type);
     await go(); await wait(i === 0 ? 'hook' : 'sweeper'); await up();
     await expect(app).toHaveAttribute('data-towed', String(i + 1));
     if (i === 0) { await page.reload(); await wait('hook'); await expect(app).toHaveAttribute('data-tow-types', types); await expect(app).toHaveAttribute('data-colors', colors); await expect(page.locator('.traffic-target')).toHaveCount(1); }
@@ -84,7 +94,9 @@ test('traffic ignores shortcuts, rejects contradictory saves and resumes the las
   // Change the document URL: a menu-to-mission hash change intentionally starts a new round.
   await page.goto('/?resume=legacy#traffic-rescue');
   await expect(page.locator('#app')).toHaveAttribute('data-phase', 'hook');
-  await expect(page.locator('#app')).toHaveAttribute('data-selected', '1');
+  await expect(page.locator('#app')).toHaveAttribute('data-selected', 'null');
+  await expect(page.locator('.traffic-target')).toHaveCount(1);
+  await expect(page.locator('.traffic-target')).toHaveAttribute('data-goal', 'car-1');
   await expect(page.locator('#app')).toHaveAttribute('data-towed', '1');
   await expect(page.locator('#app')).toHaveAttribute('data-colors', '1,3');
   await expect(page.locator('#app')).toHaveAttribute('data-tow-type', 'wheel-lift');

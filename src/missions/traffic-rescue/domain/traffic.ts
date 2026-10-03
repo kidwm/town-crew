@@ -1,26 +1,31 @@
-export const stages = ['collision', 'police', 'cones', 'tow-choice', 'tow-arrival', 'hook', 'tow-exit', 'sweeper', 'sweep', 'ambulance', 'stretcher', 'boarding', 'departure', 'reopen', 'complete'] as const;
+import { passingCarX, passingDuration } from '../../../runtime/passing-car.ts';
+
+export const stages = ['collision', 'police', 'cones', 'tow-arrival', 'hook', 'tow-exit', 'sweeper', 'sweep', 'ambulance', 'stretcher', 'boarding', 'departure', 'reopen', 'complete'] as const;
 export type Stage = typeof stages[number];
 export type Action = 'entering' | 'ready' | 'dragging' | 'working';
 export type Goal = 'cone-left' | 'cone-right' | 'car-0' | 'car-1' | 'patient' | 'ambulance';
 export interface Point { x: number; y: number; z: number }
 export const PALETTE = ['#d88973', '#e2ba65', '#82b6c4', '#91b69a', '#aa9bc2', '#dfaa88'] as const;
 export const CARS: Point[] = [{ x: -1.75, y: 0, z: -0.95 }, { x: 1.75, y: 0, z: 0.95 }];
-export const CONES: Point[] = [{ x: -6, y: 0.4, z: -3.5 }, { x: 6, y: 0.4, z: -3.5 }];
+export const AMBULANCE_LANE = -4.7;
+export const CONES: Point[] = [{ x: -6, y: 0.4, z: -2.6 }, { x: 6, y: 0.4, z: -2.6 }];
 export const CONE_HOME = { x: -4.5, y: 0.4, z: -4.7 };
 export type TowType = 'flatbed' | 'wheel-lift';
 export type TowPair = [TowType, TowType];
 export const TOW_LANE = 4.2;
-export const towDirection = (s: TrafficState) => s.selected === 0 ? -1 : 1;
-export const towType = (s: TrafficState) => s.towTypes[s.selected ?? 0];
+export const towIndex = (s: TrafficState) => s.towed.some(Boolean) ? 1 - s.firstTow : s.firstTow;
+export const towDirection = (s: TrafficState) => towIndex(s) === 0 ? -1 : 1;
+export const towType = (s: TrafficState) => s.towTypes[towIndex(s)];
 export const towHome = (s: TrafficState): Point => ({ x: towDirection(s) * 4.3, y: 0.7, z: TOW_LANE });
 export const chooseTowTypes = (random = Math.random): TowPair => random() < 0.5 ? ['flatbed', 'wheel-lift'] : ['wheel-lift', 'flatbed'];
+export const chooseFirstTow = (random = Math.random): 0 | 1 => random() < 0.5 ? 0 : 1;
 export const PATIENT = { x: 1, y: 0.7, z: -6.4 };
-export const STRETCHER_HOME = { x: -1.8, y: 0.7, z: -4.7 };
-export const AMBULANCE_REAR = { x: 3, y: 0.7, z: -4.7 };
+export const STRETCHER_HOME = { x: -1.8, y: 0.7, z: AMBULANCE_LANE };
+export const AMBULANCE_REAR = { x: 3, y: 0.7, z: AMBULANCE_LANE };
 export const DEBRIS = [-3.8, -2.9, -1.8, -0.9, 0, 0.9, 1.8, 2.9, 3.8];
 export const SETTLE_SECONDS = 0.4;
 export interface TrafficState {
-  version: 2; towTypes: TowPair; phase: Stage; action: Action; elapsed: number;
+  version: 3; towTypes: TowPair; firstTow: 0 | 1; phase: Stage; action: Action; elapsed: number;
   colors: [number, number]; cones: [boolean, boolean]; towed: [boolean, boolean];
   selected: 0 | 1 | null; cleaned: number; truckX: number; handle: Point;
 }
@@ -34,12 +39,12 @@ export function chooseColors(previous?: readonly number[], random = Math.random)
   }
   return choices[clamp(Math.floor(random() * choices.length), 0, choices.length - 1)];
 }
-export function createTraffic(phase: Stage = 'collision', colors: [number, number] = chooseColors(), towTypes: TowPair = chooseTowTypes()): TrafficState {
-  const index = stages.indexOf(phase), selected = ['tow-arrival', 'hook', 'tow-exit'].includes(phase) ? 0 : null;
-  const state: TrafficState = { version: 2, towTypes: [...towTypes], phase,
+export function createTraffic(phase: Stage = 'collision', colors: [number, number] = chooseColors(), towTypes: TowPair = chooseTowTypes(), firstTow: 0 | 1 = chooseFirstTow()): TrafficState {
+  const index = stages.indexOf(phase), selected = phase === 'tow-exit' ? 0 : null;
+  const state: TrafficState = { version: 3, towTypes: [...towTypes], firstTow, phase,
     action: ['collision', 'tow-arrival', 'departure', 'reopen'].includes(phase) ? 'working' : ['police', 'sweeper', 'ambulance'].includes(phase) ? 'entering' : 'ready', elapsed: 0,
     colors: [...colors], cones: [index > 2, index > 2], towed: [index >= stages.indexOf('sweeper'), index >= stages.indexOf('sweeper')], selected,
-    cleaned: index >= stages.indexOf('ambulance') ? DEBRIS.length : 0, truckX: phase === 'tow-exit' ? -8 : phase === 'sweep' ? -6 : -10,
+    cleaned: index >= stages.indexOf('ambulance') ? DEBRIS.length : 0, truckX: phase === 'tow-exit' ? (firstTow === 0 ? -8 : 8) : phase === 'sweep' ? -6 : -10,
     handle: phase === 'cones' ? { ...CONE_HOME } : phase === 'boarding' ? { ...PATIENT } : { ...STRETCHER_HOME } };
   if (phase === 'hook') state.handle = towHome(state);
   return state;
@@ -49,8 +54,7 @@ export const driveEnd = (s: TrafficState) => s.phase === 'police' ? -7 : s.phase
 export function goals(s: TrafficState): Goal[] {
   if (!['ready', 'dragging'].includes(s.action)) return [];
   if (s.phase === 'cones') return CONES.flatMap((_, i) => s.cones[i] ? [] : [i ? 'cone-right' as const : 'cone-left' as const]);
-  if (s.phase === 'hook') return s.selected === 0 ? ['car-0'] : ['car-1'];
-  if (s.phase === 'tow-choice') return CARS.flatMap((_, i) => s.towed[i] ? [] : [i ? 'car-1' as const : 'car-0' as const]);
+  if (s.phase === 'hook') return CARS.flatMap((_, i) => s.towed[i] ? [] : [i ? 'car-1' as const : 'car-0' as const]);
   return s.phase === 'stretcher' ? ['patient'] : s.phase === 'boarding' ? ['ambulance'] : [];
 }
 export function goalPoint(goal: Goal): Point {
@@ -76,12 +80,11 @@ export function drive(s: TrafficState, x: number): TrafficState {
   return Math.abs(truckX - end) <= 0.03 ? { ...changed, action: 'working', elapsed: 0 } : changed;
 }
 export function moveHandle(s: TrafficState, p: Point): TrafficState {
-  if (s.action !== 'dragging' || isDriving(s) || s.phase === 'tow-choice' || ![p.x, p.y, p.z].every(Number.isFinite)) return s;
+  if (s.action !== 'dragging' || isDriving(s) || ![p.x, p.y, p.z].every(Number.isFinite)) return s;
   return { ...s, handle: { x: clamp(p.x, -11, 11), y: 0.7, z: clamp(p.z, -6.5, 5.5) } };
 }
 export function accept(s: TrafficState, goal: Goal): TrafficState {
   if (s.action !== 'dragging' || !goals(s).includes(goal)) return s;
-  if (s.phase === 'tow-choice') return next({ ...s, selected: goal === 'car-0' ? 0 : 1 }, 'tow-arrival', 'working');
   return { ...s, action: 'working', elapsed: 0, handle: { ...goalPoint(goal) },
     selected: goal.startsWith('car') ? goal === 'car-0' ? 0 : 1 : s.selected,
     cones: goal === 'cone-left' ? [true, s.cones[1]] : goal === 'cone-right' ? [s.cones[0], true] : s.cones };
@@ -92,7 +95,10 @@ export function release(s: TrafficState, cancelled: boolean, goal?: Goal): Traff
   const handle = s.phase === 'cones' ? CONE_HOME : s.phase === 'hook' ? towHome(s) : s.phase === 'stretcher' ? STRETCHER_HOME : s.phase === 'boarding' ? PATIENT : s.handle;
   return { ...s, action: 'ready', handle: { ...handle } };
 }
-export const durations: Partial<Record<Stage, number>> = { collision: 3.8, police: 0.5, cones: 0.75, 'tow-arrival': 2, hook: 4.5, 'tow-exit': 1.5, sweeper: 0.5, sweep: 2, ambulance: 0.7, stretcher: 1.4, boarding: 1.2, departure: 3.2, reopen: 4 };
+export const REOPEN_PASS_START = 2.6;
+const PASS_FROM = -22, PASS_TO = 22, PASS_DURATION = passingDuration(PASS_FROM, PASS_TO);
+export const reopeningCarX = (elapsed: number) => passingCarX(elapsed - REOPEN_PASS_START, PASS_FROM, PASS_TO);
+export const durations: Partial<Record<Stage, number>> = { collision: 3.8, police: 0.5, cones: 0.75, 'tow-arrival': 2, hook: 4.5, 'tow-exit': 1.5, sweeper: 0.5, sweep: 2, ambulance: 0.7, stretcher: 1.4, boarding: 1.2, departure: 3.2, reopen: REOPEN_PASS_START + PASS_DURATION };
 export function advance(s: TrafficState, dt: number): TrafficState {
   if (!Number.isFinite(dt) || dt <= 0 || !['entering', 'working'].includes(s.action)) return s;
   const elapsed = s.elapsed + Math.min(dt, 0.1), waiting = { ...s, elapsed };
@@ -101,14 +107,14 @@ export function advance(s: TrafficState, dt: number): TrafficState {
   switch (s.phase) {
     case 'collision': return next(s, 'police', 'entering');
     case 'police': return next(s, 'cones');
-    case 'cones': return s.cones.every(Boolean) ? next(s, 'tow-choice') : next(s, 'cones');
+    case 'cones': return s.cones.every(Boolean) ? next(s, 'tow-arrival', 'working') : next(s, 'cones');
     case 'tow-arrival': return next(s, 'hook');
     case 'hook': return next(s, 'tow-exit');
     case 'tow-exit': {
       if (s.selected === null) return s;
       const towed: [boolean, boolean] = [...s.towed]; towed[s.selected] = true;
       return towed.every(Boolean) ? next({ ...s, towed, selected: null }, 'sweeper', 'entering')
-        : next({ ...s, towed, selected: towed[0] ? 1 : 0 }, 'tow-arrival', 'working');
+        : next({ ...s, towed, selected: null }, 'tow-arrival', 'working');
     }
     case 'sweeper': return next(s, 'sweep');
     case 'sweep': return next(s, 'ambulance', 'entering');
@@ -121,16 +127,19 @@ export function advance(s: TrafficState, dt: number): TrafficState {
   }
 }
 export function progress(s: TrafficState) {
-  const values: Record<Stage, number> = { collision: 0, police: 0.04, cones: 0.08, 'tow-choice': 0.16, 'tow-arrival': 0.18, hook: 0.2, 'tow-exit': 0.31, sweeper: 0.58, sweep: 0.62, ambulance: 0.8, stretcher: 0.85, boarding: 0.9, departure: 0.94, reopen: 0.97, complete: 1 };
-  return values[s.phase] + (['tow-choice', 'tow-arrival', 'hook', 'tow-exit'].includes(s.phase) ? s.towed.filter(Boolean).length * 0.2 : s.phase === 'sweep' ? s.cleaned / DEBRIS.length * 0.15 : s.phase === 'cones' ? s.cones.filter(Boolean).length * 0.03 : 0);
+  const values: Record<Stage, number> = { collision: 0, police: 0.04, cones: 0.08, 'tow-arrival': 0.18, hook: 0.2, 'tow-exit': 0.31, sweeper: 0.58, sweep: 0.62, ambulance: 0.8, stretcher: 0.85, boarding: 0.9, departure: 0.94, reopen: 0.97, complete: 1 };
+  return values[s.phase] + (['tow-arrival', 'hook', 'tow-exit'].includes(s.phase) ? s.towed.filter(Boolean).length * 0.2 : s.phase === 'sweep' ? s.cleaned / DEBRIS.length * 0.15 : s.phase === 'cones' ? s.cones.filter(Boolean).length * 0.03 : 0);
 }
 export function resumeTraffic(value: unknown): TrafficState | undefined {
   if (!value || typeof value !== 'object') return;
-  let s = value as TrafficState;
-  const index = stages.indexOf(s.phase), sweep = stages.indexOf('sweep'), towing = ['tow-choice', 'tow-arrival', 'hook', 'tow-exit'].includes(s.phase);
+  const saved = value as Omit<TrafficState, 'version' | 'phase' | 'firstTow'> & { version: number; phase: Stage | 'tow-choice'; firstTow?: 0 | 1 };
+  const phase = saved.phase === 'tow-choice' ? 'tow-arrival' : saved.phase;
+  const index = stages.indexOf(phase), sweep = stages.indexOf('sweep'), towing = ['tow-arrival', 'hook', 'tow-exit'].includes(phase);
   const boolPair = (v: unknown): v is [boolean, boolean] => Array.isArray(v) && v.length === 2 && v.every(x => typeof x === 'boolean');
-  const legacy = (value as { version: number }).version === 1;
-  if ((!legacy && s.version !== 2) || index < 0 || !['entering', 'ready', 'dragging', 'working'].includes(s.action) || !Number.isFinite(s.elapsed) || s.elapsed < 0 || s.elapsed > 10) return;
+  const legacy = saved.version === 1, old = legacy || saved.version === 2;
+  if ((!old && saved.version !== 3) || index < 0 || saved.phase === 'tow-choice' && !old) return;
+  let s: TrafficState = { ...saved, version: 3, phase, firstTow: saved.firstTow ?? 0 };
+  if (!['ready', 'dragging', 'entering', 'working'].includes(s.action) || !Number.isFinite(s.elapsed) || s.elapsed < 0 || s.elapsed > 10) return;
   if (!Array.isArray(s.colors) || s.colors.length !== 2 || s.colors.some(c => !Number.isInteger(c) || c < 0 || c >= PALETTE.length) || s.colors[0] === s.colors[1]) return;
   if (!boolPair(s.cones) || !boolPair(s.towed) || ![null, 0, 1].includes(s.selected) || !Number.isInteger(s.cleaned) || s.cleaned < 0 || s.cleaned > DEBRIS.length) return;
   if (!s.handle || ![s.handle.x, s.handle.y, s.handle.z, s.truckX].every(Number.isFinite) || s.truckX < (legacy ? -10 : -11) || s.truckX > (legacy ? 12 : 11) || Math.abs(s.handle.x) > 11 || Math.abs(s.handle.z) > 6.5 || s.handle.y < 0 || s.handle.y > 2) return;
@@ -139,23 +148,33 @@ export function resumeTraffic(value: unknown): TrafficState | undefined {
   if (index < sweep && s.cleaned !== 0 || index > sweep && s.cleaned !== DEBRIS.length) return;
   if (s.selected !== null && s.towed[s.selected]) return;
   if (s.action === 'entering' && !['police', 'sweeper', 'ambulance'].includes(s.phase)) return;
-  if (['collision', 'tow-arrival', 'departure', 'reopen'].includes(s.phase) && s.action !== 'working') return;
+  if (['collision', 'tow-arrival', 'departure', 'reopen'].includes(s.phase) && saved.phase !== 'tow-choice' && s.action !== 'working') return;
   if (s.phase === 'complete' && s.action !== 'ready') return;
+  const loaded = s.phase === 'tow-exit' || s.phase === 'hook' && s.action === 'working';
   if (legacy) {
-    // Keep completed work and colours; an unfinished old trip returns to selection.
-    const loaded = s.phase === 'tow-exit' || s.phase === 'hook' && s.action === 'working';
-    if (s.phase === 'tow-choice' || loaded !== (s.selected !== null)) return;
+    if (saved.phase === 'tow-choice' || loaded !== (s.selected !== null)) return;
     if (s.action === 'working' && isDriving(s) && Math.abs(s.truckX - (s.phase === 'tow-exit' ? 12 : driveEnd(s))) > 0.03) return;
-    s = { ...s, version: 2, towTypes: ['flatbed', 'wheel-lift'] };
-    if (towing) s = next({ ...s, selected: null, truckX: -10 }, 'tow-choice');
+    // Version 1 had a different rig. Re-dispatch safely, retaining completed trips.
+    s = { ...s, towTypes: ['flatbed', 'wheel-lift'], firstTow: s.towed.some(Boolean) ? (s.towed[0] ? 0 : 1) : s.selected ?? 0 };
+    if (towing) s = next({ ...s, selected: null, truckX: -10 }, 'tow-arrival', 'working');
+  } else if (saved.version === 2) {
+    if ((saved.phase !== 'tow-choice' && towing) !== (s.selected !== null)) return;
+    if (saved.phase === 'tow-choice' && !['ready', 'dragging'].includes(s.action)) return;
+    // The old selected car also identified the rig. Keep that rig and any load
+    // already in motion, but let a not-yet-attached hook choose either car.
+    const rig = s.selected ?? (s.towed[0] ? 1 : 0);
+    s.firstTow = (s.towed.some(Boolean) ? 1 - rig : rig) as 0 | 1;
+    if (!loaded) s.selected = null;
+    if (saved.phase === 'tow-choice') s = next(s, 'tow-arrival', 'working');
+  } else if (saved.firstTow !== 0 && saved.firstTow !== 1) return;
+  if (old && s.phase === 'reopen' && s.elapsed > REOPEN_PASS_START) {
+    if (s.elapsed > 4) return;
+    s.elapsed = REOPEN_PASS_START + (s.elapsed - REOPEN_PASS_START) * PASS_DURATION / 1.4;
   }
   if (!Array.isArray(s.towTypes) || s.towTypes.length !== 2 || s.towTypes.some(t => !['flatbed', 'wheel-lift'].includes(t)) || s.towTypes[0] === s.towTypes[1]) return;
-  if (['tow-arrival', 'hook', 'tow-exit'].includes(s.phase) !== (s.selected !== null)) return;
-  if (s.phase === 'tow-choice' && !['ready', 'dragging'].includes(s.action)) return;
+  if ((s.phase === 'tow-exit' || s.phase === 'hook' && s.action === 'working') !== (s.selected !== null)) return;
   if (s.phase === 'tow-exit' && (s.truckX * towDirection(s) < 8 || s.truckX * towDirection(s) > 11)) return;
   if (s.action === 'working' && isDriving(s) && Math.abs(s.truckX - driveEnd(s)) > 0.03) return;
   if (s.action === 'dragging' && !isDriving(s) && !goals(s).length) return;
-  // Old development saves may be waiting on the now-unnecessary second choice.
-  if (s.phase === 'tow-choice' && s.towed.some(Boolean)) s = next({ ...s, selected: s.towed[0] ? 1 : 0 }, 'tow-arrival', 'working');
   return release(structuredClone(s), true);
 }

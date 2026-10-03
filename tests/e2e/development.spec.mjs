@@ -278,13 +278,21 @@ test('house arrival HMR keeps the parked car and ongoing walk at the same instan
 
 test('traffic reload during wheel lifting keeps the same car, rig and animation position', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
-  await page.addInitScript(() => { Math.random = () => 0.75; }); await page.clock.install();
+  const key = 'town-crew:traffic:dev:v1:?dev=1&mission=traffic-rescue&stage=hook';
+  // An old uncommitted hook choice migrates to free choice on the same wheel-lift rig.
+  await page.addInitScript(key => {
+    if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({
+      version: 2, phase: 'hook', action: 'ready', elapsed: 0, selected: 0,
+      colors: [0, 2], cones: [true, true], towed: [false, false], towTypes: ['wheel-lift', 'flatbed'],
+      cleaned: 0, truckX: -10, handle: { x: -4.3, y: 0.7, z: 4.2 },
+    }));
+  }, key); await page.clock.install();
   await page.goto('/?dev=1&mission=traffic-rescue&stage=hook');
   const app = page.locator('#app'), { down, up, wait } = await fireControls(page);
   await wait('hook'); await expect(app).toHaveAttribute('data-tow-type', 'wheel-lift');
-  const key = 'town-crew:traffic:dev:v1:?dev=1&mission=traffic-rescue&stage=hook';
+  await expect(app).toHaveAttribute('data-selected', 'null');
   await withPausedClock(page, async () => {
-    const h = await gesture(page, 'up'), r = await page.locator('.traffic-target').boundingBox();
+    const h = await gesture(page, 'up'), r = await page.locator('.traffic-target[data-goal="car-1"]').boundingBox();
     await down(h.from); await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
     await page.clock.runFor(4300); await up();
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
@@ -294,7 +302,7 @@ test('traffic reload during wheel lifting keeps the same car, rig and animation 
     await page.reload(); await page.clock.runFor(32); await wait('hook', 'working');
     await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
     const after = await page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), key);
-    expect(after.selected).toBe(before.selected); expect(after.towTypes).toEqual(before.towTypes);
+    expect(before.selected).toBe(1); expect(after.selected).toBe(before.selected); expect(after.towTypes).toEqual(before.towTypes); expect(after.firstTow).toBe(before.firstTow);
     expect(Math.abs(after.elapsed - before.elapsed)).toBeLessThan(0.1);
     await expect(page.locator('canvas')).toHaveCount(1);
   });

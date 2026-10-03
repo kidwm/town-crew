@@ -25,7 +25,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 模型 | 來源／入口 | 使用位置 | 保留特徵與注意事項 |
 | --- | --- | --- | --- |
-| 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 原修馬路模型；方形底座、漸縮中空錐身、開口頂緣、深色內壁與白色反光環。兩關直接呼叫同一函式，維持原尺寸與配色。 |
+| 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 原修馬路模型；方形底座、漸縮中空錐身、開口頂緣、深色內壁與白色反光環。兩關直接呼叫同一函式，維持原尺寸與配色。交通關卡落點放在事故區內側，使用真實模型邊界驗證救護車、開啟的後門與清掃車淨空。 |
 | 救援車底盤與駕駛室 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `chassis` | 消防車、雲梯車、救護車、拖吊車、清掃車 | 四輪、車窗、後視鏡、警示燈、位移帶動的車輪；上裝由各車型建立。不能因此視為所有工程車底盤都已統一。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 奶油白車身、綠色條紋、可開合後門與中空後艙，擔架可實際進入。 |
 | 擔架 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createStretcher` | 消防救援、交通救援 | 有輪底架、床墊、枕頭、護欄與乘員／毯子顯示狀態。 |

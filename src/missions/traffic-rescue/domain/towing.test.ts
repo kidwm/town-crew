@@ -6,14 +6,14 @@ import { towingPose, towedCarPose, CAR_AXLE, CAR_WHEEL, LIFT_AXLE_X, LIFT_HEIGHT
 const close = (a: number, b: number) => assert.ok(Math.abs(a - b) < 0.00001, `${a} != ${b}`);
 test('waiting for a tool does not load or rotate the selected car', () => {
   for (const selected of [0, 1] as const) {
-    const s = { ...createTraffic('hook'), selected };
+    const s = { ...createTraffic('hook', [0, 2], ['flatbed', 'wheel-lift'], selected), selected };
     assert.deepEqual(towedCarPose(s, selected).position, CARS[selected]);
     assert.ok(Math.abs(towHome(s).x - CARS[selected].x) > 2);
   }
 });
 test('wheel lift keeps the trailing axle on the road and the front axle on the yoke on both sides', () => {
   for (const selected of [0, 1] as const) {
-    const s = createTraffic('hook', [0, 2], selected === 0 ? ['wheel-lift', 'flatbed'] : ['flatbed', 'wheel-lift']);
+    const s = createTraffic('hook', [0, 2], selected === 0 ? ['wheel-lift', 'flatbed'] : ['flatbed', 'wheel-lift'], selected);
     s.selected = selected; s.action = 'working';
     for (let t = 3.6; t <= 4.5; t += 0.05) {
       s.elapsed = t;
@@ -28,10 +28,10 @@ test('wheel lift keeps the trailing axle on the road and the front axle on the y
   }
 });
 test('both rigs back in, load through the clear apron, then keep the car behind the cab on departure', () => {
-  for (const pair of [['flatbed', 'wheel-lift'], ['wheel-lift', 'flatbed']] as const) for (const selected of [0, 1] as const) {
-    const s = createTraffic('tow-arrival', [0, 2], [...pair]); s.selected = selected;
+  for (const pair of [['flatbed', 'wheel-lift'], ['wheel-lift', 'flatbed']] as const) for (const firstTow of [0, 1] as const) for (const selected of [0, 1] as const) {
+    const s = createTraffic('tow-arrival', [0, 2], [...pair], firstTow); s.selected = selected;
     const entry = towingPose(s); s.elapsed = 2; const parked = towingPose(s);
-    assert.ok(Math.abs(entry.x) > Math.abs(parked.x)); close(parked.x, selected === 0 ? -8 : 8);
+    assert.ok(Math.abs(entry.x) > Math.abs(parked.x)); close(parked.x, firstTow === 0 ? -8 : 8);
     s.phase = 'hook'; s.action = 'working'; s.elapsed = 1.3;
     close(towedCarPose(s, selected).position.z, parked.z);
     assert.ok(Math.abs(parked.z - CARS[1 - selected].z) > 3);

@@ -165,23 +165,28 @@ procedural models; the van has its own passenger body rather than the truck chas
 1. Two differently coloured cars gently collide and stop with hazard lights. Their
    occupants move to the pavement. Each new round changes both colours, without
    repeating or simply swapping the previous pair; reload keeps the current pair.
-2. Drag the police car into its bay and place two cones at the marked road edges.
+2. Drag the police car into its bay and place two cones inside the accident area,
+   leaving a clear lane for the ambulance and its rear doors.
    The police car then pulls into a side bay to keep the ambulance route clear.
-3. Tap either accident car to choose the first rescue. Each round assigns one
-   flatbed and one wheel-lift tow truck randomly to the left and right approaches.
-   The selected car's truck reverses into the foreground apron. Drag its winch
-   hook or wheel cradle to that car and hold for 0.4 seconds. The flatbed pulls
+3. A tow truck automatically reverses into the foreground apron. Each round assigns
+   one flatbed and one wheel-lift truck randomly to the left and right approaches,
+   independently choosing which side arrives first. Drag its winch hook or wheel
+   cradle to either accident car and hold for 0.4 seconds to choose and attach it.
+   No preliminary tap is needed; either rig can recover either car. The flatbed pulls
    the car aboard; the wheel-lift raises its front wheels while the rear wheels
    stay on the road. Drag the loaded truck back out on its arrival side.
-   The other truck automatically arrives for the remaining car, with no second
-   selection. The assignment, selected car and loading progress survive reload.
+   The other truck automatically arrives from the opposite side; drag its tool
+   to the only remaining car. Rig assignment, arrival order and loading progress
+   survive reload. Version-2 saves retain an attached load and its rig; an unattached
+   tool resumes with free choice of the remaining cars.
 4. Drag the street sweeper to the start, then right across the debris. Rotating
    brushes clear the patches as they pass. Partial driving and cleaning survive
    release, cancellation and reload; driving back does not restore debris.
 5. Drag the ambulance into the cleared pickup lane. Drag the stretcher to the
    resident, then back to the ambulance's rear doors. Assistance, loading, door
    closure and departure happen automatically.
-6. The police collect the cones and leave before another car passes. The remaining
+6. The police collect the cones and leave before another car passes at the same
+   speed and easing as the road-repair mission. The remaining
    resident and officer wave as the clean road reopens and confetti celebrates.
 
 There is no injury detail, time limit or penalty. Loose cones, hooks and stretchers
@@ -354,7 +359,7 @@ Fire-brigade entries use `?dev=1&mission=fire-rescue&stage=…`:
 The same panel supports stage resets, reload and HMR, with isolated development saves.
 
 Traffic-rescue entries use `?dev=1&mission=traffic-rescue&stage=…`:
-`collision`, `police`, `cones`, `tow-choice`, `tow-arrival`, `hook`, `tow-exit`, `sweeper`, `sweep`,
+`collision`, `police`, `cones`, `tow-arrival`, `hook`, `tow-exit`, `sweeper`, `sweep`,
 `ambulance`, `stretcher`, `boarding`, `departure`, `reopen`, and `complete`.
 Stage reset, reload and HMR retain isolated development saves and the current tow assignment.
 
@@ -451,7 +456,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The six missions have 156 domain tests, covering fixed arm lengths,
+The six missions have 169 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
@@ -462,7 +467,8 @@ load clearance, garage construction between vehicle departures/arrivals, whole-c
 route. Arrival checks cover automatic completion, mid-animation reload and completed saves.
 Fire tests cover both rescue orders, continuous extinguishing, interruption,
 one passenger per trip, transport, and rejection of contradictory snapshots.
-Traffic tests cover both towing orders and type assignments, automatic second dispatch,
+Traffic tests cover both car orders, rig assignments and arrival sides, automatic dispatch,
+uncommitted hook choice, version-1/2 recovery, actual-model cone/vehicle clearance and shared passing speed,
 wheel-lift ground contact, nonrepeating colours, one load per trip,
 interrupted cleaning, equipment recovery, stage entry and contradictory snapshots.
 Police rules cover all four configurations and both motorcycle orders, interrupted
@@ -492,7 +498,7 @@ Fire browser tests complete the mission using a desktop mouse and portrait-phone
 touch, choose opposite rescue orders, cancel/reload during extinguishing, restore
 the first completed rescue, verify held-pointer isolation, transport and replay.
 Traffic browser checks complete opposite towing orders and type assignments on mouse and portrait-phone
-touch, verify cancelled selection, automatic second dispatch, cone dwell cancellation, held-pointer isolation, partial towing and cleaning
+touch, verify hook choice after arrival, cancelled attachment, automatic second dispatch, cone dwell cancellation, held-pointer isolation, partial towing and cleaning
 reload, colour persistence, completion badges, fresh rounds and restart.
 Development reload/HMR is checked from
 a loaded cleanup truck partway through its drive, the first completed roller pass,
