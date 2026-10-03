@@ -13,13 +13,13 @@ export default defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: deployedURL ?? 'http://127.0.0.1:4173',
-    channel: process.env.PLAYWRIGHT_CHANNEL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'desktop-mouse', use: { viewport: { width: 1280, height: 800 } } },
-    { name: 'tablet-touch', use: { viewport: { width: 1024, height: 768 }, hasTouch: true } },
+    { name: 'desktop-mouse', use: { channel: process.env.PLAYWRIGHT_CHANNEL, viewport: { width: 1280, height: 800 } } },
+    { name: 'tablet-touch', use: { channel: process.env.PLAYWRIGHT_CHANNEL, viewport: { width: 1024, height: 768 }, hasTouch: true } },
+    { name: 'safari-webkit', testMatch: 'pwa.spec.mjs', use: { browserName: 'webkit', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true } },
   ],
   webServer: deployedURL ? undefined : {
     command: 'npm run preview -- --host 127.0.0.1 --port 4173 --strictPort',

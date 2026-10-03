@@ -1,11 +1,12 @@
 import { test, expect } from '@playwright/test';
+import { cloudflarePreview } from './cloudflare-preview.mjs';
 
 async function waitForOfflineReady(page) {
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
 }
 
-test('install manifest and all home-screen icons are valid', async ({ page }) => {
+test('install manifest and all home-screen icons are valid', async ({ page, browserName }) => {
   await page.goto('/');
   const manifest = await page.evaluate(async () => {
     const link = document.querySelector('link[rel="manifest"]');
@@ -33,38 +34,91 @@ test('install manifest and all home-screen icons are valid', async ({ page }) =>
     await img.decode(); return [img.naturalWidth, img.naturalHeight];
   });
   expect(appleSize).toEqual([180, 180]);
-  const cdp = await page.context().newCDPSession(page);
-  const { errors } = await cdp.send('Page.getAppManifest');
-  expect(errors).toEqual([]);
-  await cdp.detach();
+  if (browserName === 'chromium') {
+    const cdp = await page.context().newCDPSession(page);
+    const { errors } = await cdp.send('Page.getAppManifest');
+    expect(errors).toEqual([]);
+    await cdp.detach();
+  }
 });
 
-test('menu reloads and all previously unopened missions load offline', async ({ page, context }) => {
+test('Cloudflare HTML redirects remain safe for offline navigation and reopening', async ({ page, context, browserName }) => {
+  const preview = await cloudflarePreview();
+  try {
+    // Seed a legacy cache before registration, together with unrelated data.
+    await page.goto(`${preview.url}/icons/town-crew.svg`);
+    await page.evaluate(async () => {
+      const legacy = await caches.open('town-crew:precache:legacy-test');
+      await legacy.put('/legacy', new Response('legacy'));
+      const unrelated = await caches.open('unrelated-app-test');
+      await unrelated.put('/unrelated', new Response('keep'));
+    });
+    const redirect = await context.request.get(`${preview.url}/index.html`, { maxRedirects: 0 });
+    expect(redirect.status()).toBe(308);
+    expect(redirect.headers().location).toBe('/');
+    const previousRedirects = preview.redirects;
+    await page.goto(preview.url);
+    await waitForOfflineReady(page);
+    expect(preview.redirects).toBeGreaterThan(previousRedirects);
+    const names = await page.evaluate(() => caches.keys());
+    expect(names).not.toContain('town-crew:precache:legacy-test');
+    expect(names).toContain('unrelated-app-test');
+    // A followed redirect must never be returned as a navigation response.
+    const reload = await page.reload();
+    expect(reload.fromServiceWorker()).toBe(true);
+    await expect(page.locator('.mission-card')).toHaveCount(6);
+    // Playwright 1.63 WebKit's offline flag kills SW responses before dispatch:
+    // https://github.com/microsoft/playwright/issues/42775
+    // Stop the actual origin to verify cache-only navigation without that flag.
+    if (browserName === 'webkit') await preview.close();
+    else await context.setOffline(true);
+    const offlineReload = await page.reload();
+    expect(offlineReload.fromServiceWorker()).toBe(true);
+    await expect(page.locator('.mission-card')).toHaveCount(6);
+    await page.close();
+    const reopened = await context.newPage();
+    await reopened.goto(`${preview.url}/?source=home#menu`);
+    await expect(reopened.locator('.mission-card')).toHaveCount(6);
+    await reopened.close();
+  } finally {
+    await context.setOffline(false);
+    await preview.close();
+  }
+});
+
+test('menu reloads and all previously unopened missions load offline', async ({ page, context, browserName }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
-  await expect(page.locator('.mission-card')).toHaveCount(6);
-  await waitForOfflineReady(page);
-  await context.setOffline(true);
-  await page.reload();
-  await expect(page.locator('.mission-card')).toHaveCount(6);
-  const missions = ['road-repair', 'house-build', 'fire-rescue', 'traffic-rescue', 'police-patrol', 'port-cargo'];
-  for (const mission of missions) {
-    await page.locator(`.mission-card[data-mission="${mission}"]`).click();
-    await expect(page.locator('#app')).toHaveAttribute('data-mission', mission);
-    await expect(page.locator('canvas')).toBeVisible();
-    await expect(page.locator('.loading')).toBeHidden();
-    await page.reload();
-    await expect(page.locator('canvas')).toBeVisible();
-    await expect(page.locator('.loading')).toBeHidden();
-    await page.getByRole('button', { name: '回到選關', exact: true }).click();
+  const preview = browserName === 'webkit' ? await cloudflarePreview() : undefined;
+  try {
+    await page.goto(preview?.url ?? '/');
     await expect(page.locator('.mission-card')).toHaveCount(6);
+    await waitForOfflineReady(page);
+    if (preview) await preview.close();
+    else await context.setOffline(true);
+    await page.reload();
+    await expect(page.locator('.mission-card')).toHaveCount(6);
+    const missions = ['road-repair', 'house-build', 'fire-rescue', 'traffic-rescue', 'police-patrol', 'port-cargo'];
+    for (const mission of missions) {
+      await page.locator(`.mission-card[data-mission="${mission}"]`).click();
+      await expect(page.locator('#app')).toHaveAttribute('data-mission', mission);
+      await expect(page.locator('canvas')).toBeVisible();
+      await expect(page.locator('.loading')).toBeHidden();
+      await page.reload();
+      await expect(page.locator('canvas')).toBeVisible();
+      await expect(page.locator('.loading')).toBeHidden();
+      await page.getByRole('button', { name: '回到選關', exact: true }).click();
+      await expect(page.locator('.mission-card')).toHaveCount(6);
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    await context.setOffline(false);
+    await preview?.close();
   }
-  expect(errors).toEqual([]);
 });
 
 test('game labels reject selection while fields and menu scrolling remain usable', async ({ page }, info) => {
-  const touch = info.project.name === 'tablet-touch';
+  const touch = !!info.project.use.hasTouch;
   if (touch) await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   for (const selector of ['.menu-intro h1', '.card-title', '.card-description']) {

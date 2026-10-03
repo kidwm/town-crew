@@ -24,8 +24,8 @@ npm run dev
 - Use Node 24 or newer; `.nvmrc` pins the CI/development major version.
 - `npm test` runs the domain regression tests with Node's built-in test runner.
 - `npm run check` runs domain tests and the production build.
-- `npx playwright install chromium` installs the browser for end-to-end tests.
-- `npm run test:e2e` tests the production build with mouse and emulated touch.
+- `npx playwright install chromium webkit` installs the browsers for end-to-end tests.
+- `npm run test:e2e` tests the production build with mouse, emulated touch and WebKit PWA checks.
   Run `npm run build` first; the test runner starts its own preview on port 4173.
 - To test a deployed build instead: `PLAYWRIGHT_BASE_URL=https://town-crew.pages.dev npm run test:e2e`.
 - `npm run test:e2e:dev` starts Vite on port 5174 and checks stage entry, reload,
@@ -46,8 +46,15 @@ all existing game tabs/windows close before activating, keeping a running missio
 on one consistent version. Saved progress and sound preferences keep their existing
 storage behavior. Service workers are disabled in Vite development mode.
 
-`npm run build` generates a content-versioned `dist/sw.js`; Cloudflare Pages headers
-allow the browser to check for worker and manifest updates. The editable icon source
+`vite-plugin-pwa` generates `dist/sw.js` with Workbox revisioned precaching.
+Workbox copies redirected HTML responses before caching them: Cloudflare Pages
+redirects `/index.html` to `/`, and returning that raw redirected response from a
+worker prevents navigation in Safari. The PWA tests reproduce this 308 redirect,
+offline reloads and reopening in Chromium and WebKit. WebKit uses a stopped origin
+because [Playwright 1.63 offline emulation blocks service-worker responses](https://github.com/microsoft/playwright/issues/42775).
+Activation also removes the
+retired custom worker's caches. Cloudflare Pages headers allow the browser to check
+for worker and manifest updates. The editable icon source
 is `public/icons/town-crew.svg`, with PNG exports for 192/512px installation icons,
 a 512px maskable icon, a 180px Apple touch icon, and a 32px favicon.
 Regenerate the PNGs with `npm run icons` (or `PLAYWRIGHT_CHANNEL=chrome npm run icons`

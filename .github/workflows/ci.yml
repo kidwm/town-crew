@@ -29,10 +29,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps webkit
+        if: matrix.project == 'desktop-mouse'
       # Each runner owns one graphical browser. Four full missions on both
       # devices no longer have to wait for one long sequential graphics job.
       - run: npm run test:e2e -- --project=${{ matrix.project }}
       - run: npm run test:e2e:dev
+        if: matrix.project == 'desktop-mouse'
+      - run: npm run test:e2e -- --project=safari-webkit
         if: matrix.project == 'desktop-mouse'
       - uses: actions/upload-artifact@v6
         if: failure()
