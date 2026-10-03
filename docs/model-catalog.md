@@ -49,7 +49,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 砂石車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createDump` | 蓋房子 | 關卡內模型；使用蓋房子自己的底盤、活動車斗與載料。與修馬路砂石車尚未共用整車。 |
 | 水泥車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createMixer` | 蓋房子 | 旋轉攪拌筒與螺旋條紋；出料槽及水泥流在該關 `scene.ts`。 |
 | 材料平板車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createFlatbed`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原六輪材料運送車與三層貨物顯示；碼頭沿用整車與空平板變體，載入兩個棧板貨箱。與交通救援可傾斜拖吊平板車用途及實作不同。 |
-| 吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createCrane`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原黃色吊車，保留伸縮吊臂、吊索、吊鉤與可收回支撐腳；碼頭用同一吊車卸船／裝船，不新增另一台近似吊車。 |
+| 吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createCrane`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨 | 原黃色吊車，保留伸縮吊臂、吊索、吊鉤與可收回支撐腳；兩關共用實際吊鉤的投影與直徑 96 px 抓取區，採拖空鉤取貨、拖吊鉤或懸吊物放貨；碼頭用同一吊車卸船／裝船，不新增另一台近似吊車。 |
 | 消防車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createEngine` | 消防救援 | 共用救援底盤，上裝含器材艙、水管捲盤及可瞄準水砲。 |
 | 雲梯車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` | 消防救援 | 共用救援底盤；梯架、工作籃、噴嘴、支撐腳與工作籃互動範圍。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 已共用，詳見上表。 |
@@ -128,7 +128,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 物件 | 分類與來源 | 保留或新增內容 |
 | --- | --- | --- |
-| 黃色吊車、綠色材料平板車 | 沿用／共用：[construction-models.ts](../src/runtime/construction-models.ts) | 從蓋房子原模型抽出；原關卡保留 `vehicles.ts` 重新匯出。黃色吊車與六輪平板車的幾何、配色、比例、活動零件、互動 hitbox 維持原樣。平板車可不建立材料面板，由碼頭顯示兩箱物資。 |
+| 黃色吊車、綠色材料平板車 | 沿用／共用：[construction-models.ts](../src/runtime/construction-models.ts) | 從蓋房子原模型抽出；原關卡保留 `vehicles.ts` 重新匯出。黃色吊車與六輪平板車的幾何、配色、比例、活動零件、車輛 hitbox 維持原樣；吊車暴露原吊鉤物件供兩關一致抓取。平板車可不建立材料面板，由碼頭顯示兩箱物資。 |
 | 工程底盤與連桿助手 | 沿用／共用：同檔 · `createConstructionChassis`、`link` | 原蓋房子車體與連桿計算原樣抽出；蓋房子的砂石車、水泥車仍用相同底盤，未整併救援或修路底盤。 |
 | 沿岸小貨船 | 新增：[port-cargo/vehicles.ts](../src/missions/port-cargo/vehicles.ts) · `createCargoBoat`、`cargoBoatOutline` | 低多邊形船殼、尖船艏、開放甲板、側端駕駛艙、窗戶、桅桿與防撞輪胎；四種船色。依運貨方向空船進場或保留可見的兩個甲板貨箱；裝船後載箱離港，不是巨型貨櫃船。靠岸泊位沿用同一船殼輪廓描虛線，到位淡出。 |
 | 堆高機 | 新增：同檔 · `createForklift` | 四輪、配重、護頂架、座椅、方向盤、雙立柱升降架與兩支活動貨叉；駕駛沿用制服人物。移動低位叉運；卸船局裝車，裝船局抬高貨叉卸車，同一模型自動升高／插入／退出／降叉。 |

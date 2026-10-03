@@ -62,7 +62,7 @@ export function createCrane(shapes: Shapes) {
   const inset = box(root, [0.18, 1, 0.2], [0, 0, 0], '#f7d998');
   const rope = cylinder(root, 0.025, 1, [0, 0, 0], '#566e68', 8);
   const hook = cylinder(root, 0.13, 0.25, [0, 0, 0], '#6c8172', 8);
-  return { root,
+  return { root, hook,
     retract(progress: number) {
       for (const { beam, legs } of supports) {
         beam.scale.z = 1 - progress * 0.5;

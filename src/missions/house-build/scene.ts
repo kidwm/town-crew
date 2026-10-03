@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
-import { HOUSE, PARTS, LOAD_HOME, POUR_TARGETS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth, partFor, pourIndex } from './domain/house.ts';
+import { HOUSE, PARTS, LOAD_HOME, EMPTY_HOOK_HEIGHT, pickupPoint, pickupHeight, POUR_TARGETS, DELIVERY_START, DELIVERY_STOP, isCrane, isDelivery, leavingDuration, smooth, partFor, pourIndex } from './domain/house.ts';
+import { nearCraneHook, nearCranePickup, CRANE_PICKUP_SCREEN_RADIUS, CRANE_ATTACH_SECONDS, CRANE_RELEASE_SECONDS } from '../../runtime/crane-control.ts';
 import type { HouseState, Point } from './domain/house.ts';
 import { CRANE_TARGET_RADIUS, convexOutline, craneTargetReached } from './domain/crane-target.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
@@ -81,9 +82,6 @@ export function createHouseScene(host: HTMLElement) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.65, 0.83, 36), new THREE.MeshBasicMaterial({ color: '#fff2b4', side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(target.x, 0.185, target.z); site.add(ring); return ring;
   });
-  const trail = Array.from({ length: 7 }, () => {
-    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 6), new THREE.MeshBasicMaterial({ color: '#fff5d3' })); site.add(dot); return dot;
-  });
   const parking = new THREE.Group(); site.add(parking);
   for (const z of [3.86, 6.34]) box(parking, [6.2, 0.03, 0.08], [DELIVERY_STOP + 0.55, -0.04, z], '#fff1c7');
   for (const x of [-2.05, 4.15]) box(parking, [0.08, 0.03, 2.5], [x, -0.04, 5.1], '#fff1c7');
@@ -102,8 +100,19 @@ export function createHouseScene(host: HTMLElement) {
     camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
   }); resize.observe(host);
+  function projectPoint(p: THREE.Vector3) {
+    const r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
+    const v = p.clone().project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
+  }
+  const hookScreen = () => projectPoint(crane.hook.getWorldPosition(new THREE.Vector3()));
+  const pickupScreen = (s: HouseState) => { const p = pickupPoint(s); return projectPoint(new THREE.Vector3(siteX(s.round, p.x), pickupHeight(s) + 0.3, p.z)); };
   return {
     canvas,
+    cranePlane(s: HouseState, hook: boolean) { return hook ? crane.hook.getWorldPosition(new THREE.Vector3()).y : partFor(s.round, s.placed).lift + partFor(s.round, s.placed).height / 2; },
+    craneAim(s: HouseState, pointer: ScreenPoint, aim: Point) {
+      const r = canvas.getBoundingClientRect(), target = pickupScreen(s);
+      return !s.attached && Math.hypot(pointer.x - r.left - target.x, pointer.y - r.top - target.y) <= CRANE_PICKUP_SCREEN_RADIUS ? pickupPoint(s) : aim;
+    },
     dragHint(state: HouseState): DragHint | undefined {
       if (state.action !== 'ready') return;
       const bounds = canvas.getBoundingClientRect();
@@ -116,10 +125,20 @@ export function createHouseScene(host: HTMLElement) {
         return { from, to: { x: from.x, y: from.y - 80 }, direction: 'up', label: '按住車斗前端，往上拉' };
       }
       if (isDelivery(state)) return { from: project(state.truckX, 1.5, 5.1), to: project(DELIVERY_STOP, 1.5, 5.1), direction: state.round.layout === 0 ? 'right' : 'left', label: `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` };
+      if (isCrane(state)) {
+        const from = hookScreen(), to = state.attached ? project(HOUSE.x, partFor(state.round, state.placed).base + 0.03, HOUSE.z) : pickupScreen(state);
+        return { from, to, direction: to.x < from.x ? 'left' : 'right', label: state.attached ? '拖吊鉤或材料到房子上' : '拖吊鉤到車上的材料' };
+      }
     },
     craneDropTarget(state: HouseState, pointer?: ScreenPoint, origin?: ScreenPoint) {
       const bounds = canvas.getBoundingClientRect();
       const part = partFor(state.round, state.placed);
+      if (!state.attached) {
+        const target = pickupScreen(state);
+        const moved = !!pointer && !!origin && Math.hypot(pointer.x - origin.x, pointer.y - origin.y) >= 10;
+        const accepted = state.action === 'dragging' && moved && nearCranePickup(state.load, pickupPoint(state));
+        return { ...target, footprint: [], radius: CRANE_PICKUP_SCREEN_RADIUS, accepted };
+      }
       camera.updateMatrixWorld(true);
       const project = (x: number, y: number, z: number) => {
         const point = new THREE.Vector3(siteX(state.round, x), y, z).project(camera);
@@ -137,6 +156,11 @@ export function createHouseScene(host: HTMLElement) {
     },
     hit(x: number, y: number, state: HouseState) {
       setRay(x, y);
+      if (isCrane(state)) {
+        const r = canvas.getBoundingClientRect();
+        if (nearCraneHook({ x: x - r.left, y: y - r.top }, hookScreen())) return 'hook';
+        return state.attached && ray.intersectObject(loadHit).length > 0 ? 'load' : false;
+      }
       if (state.phase === 'gravel' && dump.grip.hit(x, y, camera, canvas)) return true;
       const target = state.phase === 'gravel' ? dump.hit : state.phase === 'concrete' ? chuteHit : isDelivery(state) ? flatbed.hit : isCrane(state) ? loadHit : undefined;
       return !!target && ray.intersectObject(target).length > 0;
@@ -203,25 +227,24 @@ export function createHouseScene(host: HTMLElement) {
       const truckX = delivery ? s.truckX - arriving * 10 : DELIVERY_STOP + departing * 15;
       flatbed.root.position.set(truckX, 0, 5.1); flatbed.root.rotation.y = Math.PI; flatbed.roll(-truckX);
       const delivered = s.placed % 3;
-      flatbed.cargo.forEach((cargo, i) => { cargo.visible = delivery || (s.action !== 'leaving' && i < 2 - delivered); });
+      const carrying = s.attached && (s.action !== 'pickup' || s.elapsed >= CRANE_ATTACH_SECONDS);
+      flatbed.cargo.forEach((cargo, i) => { cargo.visible = delivery || (s.action !== 'leaving' && i < (carrying ? 2 : 3) - delivered); });
       parking.visible = delivery;
       const currentPart = Math.min(s.placed, 5), definition = partFor(s.round, currentPart);
       const load = new THREE.Vector3(s.load.x, definition.lift, s.load.z);
       if (s.action === 'pickup' && craneStage) {
-        const t = smooth(s.elapsed / 1.25);
         // Lift above the parked transporter, then carry into the working plane.
-        const rise = smooth(s.elapsed / 0.6), carry = smooth((s.elapsed - 0.6) / 0.65);
-        const origin = currentPart === 5 ? roofPickup : new THREE.Vector3(0.75, 1.85, 5.1);
+        const rise = smooth((s.elapsed - CRANE_ATTACH_SECONDS) / 0.6), carry = smooth((s.elapsed - CRANE_ATTACH_SECONDS - 0.6) / 0.65);
+        const p = pickupPoint(s), origin = new THREE.Vector3(p.x, pickupHeight(s), p.z);
         load.set(origin.x + (LOAD_HOME.x - origin.x) * carry, origin.y + (definition.lift - origin.y) * rise, origin.z + (LOAD_HOME.z - origin.z) * carry);
-        if (t >= 1) load.set(LOAD_HOME.x, definition.lift, LOAD_HOME.z);
       }
       if (s.action === 'placing') {
         const align = smooth(s.elapsed / 0.35), lower = smooth((s.elapsed - 0.35) / 0.8);
         load.set(s.from.x + (HOUSE.x - s.from.x) * align, definition.lift + (definition.base - definition.lift) * lower, s.from.z + (HOUSE.z - s.from.z) * align);
       }
-      const holding = craneStage && s.action !== 'leaving' && !finishing;
+      const holding = craneStage && s.attached && s.action !== 'leaving' && !finishing;
       parts.forEach((piece, i) => {
-        piece.visible = i < s.placed || (holding && i === s.placed) || (roofChoosing && i === 5);
+        piece.visible = i < s.placed || (holding && carrying && i === s.placed) || (roofChoosing && i === 5);
         piece.position.set(HOUSE.x, PARTS[i].base, HOUSE.z);
         if (holding && i === s.placed) piece.position.copy(load);
         if (roofChoosing && i === 5) piece.position.copy(roofPickup);
@@ -234,25 +257,24 @@ export function createHouseScene(host: HTMLElement) {
         const stowed = crane.root.position.clone().add(new THREE.Vector3(-1.2, 1.8, 0));
         const lastLoad = new THREE.Vector3(HOUSE.x, definition.base, HOUSE.z).lerp(stowed, fold);
         crane.aim(lastLoad, definition.height + (0.3 - definition.height) * fold);
-      } else crane.aim(holding ? load : new THREE.Vector3(-3.3, 2.2, -2.6), holding ? definition.height : 0.3);
-      slingA.visible = slingB.visible = holding;
+      } else if (holding) {
+        const gap = s.action === 'pickup' ? (EMPTY_HOOK_HEIGHT - pickupHeight(s) - definition.height - 0.2) * (1 - smooth(s.elapsed / CRANE_ATTACH_SECONDS)) : 0;
+        crane.aim(load, definition.height + gap);
+      } else if ((craneStage && interactive) || s.action === 'unhooking') {
+        const previous = partFor(s.round, Math.max(0, s.placed - 1)), start = previous.base + previous.height + 0.2;
+        const y = s.action === 'unhooking' ? start + (EMPTY_HOOK_HEIGHT - start) * smooth(s.elapsed / CRANE_RELEASE_SECONDS) : EMPTY_HOOK_HEIGHT;
+        crane.aim(new THREE.Vector3(s.load.x, y - 0.5, s.load.z), 0.3);
+      } else crane.aim(new THREE.Vector3(-3.3, 2.2, -2.6), 0.3);
+      slingA.visible = slingB.visible = holding && (s.action !== 'pickup' || s.elapsed >= CRANE_ATTACH_SECONDS);
       const hook = load.clone().add(new THREE.Vector3(0, definition.height + 0.2, 0));
       link(slingA, hook, load.clone().add(new THREE.Vector3(-1.3, definition.height - 0.05, 0)));
       link(slingB, hook, load.clone().add(new THREE.Vector3(1.3, definition.height - 0.05, 0)));
-      let hintFrom: THREE.Vector3 | undefined, hintTo: THREE.Vector3 | undefined;
-      if (interactive && craneStage) {
-        hintFrom = load.clone().add(new THREE.Vector3(0, definition.height / 2, 0)); hintTo = new THREE.Vector3(HOUSE.x, definition.base + 0.03, HOUSE.z);
-      }
       // All unfinished concrete regions are equally available; no forced first target.
       rings.forEach((ring, i) => {
         ring.visible = interactive && s.phase === 'concrete' && s.pours[i] < 1;
         ring.position.y = pourSurface(s, i);
         ring.scale.setScalar(1 + Math.sin(time * 3) * 0.04);
         ring.material.color.set(pouring && pourIndex(s) === i ? '#bfe0a1' : '#fff2b4');
-      });
-      trail.forEach((dot, i) => {
-        dot.visible = !!hintFrom && !!hintTo && s.action === 'ready';
-        if (hintFrom && hintTo) { const t = (time * 0.4 + i / 9) % 1; dot.position.copy(hintFrom).lerp(hintTo, t); dot.scale.setScalar(Math.sin(t * Math.PI)); }
       });
       confetti.forEach((piece, i) => {
         piece.visible = s.phase === 'complete' || (s.phase === 'crane-one' && s.action === 'leaving');

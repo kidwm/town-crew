@@ -46,9 +46,16 @@ test('port loading direction preserves carried and suspended cargo and switches 
   await page.locator('#stage').selectOption('load-ship'); await wait('load-ship');
   await expect(app).toHaveAttribute('data-unloaded', '0,1'); await expect(app).toHaveAttribute('data-loaded', '');
   h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await page.mouse.move(h.to.x, h.to.y);
+  await expect(app).toHaveAttribute('data-attached', 'true'); await wait('load-ship'); await up();
+  h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
   await down(h.from); await page.mouse.move((h.from.x + h.to.x) / 2, (h.from.y + h.to.y) / 2); await page.waitForTimeout(600);
   await cancel(); await wait('load-ship'); const load = await app.getAttribute('data-load');
   await page.reload(); await wait('load-ship'); await expect(app).toHaveAttribute('data-load', load);
+  await expect(app).toHaveAttribute('data-attached', 'true');
+  const suspendedWorld = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, suspendedWorld); await wait('load-ship');
+  await expect(app).toHaveAttribute('data-load', load); await expect(app).toHaveAttribute('data-attached', 'true');
   await page.getByRole('button', { name: '重設目前階段' }).click(); await wait('load-ship'); await expect(app).toHaveAttribute('data-selected', '');
   await page.locator('#direction').selectOption('unload'); await wait('boat');
   await expect(app).toHaveAttribute('data-direction', 'unload'); await expect(page.locator('#stage option[value="load-ship"]')).toHaveCount(0);
@@ -177,6 +184,7 @@ test('road cleanup development entry preserves cargo and a partial drive across 
 });
 
 test('house development stages, reload and HMR preserve the round and second floor', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/?dev=1&mission=house-build&stage=crane-two&roof=flat&layout=1&palette=2&family=2&pet=dog');
@@ -185,9 +193,17 @@ test('house development stages, reload and HMR preserve the round and second flo
   await expect(app).toHaveAttribute('data-action', 'ready');
   await expect(app).toHaveAttribute('data-placed', '3');
   await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
+  const { down, up, cancel } = await fireControls(page);
+  let h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await page.mouse.move(h.to.x, h.to.y);
+  await expect(app).toHaveAttribute('data-attached', 'true'); await expect(app).toHaveAttribute('data-action', 'ready'); await up();
+  h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await page.mouse.move(h.from.x + 65, h.from.y + 30); await cancel();
+  const load = await app.getAttribute('data-load');
   await page.reload();
   await expect(app).toHaveAttribute('data-placed', '3');
   await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
+  await expect(app).toHaveAttribute('data-load', load); await expect(app).toHaveAttribute('data-attached', 'true');
   const world = await page.locator('.world').elementHandle();
   const now = new Date();
   await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
@@ -195,6 +211,7 @@ test('house development stages, reload and HMR preserve the round and second flo
   await expect(app).toHaveAttribute('data-placed', '3');
   await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pet', 'dog');
   await expect(app).toHaveAttribute('data-action', 'ready');
+  await expect(app).toHaveAttribute('data-load', load); await expect(app).toHaveAttribute('data-attached', 'true');
   await expect(page.locator('canvas')).toHaveCount(1);
   await page.locator('#stage').selectOption('concrete');
   await expect(app).toHaveAttribute('data-roof', 'flat'); await expect(app).toHaveAttribute('data-layout', '1');

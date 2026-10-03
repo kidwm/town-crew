@@ -74,7 +74,7 @@ sessionStorage snapshots per mission; completion badges and mute preferences use
 localStorage. Domain-specific restoration validates stored data and releases stale
 pointer gestures through `resumeRoad`, `resumeHouse` and `resumeFire`. Development snapshots
 use separate versioned keys and do not award completion badges.
-House snapshots use schema version 5 and include roof style, mirrored layout,
+House snapshots use schema version 6 and include roof style, mirrored layout,
 palette, family and pet. Work coordinates remain in the original site's local frame;
 the scene mirrors its entire site group and converts input/projection at that boundary.
 The same transform drives vehicles, buildings, crane targets and hints. Each concrete
@@ -83,8 +83,11 @@ layout and palette; a separate last-round summary survives restarting work. Deve
 selectors retain the round on stage resets, and explicitly select variants for testing.
 Version 1/2 homes migrate to the original appearance and layout, retaining work and
 roof colour. The old `roof-color` pause automatically starts pickup; new play moves
-directly from the fifth installation to roof pickup. The crane leaves before the
-automatic welcome, and phase/placement checkpoints are saved immediately. `decorate`
+from the fifth installation to empty-hook roof pickup. Version 1–5 hanging
+materials migrate as attached, retaining their position. Empty and attached hooks
+share the 96 px grab area and attach/detach/dwell timings in `runtime/crane-control.ts`;
+geometry stays in the existing shared crane builder. The crane leaves before the
+automatic welcome, and phase/placement/attachment checkpoints are saved immediately. `decorate`
 now holds a ten-second arrival clock: car route, door opening, passengers and pets
 are derived from its persisted `elapsed`. Reload/HMR resumes the same instant; a
 completed snapshot renders the parked car and family at home without replaying.
@@ -129,8 +132,10 @@ CI runs desktop and touch in separate runners, with one graphical browser per
 runner; the desktop job also runs the development checks. Local suites remain
 sequential so graphical runs do not compete for the same GPU.
 
-The port mission owns a version-2 snapshot and separate production/development keys.
-Version-1 snapshots migrate as incoming rounds, preserving cargo and animation progress.
+The port mission owns a version-3 snapshot and separate production/development keys.
+Version-1 snapshots migrate as incoming rounds; version-1/2 hanging cargo
+remains attached, and partial lifting resumes automatically. Empty hook movement,
+attachment state, cargo position and automatic clocks persist independently of input.
 The validated round includes cargo direction, layout and palette. Replay alternates
 direction and independently draws either layout; restore retains the current round.
 Each direction has its own stage sequence: incoming hands crane work to the forklift
@@ -143,7 +148,11 @@ Its two mirrored layouts use local work coordinates, transformed at the scene bo
 for rendering, picking, projected hints and destinations. Unloading and loading orders
 are independent cargo-ID arrays; the current suspended box, fork choice/load, drive
 fractions and automatic elapsed time survive reload. Desired input and endpoint dwell
-are cleared. A valid early cargo release runs a safe raise/traverse/lower sequence.
+are cleared. Empty hooks choose either remaining box by dragging toward it, then automatically
+attach and raise after dwell or valid release. A new drag on the hook or hanging
+cargo places it; valid early release runs the safe traverse/lower sequence.
+Misses and cancellation preserve the current position; placement releases the
+box and raises the empty hook for the next pickup.
 The first incoming fork pickup approaches from the pallet's outer side, with a curved turn
 clear of the quay edge and a horizontal final insertion visible in both mirrored
 views. After the first delivery, the forklift parks between the quay bays; its

@@ -77,14 +77,15 @@ Restart clears only the current mission's progress, while its earned badge remai
    waterway, pauses on release, then automatically moors at the actual berth;
    the outline fades as docking finishes.
 2. Drag the empty green material flatbed into the foreground loading bay.
-3. Drag either of the two pallet boxes from the open deck to the translucent
-   pallet-box preview on the quay. Only the next landing position is shown;
-   the preview fades as the real box lands. The original yellow mobile crane
-   hooks it, raises it clear of the boat, then follows the drag. A 0.4-second hold
-   places it automatically; a valid early release also finishes raising, crossing
-   and lowering safely. A cancelled or
-   missed delivery retains the suspended box and its position. Choose either
-   unloading order. Both boxes must be ashore before the crane stows and leaves.
+3. Drag the empty hook to either pallet box on the open deck. Holding there for
+   0.4 seconds, or releasing at the box, automatically attaches and raises it.
+   Start a new drag on the hook or suspended box toward the translucent pallet-box
+   preview on the quay. Only the next landing position is shown; the preview fades
+   as the real box lands. A 0.4-second hold or valid early release aligns and lowers
+   it automatically. Misses and cancellation preserve the hook or suspended box
+   at its current position. Choose either unloading order; the empty hook rises
+   after placement, ready for the next box. Both boxes must be ashore before the
+   crane stows and leaves.
 4. Drag the forklift toward either pallet. The first pickup uses the outer
    side, then inserts horizontally and lifts with its side visible in either
    mirrored view. Pallets turn into position while unloading; symbols on all
@@ -110,7 +111,8 @@ boat, then the child drags the loaded boat toward the opposite town. Truck unloa
 and ship loading orders remain independent. Automatic truck pickup raises before
 inserting, lifts the box clear, withdraws before lowering and turns toward the quay.
 
-Version-2 saves migrate version-1 incoming rounds without losing progress.
+Version-3 saves track empty/hanging hooks and preserve version-1/2 progress,
+including already suspended cargo and partial automatic lifting.
 Reload/HMR retains the current direction, layout, unloading/loading
 orders, partial vehicle movement, suspended cargo, fork load and automatic clocks.
 Pointer ownership and uncommitted dwell are discarded on restore. A still-held
@@ -221,14 +223,16 @@ All emergency vehicles leave before the final celebration.
    the outlet and stream with that region's centre. Holding the raised outlet
    above the region also works. Stopping or cancellation preserves partial filling.
 3. Drag the flatbed along the independent foreground lane into its parking bay. The direction follows this round's left/right site layout.
-4. The crane automatically picks up each part. Drag toward the actual assembly
+4. Drag the empty hook to the next material on the flatbed. A 0.4-second hold or
+   valid release attaches and raises it automatically. Start a new drag on the
+   hook or hanging material toward the actual assembly
    base or ghost outline; the site turns green and a short 0.4-second dwell
    automatically aligns and lowers the load without releasing. Releasing at a
    valid destination also works. Two L-shaped wall
    sections and an upper floor slab complete the first storey.
 5. A second flatbed delivery brings the second storey's two wall sections and roof.
-   After installing both walls, the crane automatically picks up the coordinated-colour roof.
-   Drag it into place without a colour-selection screen or another confirmation.
+   After installing both walls, drag the hook to pick up the coordinated-colour roof.
+   Drag the hook or roof into place without a colour-selection screen or another confirmation.
    There are six lifts across the two deliveries, with a celebration after the first floor.
 6. After the crane leaves, a ten-second welcome plays automatically: the family car
    turns into the garage, parks, switches off its lights and opens its doors. The
@@ -254,7 +258,7 @@ family, pet, colour and partial work. Old colour-selection saves automatically p
 the roof in the previously chosen colour; completed old homes keep their appearance.
 
 Crane loads travel above the completed structure before automatically lowering.
-Misses and cancelled placements gently reset without installing a part. Taps and
+Misses and cancelled placements retain the current hook or suspended material position. Taps and
 brief passes through the site do not install a load; a held finger cannot pick up
 the next part after automatic placement. Trucks use
 clear access routes; the flatbed travels forward on the road in front of the house.
@@ -452,7 +456,7 @@ reach limits, gesture thresholds, missed/cancelled input, the two distinct rolle
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
 exit clearance and waiting for the loaded cleanup truck to fully leave. House tests also cover
-all concrete pouring orders, partial delivery, cancelled placement, automatic roof pickup,
+all concrete pouring orders, partial delivery, cancelled placement, hook pickup and roof installation,
 legacy snapshot migration, assembly target geometry, continuous placement dwell,
 load clearance, garage construction between vehicle departures/arrivals, whole-car turning clearance and the family walking
 route. Arrival checks cover automatic completion, mid-animation reload and completed saves.
@@ -465,7 +469,7 @@ Police rules cover all four configurations and both motorcycle orders, interrupt
 driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
 entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
 along all routes against the four buildings.
-Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1 migration, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
+Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1/2 crane migration, empty hook pickup, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
 The port browser suite follows both directions and layouts using visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried and suspended cargo across HMR/reload, direction switching and stage reset.
 The police browser suite exercises all four configurations on mouse and phone touch,
 including cancellation, reload, boarding, badges, replay and development HMR.

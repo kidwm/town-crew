@@ -1,10 +1,12 @@
+import { CRANE_SETTLE_SECONDS } from '../../../runtime/crane-control.ts';
+export { CRANE_SETTLE_SECONDS };
+
 export interface ScreenPoint { x: number; y: number }
 
 // All distances are CSS pixels, including the forgiving edge around the house.
 export const CRANE_TARGET_RADIUS = 36;
 export const CRANE_TARGET_PADDING = 24;
 export const CRANE_DRAG_DISTANCE = 18;
-export const CRANE_SETTLE_SECONDS = 0.4;
 export interface CraneTarget { assembly: readonly ScreenPoint[]; raised: ScreenPoint }
 const distance = (a: ScreenPoint, b: ScreenPoint) => Math.hypot(a.x - b.x, a.y - b.y);
 const finite = (p: ScreenPoint) => Number.isFinite(p.x) && Number.isFinite(p.y);

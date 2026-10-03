@@ -4,7 +4,7 @@ import { gesture } from './gesture.mjs';
 import { withPausedClock } from './timing.mjs';
 
 const parts = [{ lift: 2.9, height: 2 }, { lift: 2.9, height: 2 }, { lift: 3, height: 0.22 }, { lift: 5.2, height: 2 }, { lift: 5.2, height: 2 }, { lift: 5.3, height: 1.2 }];
-test('build a varied two-storey home with automatic roof pickup, reload and a fresh round', async ({ page }, info) => {
+test('build a varied two-storey home with hook pickup, reload and a fresh round', async ({ page }, info) => {
   // The software-rendered CI trace reached decoration at the four-minute
   // suite limit. Leave time for reload, the completion badge and replay too.
   if (process.env.CI) test.setTimeout(360_000);
@@ -82,13 +82,17 @@ test('build a varied two-storey home with automatic roof pickup, reload and a fr
         await expect(app).toHaveAttribute('data-placed', '5');
         await expect(page.locator('.roof-picker, .start-roof')).toHaveCount(0);
         await expect(app).toHaveAttribute('data-color', expectedColor);
-        await page.screenshot({ path: info.outputPath('roof-automatic-pickup.png') });
+        await page.screenshot({ path: info.outputPath('roof-hook-pickup.png') });
         await page.reload(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '5');
         await expect(app).toHaveAttribute('data-roof', initialRoof);
         await expect(app).toHaveAttribute('data-layout', initialLayout);
       }
       await wait(crane);
+      await expect(app).toHaveAttribute('data-attached', 'false');
+      const pickup = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+      await down(pickup.from); await move(pickup.to);
+      await expect(app).toHaveAttribute('data-attached', 'true'); await wait(crane); await up();
       const part = i === 5 && initialRoof === 'flat' ? { ...parts[i], height: 0.4 } : parts[i];
       // Grab visible faces, slab, hook and roof, instead of only the invisible
       // centre of the L-shaped walls. Each grip has a different drag offset.
@@ -97,7 +101,7 @@ test('build a varied two-storey home with automatic roof pickup, reload and a fr
         : i === 2 ? [-2.4, part.lift + 0.22, 0.2]
         : i === 4 ? [-3.1, part.lift + part.height + 0.2, -0.4]
         : [-2.3, part.lift + part.height / 2 + 0.1, 0.2];
-      const source = await project(...grip);
+      let source = await project(...grip);
       const indicator = page.getByRole('img', { name: '吊車放置位置' });
       await expect(indicator).toBeVisible();
       const circle = await indicator.boundingBox();
@@ -107,11 +111,13 @@ test('build a varied two-storey home with automatic roof pickup, reload and a fr
         await expect(indicator).toHaveAttribute('data-ready', 'false');
         await up(); await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
+        source = (await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'))).from;
         await withPausedClock(page, async () => {
           await down(source); await move(target); await page.clock.runFor(120); await cancel();
         });
         await wait(crane);
         await expect(app).toHaveAttribute('data-placed', '0');
+        source = (await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'))).from;
       }
       await down(source);
       // Aim at the actual assembly base, including an imprecise edge grip.
@@ -155,7 +161,7 @@ test('phone selection scrolls and malformed progress cannot skip construction', 
   await expect(page.getByRole('button', { name: '回到選關', exact: true })).toBeVisible();
 });
 
-for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: automatic final pickup works on either site and resumes without a colour dialog`, async ({ page }, info) => {
+for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: hook pickup works on either site and resumes without a colour dialog`, async ({ page }, info) => {
   const { createHouse, partFor } = await import('../../src/missions/house-build/domain/house.ts');
   const { DEFAULT_ROUND } = await import('../../src/missions/house-build/domain/round.ts');
   const touch = info.project.name === 'tablet-touch', layout = touch ? 1 : 0;
@@ -183,6 +189,9 @@ for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: 
   const move = async p => touch ? cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [p] }) : page.mouse.move(p.x, p.y, { steps: 6 });
   const up = async () => touch ? cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }) : page.mouse.up();
   async function install(i) {
+    const pickup = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+    await down(pickup.from); await move(pickup.to);
+    await expect(app).toHaveAttribute('data-attached', 'true'); await ready(); await up();
     const definition = partFor(round, i);
     const source = i === 4 ? project(-3.1, definition.lift + definition.height + 0.2, -0.4)
       : project(-3.1, definition.lift + definition.height / 2, -0.4);
@@ -195,7 +204,7 @@ for (const [index, roof] of ['gable', 'shed', 'flat'].entries()) test(`${roof}: 
   await install(4); await ready();
   await expect(app).toHaveAttribute('data-phase', 'crane-two');
   await expect(page.locator('.roof-picker, .start-roof')).toHaveCount(0);
-  await page.screenshot({ path: info.outputPath(`${roof}-automatic-pickup.png`) });
+  await page.screenshot({ path: info.outputPath(`${roof}-hook-pickup.png`) });
   await page.reload(); await ready();
   await expect(app).toHaveAttribute('data-placed', '5');
   await expect(app).toHaveAttribute('data-roof', roof); await expect(app).toHaveAttribute('data-layout', String(layout));

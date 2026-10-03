@@ -9,14 +9,13 @@ export const stepIndex = (s: PortState) => s.phase === 'boat' || s.phase === 'tr
 export const vehicleIcon = (s: PortState) => s.phase === 'boat' || s.phase === 'ship-transport' || s.round.direction === 'load' && ['departure', 'arrival', 'complete'].includes(s.phase) ? boatIcon : s.phase === 'truck' ? freightIcon : iconsFor(s.round.direction)[stepIndex(s)];
 export const stageOptions = (direction: Direction) => missionStages(direction).map(p => `<option value="${p}">${phaseName(p, direction)}</option>`).join('');
 export function instruction(s: PortState) {
+  if (isCraneStage(s)) return s.action === 'hoisting' ? '掛好貨箱，吊車幫你抬高' : s.action === 'unhooking' ? '放好貨箱，收回吊鉤' : s.action === 'lowering' ? s.round.direction === 'load' ? '對準了，吊車幫你放到船上' : '對準了，吊車幫你放好' : s.craneAttached ? s.round.direction === 'load' ? '拖吊鉤或貨箱，到船上的光圈' : '拖吊鉤或貨箱，到碼頭光圈' : s.round.direction === 'load' ? '把吊鉤拖到任一岸上貨箱' : '把吊鉤拖到任一船上貨箱';
   if (s.round.direction === 'load') {
     if (s.phase === 'forklift') return s.action === 'picking' ? '抬高貨叉取貨，退出車側再降下來' : s.action === 'loading' ? '輕輕放在岸上，退出貨叉' : s.action === 'returning' ? '堆高機退出，準備下一箱' : s.carrying ? '拖堆高機，把貨箱放到碼頭光圈' : '把堆高機拖到車上任一貨箱前';
-    if (s.phase === 'load-ship') return s.action === 'lowering' ? '對準了，吊車幫你放到船上' : '把任一岸上貨箱拖到船上的光圈';
     const outgoing: Partial<Record<Stage, string>> = { boat: '拖空貨船到泊位，準備接物資', truck: '把載著物資的平板車拖到停車輪廓', 'forklift-exit': '兩箱都上岸了，讓吊車來幫忙', 'crane-ready': '展開支撐腳，準備把物資裝船', 'crane-exit': '裝好物資，收起吊車準備出發', 'ship-transport': '拖載好物資的貨船，送往對岸', departure: '貨船載著物資出發，揮手說再見', arrival: '把食物和玩具送到對岸小鎮', complete: '物資送到對岸了，大家一起完成任務！' };
     return outgoing[s.phase] ?? names[s.phase];
   }
   if (s.phase === 'forklift') return s.action === 'picking' ? '貨叉伸進棧板，抬起貨箱' : s.action === 'loading' ? '升到車斗高度，輕輕放好' : s.action === 'returning' ? '堆高機退出，準備下一箱' : s.carrying ? '拖堆高機到平板車側邊的光圈' : '把堆高機拖到任一棧板貨箱前';
-  if (s.phase === 'unload') return s.action === 'lowering' ? '對準了，吊車幫你放好' : '把任一貨箱拖到碼頭上的光圈';
   const text: Partial<Record<Stage, string>> = { boat: '拖貨船到泊位，靠岸送物資', truck: '把空平板車拖到停車輪廓', unload: '', 'crane-exit': '收起支撐腳，讓堆高機來幫忙', forklift: '', 'forklift-exit': '貨物固定好了，搬運區清空', transport: '拖載好物資的平板車，送進小鎮', departure: '空船解纜離港，揮手說再見', arrival: '把食物和玩具送給小鎮', complete: '物資送到了，大家一起完成任務！' };
   return text[s.phase] ?? names[s.phase];
 }

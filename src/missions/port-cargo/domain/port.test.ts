@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPort, chooseRound, resumePort, missionStages, craneTarget, forkHeight, pickupDuration, grab, drive, release, moveLoad, advance, progress, QUAY, forkPose, forkRoute, pickupRoute, quayFor, pathLength, mirror, ROAD_Z, FORK_OFFSET, LOADING_APPROACH, TRUCK_SLOTS, exitDistance } from './port.ts';
+import { createPort, chooseRound, resumePort, missionStages, available, distance, craneSource, craneTarget, forkHeight, pickupDuration, grab, drive, release, moveLoad, advance, progress, QUAY, forkPose, forkRoute, pickupRoute, quayFor, pathLength, mirror, ROAD_Z, FORK_OFFSET, LOADING_APPROACH, TRUCK_SLOTS, exitDistance } from './port.ts';
 import type { PortState, Cargo, Point } from './port.ts';
 function tick(s: PortState, seconds = 0.1) { for (let t = 0; t < seconds; t += 0.05) s = advance(s, 0.05); return s; }
 function wait(s: PortState, predicate: (s: PortState) => boolean) {
@@ -8,8 +8,11 @@ function wait(s: PortState, predicate: (s: PortState) => boolean) {
   assert.ok(predicate(s), `${s.phase}/${s.action} did not finish`); return s;
 }
 function driveToEnd(s: PortState, id?: Cargo) { return wait(drive(grab(s), 1, id), n => n.action !== 'dragging'); }
-function unload(s: PortState, id: Cargo) { return wait(moveLoad(grab(s, id), QUAY[s.unloaded.length]), n => n.action !== 'dragging'); }
-function cranePlace(s: PortState, id: Cargo) { return wait(moveLoad(grab(s, id), craneTarget(s)), n => n.action !== 'dragging'); }
+function cranePickup(s: PortState, id: Cargo) {
+  return wait(wait(moveLoad(grab(s), craneSource(s, id), id), n => n.action === 'hoisting'), n => n.action === 'ready');
+}
+function unload(s: PortState, id: Cargo) { return cranePlace(s, id); }
+function cranePlace(s: PortState, id: Cargo) { s = s.craneAttached ? s : cranePickup(s, id); return wait(moveLoad(grab(s, id), craneTarget(s)), n => n.action !== 'dragging'); }
 function footprint(p: Point & { yaw?: number }, x0: number, x1: number, z0: number, z1: number): Point[] {
   const c = Math.cos(p.yaw ?? 0), s = Math.sin(p.yaw ?? 0);
   return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([x, z]) => ({ x: p.x + x * c + z * s, z: p.z - x * s + z * c }));
@@ -23,6 +26,45 @@ function intersects(a: Point[], b: Point[]) {
   }
   return true;
 }
+
+test('empty hook chooses either remaining box and only a settled or valid release attaches it', () => {
+  for (const direction of ['unload', 'load'] as const) {
+    const base = createPort(direction === 'load' ? 'load-ship' : 'unload', { layout: 1, palette: 0, direction });
+    let s = tick(moveLoad(grab(base), craneTarget(base)), 2);
+    assert.equal(s.craneAttached, false); assert.deepEqual(s.loaded, []);
+    s = release(s, true); const position = s.load;
+    assert.deepEqual(resumePort(s)!.load, position);
+    s = moveLoad(grab(s), craneSource(s, 0), 0);
+    s = moveLoad(s, craneSource(s, 1), 1); assert.equal(s.selected, 1);
+    s = wait(s, n => distance(n.load, craneSource(n, 1)) < 0.1);
+    s = release(tick(s, 0.1), true); assert.equal(s.craneAttached, false);
+    assert.equal(tick(resumePort(s)!, 1).craneAttached, false);
+    s = release(moveLoad(grab(s), craneSource(s, 1), 1));
+    assert.equal(s.action, 'hoisting'); assert.equal(s.craneAttached, true);
+    s = tick(s, 0.2); assert.equal(s.lift, 0); assert.deepEqual(resumePort(s), s);
+    s = wait(s, n => n.action === 'ready'); assert.equal(s.lift, 1);
+    assert.equal(grab(s, 0), s); // A hanging box cannot be replaced by another choice.
+    s = cranePlace(s, 1); s = wait(s, n => n.action === 'unhooking');
+    assert.equal(s.craneAttached, false); assert.deepEqual(resumePort(s), s);
+    assert.equal(grab(s), s); // Automatic detaching consumes the old gesture.
+    s = wait(s, n => n.action === 'ready'); assert.deepEqual(available(s), [0]);
+  }
+});
+
+test('previous crane saves keep suspended cargo and finish partial lifting without repeating pickup', () => {
+  for (const direction of ['unload', 'load'] as const) {
+    const base = createPort(direction === 'load' ? 'load-ship' : 'unload', { layout: 0, palette: 2, direction });
+    const carried = cranePickup(base, 1), { craneAttached: _, ...legacy } = carried;
+    assert.deepEqual(resumePort({ ...legacy, version: 2 }), carried);
+    const partial = resumePort({ ...legacy, version: 2, action: 'dragging', lift: 0.35 })!;
+    assert.equal(partial.action, 'hoisting'); assert.equal(partial.craneAttached, true);
+    assert.equal(wait(partial, n => n.action === 'ready').selected, 1);
+    assert.equal(resumePort({ ...base, craneAttached: true }), undefined);
+    assert.equal(resumePort({ ...carried, craneAttached: false }), undefined);
+    assert.equal(resumePort({ ...legacy, version: 2, lift: 0.3, elapsed: NaN }), undefined);
+    assert.equal(resumePort({ ...base, version: 2, load: undefined }), undefined);
+  }
+});
 
 test('both port layouts and both independent cargo orders finish with exactly two crane lifts and two fork trips', () => {
   for (const layout of [0, 1] as const) for (const craneOrder of [[0, 1], [1, 0]] as Cargo[][]) for (const forkOrder of [[0, 1], [1, 0]] as Cargo[][]) {
@@ -55,7 +97,7 @@ test('empty taps and cancelled endpoint dwell cannot dock or choose a box', () =
   assert.equal(tick(restored, 2).phase, 'boat');
   assert.equal(tick(grab(restored), 0.5).phase, 'truck'); // The ship is already at its berth; a fresh hold resumes docking.
   assert.equal(driveToEnd(restored).phase, 'truck');
-  s = release(grab(createPort('unload'), 1)); assert.equal(s.selected, null); assert.equal(s.lift, 0); assert.deepEqual(s.unloaded, []);
+  s = release(grab(createPort('unload'))); assert.equal(s.selected, null); assert.equal(s.lift, 0); assert.deepEqual(s.unloaded, []);
 });
 
 test('reaching the hauling exit commits immediately and cannot leave an unreachable pending gesture', () => {
@@ -80,19 +122,19 @@ test('partial driving and suspended cargo survive interruption and reload withou
   let s = tick(drive(grab(createPort()), 0.5), 0.7); assert.ok(s.boat > 0 && s.boat < 0.5);
   const boat = s.boat; s = resumePort(s)!; assert.equal(s.boat, boat); assert.equal(s.action, 'ready'); assert.equal(s.desired, null);
   s = tick(s, 1); assert.equal(s.boat, boat);
-  s = tick(moveLoad(grab(createPort('unload'), 1), { x: 2, z: -3 }), 0.9);
+  s = tick(moveLoad(grab(cranePickup(createPort('unload'), 1)), { x: 2, z: -3 }), 0.9);
   const point = s.load; assert.equal(s.selected, 1); assert.equal(s.lift, 1);
   s = release(s, true); s = resumePort(s)!; assert.deepEqual(s.load, point); assert.equal(s.selected, 1);
   assert.deepEqual(tick(s, 1).load, point); assert.equal(s.elapsed, 0); assert.equal(s.aim, null);
   s = unload(s, 1); s = wait(s, n => n.action === 'ready'); assert.deepEqual(s.unloaded, [1]);
 });
 
-test('valid early release finishes lifting and crossing before lowering; cancelled release retains the suspended load', () => {
-  let s = moveLoad(grab(createPort('unload'), 0), QUAY[0]);
-  s = release(s); assert.equal(s.action, 'lowering'); assert.equal(s.lift, 0);
-  s = tick(s, 0.9); assert.equal(s.action, 'lowering'); assert.deepEqual(resumePort(s), s); assert.deepEqual(s.unloaded, []);
+test('valid early release crosses before lowering; cancelled release retains the suspended load', () => {
+  let s = moveLoad(grab(cranePickup(createPort('unload'), 0)), QUAY[0]);
+  s = release(s); assert.equal(s.action, 'lowering'); assert.equal(s.lift, 1);
+  s = tick(s, 0.4); assert.equal(s.action, 'lowering'); assert.deepEqual(resumePort(s), s); assert.deepEqual(s.unloaded, []);
   s = wait(s, n => n.action === 'ready'); assert.deepEqual(s.unloaded, [0]);
-  s = release(moveLoad(grab(createPort('unload'), 1), QUAY[0]), true);
+  s = release(moveLoad(grab(cranePickup(createPort('unload'), 1)), QUAY[0]), true);
   assert.equal(s.action, 'ready'); assert.deepEqual(s.unloaded, []); assert.equal(s.selected, 1);
 });
 
@@ -119,7 +161,7 @@ test('replay alternates cargo direction, independently selects either layout and
 
 test('malformed or contradictory snapshots cannot skip work, duplicate cargo or carry an already loaded pallet', () => {
   const base = createPort('forklift');
-  for (const patch of [{ version: 3 }, { round: { layout: 3, palette: 0 } }, { unloaded: [0, 0] }, { loaded: [1], unloaded: [0] }, { boat: 0.5 }, { action: 'loading', selected: null }, { selected: 0, loaded: [0], carrying: true }, { selected: 0, action: 'picking', forkTravel: 0.5 }, { load: { x: 100, z: 0 } }, { elapsed: NaN }, { phase: 'complete', action: 'auto' }]) {
+  for (const patch of [{ version: 4 }, { round: { layout: 3, palette: 0 } }, { unloaded: [0, 0] }, { loaded: [1], unloaded: [0] }, { boat: 0.5 }, { action: 'loading', selected: null }, { selected: 0, loaded: [0], carrying: true }, { selected: 0, action: 'picking', forkTravel: 0.5 }, { load: { x: 100, z: 0 } }, { elapsed: NaN }, { phase: 'complete', action: 'auto' }]) {
     assert.equal(resumePort({ ...base, ...patch }), undefined, JSON.stringify(patch));
   }
   assert.equal(resumePort(null), undefined); assert.equal(resumePort({}), undefined);
@@ -314,9 +356,9 @@ test('legacy snapshots retain incoming cargo progress; outgoing snapshots reject
   const outgoing = createPort('forklift', { layout: 1, palette: 2, direction: 'load' });
   for (const patch of [{ round: oldRound }, { phase: 'unload' }, { unloaded: [0], selected: 0, carrying: true }, { unloaded: [0, 1], action: 'ready' }, { loaded: [0] }, { version: 1 }]) assert.equal(resumePort({ ...outgoing, ...patch }), undefined);
   const crane = createPort('load-ship', outgoing.round);
-  const suspended = tick(moveLoad(grab(crane, 1), { x: 0, z: -3 }), 0.8);
+  const suspended = tick(moveLoad(grab(cranePickup(crane, 1)), { x: 0, z: -3 }), 0.8);
   const resumed = resumePort(suspended)!; assert.equal(resumed.selected, 1); assert.deepEqual(resumed.load, suspended.load); assert.equal(resumed.lift, suspended.lift); assert.equal(resumed.action, 'ready');
-  const lowering = release(moveLoad(grab(crane, 1), craneTarget(crane))); assert.deepEqual(resumePort(lowering), lowering);
+  const lowering = release(moveLoad(grab(cranePickup(crane, 1)), craneTarget(crane))); assert.deepEqual(resumePort(lowering), lowering);
   const ship = { ...createPort('ship-transport', outgoing.round), haul: 1 };
   assert.equal(resumePort(ship)!.phase, 'departure');
 });

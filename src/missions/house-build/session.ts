@@ -59,6 +59,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       if (next.pours.filter(v => v === 1).length > state.pours.filter(v => v === 1).length) audio.play('pour');
       if (isCrane(next) && isDelivery(state)) audio.play('delivered');
       const checkpoint = next.phase !== state.phase || next.placed !== state.placed
+        || next.attached !== state.attached
         || (next.action !== state.action && (next.action === 'finishing' || state.action === 'finishing'));
       const completed = next.phase === 'complete' && state.phase !== 'complete';
       if (completed) { audio.play('complete'); if (!dev) markCompleted('house-build'); }
@@ -69,8 +70,9 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
     const pointer = bindPrimaryDrag<{ phase: Stage; y: number; plane: number; offset: Point; screen: ScreenPoint; origin: ScreenPoint; settle: number }>(scene.canvas, {
       start(event) {
         unlock();
-        if (state.action !== 'ready' || !scene.hit(event.clientX, event.clientY, state)) return;
-        const plane = height(), p = scene.onPlane(event.clientX, event.clientY, plane); if (!p) return;
+        const hit = scene.hit(event.clientX, event.clientY, state);
+        if (state.action !== 'ready' || !hit) return;
+        const plane = isCrane(state) ? scene.cranePlane(state, hit === 'hook') : height(), p = scene.onPlane(event.clientX, event.clientY, plane); if (!p) return;
         const anchor = isCrane(state) ? state.load : state.phase === 'concrete' ? state.chute : { x: state.truckX, z: 5.1 };
         update(grab(state)); audio.play('grab');
         const screen = { x: event.clientX, y: event.clientY };
@@ -82,7 +84,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         if (state.phase === 'gravel') { update(dragGravel(state, context.y - event.clientY)); return; }
         const p = scene.onPlane(event.clientX, event.clientY, context.plane); if (!p) return;
         const target = { x: p.x + context.offset.x, z: p.z + context.offset.z };
-        update(state.phase === 'concrete' ? moveChute(state, scene.concreteAim(event.clientX, event.clientY, state, target)) : isDelivery(state) ? drive(state, target.x) : moveLoad(state, target));
+        update(state.phase === 'concrete' ? moveChute(state, scene.concreteAim(event.clientX, event.clientY, state, target)) : isDelivery(state) ? drive(state, target.x) : moveLoad(state, scene.craneAim(state, context.screen, target)));
       },
       end(context, cancelled) {
         const targetReached = isCrane(state) && scene.craneDropTarget(state, context.screen, context.origin).accepted;
@@ -121,7 +123,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
     function animate(now: number) {
       const dt = document.hidden ? 0 : Math.min((now - previous) / 1000, 0.1); previous = now; time += dt;
       update(advance(state, dt));
-      if (pointer.context() && pointer.context()!.phase !== state.phase) pointer.cancel();
+      if (pointer.context() && (pointer.context()!.phase !== state.phase || state.action !== 'dragging')) pointer.cancel();
       const held = pointer.context();
       if (held && isCrane(state) && state.action === 'dragging') {
         const accepted = scene.craneDropTarget(state, held.screen, held.origin).accepted;
@@ -138,7 +140,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       const drop = isCrane(state) && ['ready', 'dragging'].includes(state.action)
         ? scene.craneDropTarget(state, pointer.context()?.screen, pointer.context()?.origin) : undefined;
       craneTarget.hidden = !drop;
-      footprint.toggleAttribute('hidden', !drop);
+      footprint.toggleAttribute('hidden', !drop || !state.attached);
       if (drop) {
         craneTarget.style.left = `${drop.x}px`; craneTarget.style.top = `${drop.y}px`;
         craneTarget.style.width = craneTarget.style.height = `${drop.radius * 2}px`;
@@ -146,16 +148,23 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         footprint.dataset.ready = String(drop.accepted);
         footprint.querySelector('polygon')!.setAttribute('points', drop.footprint.map(p => `${p.x},${p.y}`).join(' '));
         settleRing.style.strokeDashoffset = String(1 - (pointer.context()?.settle ?? 0) / CRANE_SETTLE_SECONDS);
-        label('.crane-drop-label', drop.accepted ? '停一下，幫你放好！' : '拖到房子上');
+        craneTarget.setAttribute('aria-label', state.attached ? '吊車放置位置' : '吊車取貨位置');
+        label('.crane-drop-label', drop.accepted ? state.attached ? '停一下，幫你放好！' : '停一下，幫你吊起！' : state.attached ? '拖到房子上' : '吊起材料');
       }
       label('.house-instruction', state.action === 'finishing'
         ? ({ gravel: '補好車庫地基', concrete: '鋪好車庫地板與走道', 'crane-one': '補好車庫牆面', 'crane-two': '蓋好車庫屋頂' } as Partial<Record<Stage, string>>)[state.phase] ?? ''
+        : state.phase === 'crane-one' && state.action === 'leaving'
+        ? '一樓蓋好了！準備二樓的材料'
         : state.phase === 'crane-two' && state.action === 'leaving'
         ? '房子蓋好了！工程車收工囉'
         : state.phase === 'decorate' ? ({ driving: '一家人開車來囉！', parked: '停好車，準備下車', unloading: '一起下車，搬進新家', walking: '走到門口，歡迎回家！', waiting: '', home: '歡迎搬進新家！' })[arrivalStep(arrivalTime(state))]
         : state.action === 'placing' ? '吊車正在幫忙放好'
-        : drop?.accepted ? '對準了！吊車幫你放好' : isDelivery(state) ? `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` : instructions[state.phase]);
+        : state.action === 'pickup' ? '掛好材料，吊車幫你抬高'
+        : state.action === 'unhooking' ? '放好材料，收回吊鉤'
+        : isCrane(state) && !state.attached ? '把吊鉤拖到車上的材料'
+        : drop?.accepted ? '對準了！吊車幫你放好' : isCrane(state) && state.attached ? '拖吊鉤或材料到房子上，吊車幫你放好' : isDelivery(state) ? `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` : instructions[state.phase]);
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.placed = String(state.placed);
+      app.dataset.attached = String(state.attached); app.dataset.load = JSON.stringify(state.load);
       app.dataset.pours = String(state.pours.filter(v => v === 1).length); app.dataset.color = String(state.color);
       app.dataset.layout = String(state.round.layout); app.dataset.roof = state.round.roof;
       app.dataset.palette = String(state.round.palette); app.dataset.family = String(state.round.family); app.dataset.pet = state.round.pet;

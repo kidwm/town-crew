@@ -19,6 +19,13 @@ for (const layout of [0, 1]) {
     const directMove = async p => touch ? move(p) : page.mouse.move(p.x, p.y);
     const centre = async locator => { await expect(locator).toBeVisible(); const r = await locator.boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
     const source = id => centre(page.locator(`.port-source[data-cargo="${id}"]`));
+    async function pickup(id) {
+      const h = await hinted(), to = await source(id);
+      await down(h.from); await directMove(to);
+      await expect(app).toHaveAttribute('data-attached', 'true'); await wait('unload');
+      await directMove((await hinted()).to); await page.waitForTimeout(450);
+      await expect(app).toHaveAttribute('data-unloaded', ''); await up();
+    }
     async function startDrive() { const h = await hinted(); await down(h.from); await directMove(h.to); }
     async function go(next, action = 'ready') { await startDrive(); await wait(next, action); await up(); }
     await wait('boat'); await expect(app).toHaveAttribute('data-layout', String(layout)); await expect(app).toHaveAttribute('data-direction', 'unload');
@@ -33,9 +40,10 @@ for (const layout of [0, 1]) {
     await go('truck'); await go('unload');
     await page.screenshot({ path: info.outputPath('port-crane.png') });
     const first = (layout + Number(touch)) % 2;
+    await pickup(first);
     // A quick pass/cancellation at the real quay target cannot unload a pallet.
     await withPausedClock(page, async () => {
-      const from = await source(first), to = await centre(page.locator('.port-target'));
+      const from = (await hinted()).from, to = await centre(page.locator('.port-target'));
       await down(from); await directMove(to); await page.clock.runFor(120); await cancel(); await page.clock.runFor(32);
       await expect(app).toHaveAttribute('data-unloaded', '');
     });
@@ -48,7 +56,9 @@ for (const layout of [0, 1]) {
     await directMove(secondFrom); await directMove(secondTo); await page.waitForTimeout(500);
     await expect(app).toHaveAttribute('data-unloaded', String(first)); await expect(app).toHaveAttribute('data-selected', ''); await up();
     await page.reload(); await wait('unload'); await expect(app).toHaveAttribute('data-unloaded', String(first));
-    await down(await source(1 - first)); await directMove(await centre(page.locator('.port-target'))); await up();
+    h = await hinted(); const nextPickup = await source(1 - first);
+    await down(h.from); await directMove(nextPickup); await expect(app).toHaveAttribute('data-attached', 'true'); await wait('unload'); await up();
+    h = await hinted(); await down(h.from); await directMove(h.to); await up();
     await wait('forklift'); await expect(app).toHaveAttribute('data-unloaded', `${first},${1 - first}`);
     // Mouse reverses the crane order; touch keeps it, covering both vacant bays.
     const forkFirst = touch ? first : 1 - first;
@@ -131,18 +141,24 @@ for (const layout of [0, 1]) {
     await wait('load-ship'); await expect(app).toHaveAttribute('data-loaded', '');
     await page.screenshot({ path: info.outputPath('port-outgoing-crane.png') });
     const craneFirst = touch ? first : 1 - first;
+    let h = await hinted(), pickupTarget = await source(craneFirst);
+    await down(h.from); await directMove(pickupTarget); await expect(app).toHaveAttribute('data-attached', 'true'); await wait('load-ship');
+    await directMove((await hinted()).to); await page.waitForTimeout(450);
+    await expect(app).toHaveAttribute('data-loaded', ''); await up();
     await withPausedClock(page, async () => {
-      await down(await source(craneFirst)); await directMove(await centre(page.locator('.port-target'))); await page.clock.runFor(120); await cancel(); await page.clock.runFor(32);
+      await down((await hinted()).from); await directMove(await centre(page.locator('.port-target'))); await page.clock.runFor(120); await cancel(); await page.clock.runFor(32);
       await expect(app).toHaveAttribute('data-loaded', '');
     });
     await wait('load-ship'); await expect(app).toHaveAttribute('data-selected', String(craneFirst));
     await page.reload(); await wait('load-ship'); await expect(app).toHaveAttribute('data-selected', String(craneFirst));
-    let h = await hinted(); await down(h.from); await directMove(h.to);
+    h = await hinted(); await down(h.from); await directMove(h.to);
     await expect(app).toHaveAttribute('data-loaded', String(craneFirst)); await wait('load-ship');
     await directMove(await source(1 - craneFirst)); await directMove(await centre(page.locator('.port-target'))); await page.waitForTimeout(450);
     await expect(app).toHaveAttribute('data-loaded', String(craneFirst)); await expect(app).toHaveAttribute('data-selected', ''); await up();
     await page.reload(); await wait('load-ship'); await expect(app).toHaveAttribute('data-loaded', String(craneFirst));
-    await down(await source(1 - craneFirst)); await directMove(await centre(page.locator('.port-target'))); await up();
+    h = await hinted(); pickupTarget = await source(1 - craneFirst);
+    await down(h.from); await directMove(pickupTarget); await expect(app).toHaveAttribute('data-attached', 'true'); await wait('load-ship'); await up();
+    h = await hinted(); await down(h.from); await directMove(h.to); await up();
     await wait('ship-transport'); await expect(app).toHaveAttribute('data-loaded', `${craneFirst},${1 - craneFirst}`);
     await page.screenshot({ path: info.outputPath('port-outgoing-loaded-ship.png') });
     h = await hinted(); await down(h.from); await directMove({ x: (h.from.x + h.to.x) / 2, y: (h.from.y + h.to.y) / 2 });

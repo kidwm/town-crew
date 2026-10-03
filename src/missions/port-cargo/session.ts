@@ -32,22 +32,22 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       if (next === state) return;
       const checkpoint = next.phase !== state.phase || next.action !== state.action || next.unloaded.length !== state.unloaded.length || next.loaded.length !== state.loaded.length;
       if (next.phase !== state.phase) audio.play(next.phase === 'complete' ? 'complete' : ['transport', 'ship-transport', 'departure'].includes(next.phase) ? 'depart' : 'parked');
-      else if (next.action === 'picking' || next.action === 'lowering') audio.play('pickup');
+      else if (next.action !== state.action && ['picking', 'hoisting', 'lowering'].includes(next.action)) audio.play('pickup');
       if (next.phase === 'complete' && state.phase !== 'complete' && !dev) markCompleted('port-cargo');
       state = next; if (checkpoint) save();
     }
     const pointer = bindPrimaryDrag<{ phase: Stage; cargo: boolean; origin: { x: number; y: number }; offset: { x: number; y: number } }>(scene.canvas, {
       start(event) {
         unlock(); const hit = scene.hit(event.clientX, event.clientY, state); if (hit === undefined) return;
-        const info = scene.task(state, hit === 'vehicle' ? undefined : hit)!, r = scene.canvas.getBoundingClientRect();
-        update(grab(state, hit === 'vehicle' ? undefined : hit));
-        return { phase: state.phase, cargo: hit !== 'vehicle', origin: { x: event.clientX, y: event.clientY }, offset: { x: r.x + info.from.x - event.clientX, y: r.y + info.from.y - event.clientY } };
+        const id = typeof hit === 'number' ? hit : undefined, info = scene.task(state, id)!, r = scene.canvas.getBoundingClientRect();
+        update(grab(state, id));
+        return { phase: state.phase, cargo: isCraneStage(state), origin: { x: event.clientX, y: event.clientY }, offset: { x: r.x + info.from.x - event.clientX, y: r.y + info.from.y - event.clientY } };
       },
       move(event, held) {
         const threshold = state.phase === 'forklift' && state.selected === null && available(state).length > 1 ? 25 : 10;
         if (state.phase !== held.phase || state.action !== 'dragging' || Math.hypot(event.clientX - held.origin.x, event.clientY - held.origin.y) < threshold) return;
         const pointer = { x: event.clientX, y: event.clientY }, adjusted = { x: pointer.x + held.offset.x, y: pointer.y + held.offset.y };
-        if (held.cargo) update(moveLoad(state, scene.loadTarget(state, pointer, adjusted)));
+        if (held.cargo) { const target = scene.loadTarget(state, pointer, adjusted); update(moveLoad(state, target, target.id)); }
         else { const target = scene.driveTarget(state, adjusted, { x: held.origin.x + held.offset.x, y: held.origin.y + held.offset.y }); update(drive(state, target.value, target.id)); }
       },
       end(held, cancelled) { if (state.phase === held.phase) update(release(state, cancelled)); save(); },
@@ -74,7 +74,7 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       const info = scene.task(state); target.hidden = !info;
       if (info) {
         target.style.left = `${info.to.x}px`; target.style.top = `${info.to.y}px`; target.dataset.ready = String(state.action === 'dragging' && state.elapsed > 0);
-        target.querySelector('span')!.textContent = isCraneStage(state) ? state.round.direction === 'load' ? '裝到船上' : '卸在這裡' : state.phase === 'forklift' ? state.carrying ? state.round.direction === 'load' ? '卸在這裡' : '裝到車上' : '叉起貨箱' : state.phase === 'transport' || state.phase === 'ship-transport' ? '出發' : '停這裡';
+        target.querySelector('span')!.textContent = isCraneStage(state) ? !state.craneAttached ? '吊起貨箱' : state.round.direction === 'load' ? '裝到船上' : '卸在這裡' : state.phase === 'forklift' ? state.carrying ? state.round.direction === 'load' ? '卸在這裡' : '裝到車上' : '叉起貨箱' : state.phase === 'transport' || state.phase === 'ship-transport' ? '出發' : '停這裡';
         target.querySelector('circle')!.style.strokeDashoffset = String(1 - Math.min(1, state.elapsed / 0.4));
       }
       const availableSources = scene.sources(state), key = availableSources.map(p => p.id).join(',');
@@ -82,6 +82,7 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       availableSources.forEach(p => { const node = sources.querySelector<HTMLElement>(`[data-cargo="${p.id}"]`)!; node.style.left = `${p.x}px`; node.style.top = `${p.y}px`; });
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.layout = String(state.round.layout); app.dataset.palette = String(state.round.palette);
       app.dataset.direction = state.round.direction;
+      app.dataset.attached = String(state.craneAttached);
       app.dataset.unloaded = state.unloaded.join(','); app.dataset.loaded = state.loaded.join(','); app.dataset.selected = state.selected === null ? '' : String(state.selected); app.dataset.carrying = String(state.carrying);
       app.dataset.work = JSON.stringify({ boat: state.boat, truck: state.truck, haul: state.haul, fork: state.forkTravel }); app.dataset.load = JSON.stringify(state.load);
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
