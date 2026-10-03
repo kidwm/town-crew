@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "name": "小小城市隊 · Town Crew",
+  "short_name": "小小城市隊",
+  "description": "修馬路、蓋房子、救火與搬貨，一起把小鎮變得更好。",
+  "lang": "zh-Hant",
+  "start_url": "/#menu",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f2e8",
+  "theme_color": "#bde6eb",
+  "categories": ["games", "education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

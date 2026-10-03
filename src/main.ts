@@ -3,8 +3,10 @@ import { createAudio } from './runtime/audio.ts';
 import { mountMenu } from './app/menu.ts';
 import type { MissionId } from './app/progress.ts';
 import { clearProgress } from './app/progress.ts';
+import { registerPwa } from './app/pwa.ts';
 import './style.css';
 
+registerPwa();
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 const dev = import.meta.env.DEV && params.get('dev') === '1';

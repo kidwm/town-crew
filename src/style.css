@@ -26,7 +26,8 @@
   .port-world .finish-actions { gap: 8px; padding: 10px; }
   .port-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+input, textarea, [contenteditable]:not([contenteditable='false']), [contenteditable]:not([contenteditable='false']) * { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 button, select, input { font: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }

@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>小小城市隊：小屋與工程車</title>
+  <rect width="512" height="512" fill="#d7e9e6"/>
+  <circle cx="256" cy="250" r="206" fill="#f7f3df"/>
+  <path d="M0 349Q245 280 512 349V512H0Z" fill="#bad4ad"/>
+  <path d="M-64 448Q259 323 576 433" fill="none" stroke="#8a9d92" stroke-width="68"/>
+  <path d="M20 426Q259 351 493 410" fill="none" stroke="#fff2ce" stroke-width="7" stroke-linecap="round" stroke-dasharray="28 28"/>
+  <g stroke="#476c68" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M126 257v66" fill="none" stroke="#9b8762" stroke-width="14"/>
+    <path d="M385 249v70" fill="none" stroke="#9b8762" stroke-width="14"/>
+    <path d="M103 251c-26-13-21-48 3-57-2-29 38-38 51-10 29 4 33 43 6 55-8 24-41 30-60 12Z" fill="#87b58b" stroke="none"/>
+    <path d="M367 257c-25-8-31-43-11-56-4-27 28-42 46-24 27-2 41 32 20 50 1 29-33 43-55 30Z" fill="#9abd91" stroke="none"/>
+    <path d="M206 188h128v140H206Z" fill="#f1dbb1" stroke-width="9"/>
+    <path d="M283 188h51v140h-51Z" fill="#e0bd92" stroke="none"/>
+    <path d="m187 189 83-76 83 76Z" fill="#d38268" stroke-width="10"/>
+    <path d="m202 182 68-61 12 61Z" fill="#e99e7c" stroke="none"/>
+    <rect x="228" y="211" width="39" height="40" rx="5" fill="#9ac9c7" stroke-width="7"/>
+    <path d="M248 216v30" stroke="#fff4d7" stroke-width="5"/>
+    <path d="M286 275h27v53h-27Z" fill="#85aaa1" stroke-width="7"/>
+    <path d="M142 295h136l-14 50H148Z" fill="#e5b04d" stroke-width="9"/>
+    <path d="M146 294h132" stroke="#ffe1a0" stroke-width="12"/>
+    <path d="M277 286h46q8 0 14 9l27 35v40H270v-76q0-8 7-8Z" fill="#f4c967" stroke-width="9"/>
+    <path d="M287 301h32l20 28h-52Z" fill="#abd6d3" stroke-width="7"/>
+    <path d="M146 347h124v23H146Z" fill="#e5b04d" stroke-width="9"/>
+    <path d="M136 371h236" stroke-width="12"/>
+    <path d="M345 349h15" stroke="#fff3cf" stroke-width="9"/>
+    <path d="M280 344h12" stroke-width="5"/>
+    <circle cx="180" cy="373" r="25" fill="#476c68" stroke-width="6"/>
+    <circle cx="324" cy="373" r="25" fill="#476c68" stroke-width="6"/>
+    <circle cx="180" cy="373" r="11" fill="#c1d3bb" stroke="none"/>
+    <circle cx="324" cy="373" r="11" fill="#c1d3bb" stroke="none"/>
+  </g>
+  <path d="M157 131v22m-11-11h22" stroke="#fffaf0" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="363" cy="134" r="8" fill="#f4c967"/>
+</svg>

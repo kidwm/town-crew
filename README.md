@@ -33,6 +33,28 @@ npm run dev
 - To use an installed Chrome instead: `PLAYWRIGHT_CHANNEL=chrome npm run test:e2e`.
   No machine-specific runtime paths are required.
 
+## Install and play offline
+
+The production build is a PWA. Use the browser's install action, or on iPhone/iPad
+choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
+icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
+
+On the first online visit, the service worker caches the menu and **all six missions**,
+including their lazy-loaded JavaScript. After that initial cache completes, reloads
+and switching to previously unopened missions work offline. New builds wait until
+all existing game tabs/windows close before activating, keeping a running mission
+on one consistent version. Saved progress and sound preferences keep their existing
+storage behavior. Service workers are disabled in Vite development mode.
+
+`npm run build` generates a content-versioned `dist/sw.js`; Cloudflare Pages headers
+allow the browser to check for worker and manifest updates. The editable icon source
+is `public/icons/town-crew.svg`, with PNG exports for 192/512px installation icons,
+a 512px maskable icon, a 180px Apple touch icon, and a 32px favicon.
+Regenerate the PNGs with `npm run icons` (or `PLAYWRIGHT_CHANNEL=chrome npm run icons`
+to use an installed Chrome).
+Game labels and controls prevent selection and iOS touch callouts; editable fields
+still allow normal text selection, and the menu retains touch scrolling.
+
 ## Choose a mission
 
 The entrance has six large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
