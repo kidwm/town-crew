@@ -21,6 +21,8 @@ function route(): MissionId | undefined {
   if (location.hash === '#traffic-rescue') return 'traffic-rescue';
   if (location.hash === '#police-patrol') return 'police-patrol';
   if (location.hash === '#fire-rescue') return 'fire-rescue';
+  if (location.hash === '#port-cargo') return 'port-cargo';
+  if (dev && params.get('mission') === 'port-cargo') return 'port-cargo';
   if (dev && params.get('mission') === 'police-patrol') return 'police-patrol';
   if (dev && params.get('mission') === 'traffic-rescue') return 'traffic-rescue';
   if (dev) return params.get('mission') === 'fire-rescue' ? 'fire-rescue' : params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
@@ -64,6 +66,15 @@ async function show() {
       if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else if (mission === 'port-cargo') {
+      const [{ createPortScene }, { createPortSession, createPortAudio }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/port-cargo/scene.ts'), import('./missions/port-cargo/session.ts'),
+      ]));
+      const session = createPortSession(app, dev, home, fresh);
+      if (fresh) session.save();
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createPortScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(createPortAudio), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     } else if (mission === 'police-patrol') {
       const [{ createPoliceScene }, { createPoliceSession, createPoliceAudio }] = yield* Effect.promise(() => Promise.all([

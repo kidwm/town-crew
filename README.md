@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, and help the police team in five replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, and move cargo at the dock in six replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -17,6 +17,7 @@ npm run dev
 - Help the fire brigade: <http://localhost:5173/#fire-rescue>
 - Help the traffic crew: <http://localhost:5173/#traffic-rescue>
 - Help the police team: <http://localhost:5173/#police-patrol>
+- Move cargo at the dock: <http://localhost:5173/#port-cargo>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -34,12 +35,53 @@ npm run dev
 
 ## Choose a mission
 
-The entrance has five large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has six large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Move cargo at the dock
+
+1. Drag the small cargo boat to its berth. It follows the waterway, pauses on
+   release, then automatically moors when it reaches the actual berth.
+2. Drag the empty green material flatbed into the foreground loading bay.
+3. Drag either of the two pallet boxes from the open deck to the highlighted quay
+   space. The original yellow mobile crane hooks it, raises it clear of the boat,
+   then follows the drag. A 0.4-second hold places it automatically; a valid early
+   release also finishes raising, crossing and lowering safely. A cancelled or
+   missed delivery retains the suspended box and its position. Choose either
+   unloading order. Both boxes must be ashore before the crane stows and leaves.
+4. Drag the forklift toward either pallet. The first pickup uses the outer
+   side, then inserts horizontally and lifts with its side visible in either
+   mirrored view. Pallets turn into position while unloading; symbols on all
+   four faces retain their identity. Start a new drag
+   toward the truck-side loading position. It carries low, reverses clear of the
+   other pallet before turning, stops outside the truck, raises the box, moves
+   forward to place it, then reverses and lowers its forks. Choose either loading
+   order independently of the crane order. After the first delivery it parks
+   between the quay bays. The second pickup uses the vacated first bay and a
+   shorter approach; both bays are then clear for a direct turn toward the truck.
+   Two trips load both boxes.
+5. The forklift leaves before the child drags the loaded flatbed out. The empty
+   boat unmoors and departs along the waterway. A six-second town delivery animation
+   and waving workers lead directly into confetti and replay/selection buttons.
+
+Two complete mirrored layouts coordinate the boat, crane supports, two quay
+spaces, forklift routes, truck bay and hints. Fresh rounds alternate layout and
+change the boat palette; reload/HMR retains the current round, unloading/loading
+orders, partial vehicle movement, suspended cargo, fork load and automatic clocks.
+Pointer ownership and uncommitted dwell are discarded on restore. A still-held
+finger cannot start the next box or drive the forklift after automatic pickup.
+Cargo identity uses an apple or stacked-block symbol as well as colour.
+There is no timer, penalty, sorting quiz or extra confirmation screen.
+
+The crane and flatbed are the original house-building models extracted into
+`src/runtime/construction-models.ts`; default house cargo and appearance remain.
+The forklift, coastal cargo boat, pallet boxes and quay are new procedural models.
+Workers, trees and houses reuse existing builders. There are two crane lifts and
+two forklift trips in every round, with no container stacking or extra destination.
 
 ## Help the police team
 
@@ -274,6 +316,11 @@ Police entries use `?dev=1&mission=police-patrol&stage=…`:
 to inspect a configuration. The panel switches configurations and resets stages;
 reload and HMR retain independent development progress.
 
+Port entries use `?dev=1&mission=port-cargo&stage=…`:
+`boat`, `truck`, `unload`, `crane-exit`, `forklift`, `forklift-exit`, `transport`,
+`departure`, `arrival`, and `complete`. Add `layout=0|1` and `palette=0..3`.
+Stage resets retain the current layout and palette, with independent development saves.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -327,6 +374,8 @@ road-repair sequence.
   continuous street cleaning and ambulance transport.
 - `src/missions/police-patrol/`: independent police cooperation, four route configurations,
   two motorcycle dispatches, sliding-door boarding and escorted transport.
+- `src/missions/port-cargo/`: independent two-pallet unloading, forklift pickup/loading, mirrored port routes, cargo persistence and town delivery.
+- `src/runtime/construction-models.ts`: original house flatbed, crane, chassis and link helper; the flatbed can omit the house material panels.
 - `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and
   bench shared with the police mission; officer colours live in `emergency-models.ts`.
 - `src/runtime/traffic-cone.ts`: the original hollow road-repair cone, shared by
@@ -350,7 +399,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The five missions have 119 domain tests, covering fixed arm lengths,
+The six missions have 156 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
@@ -368,6 +417,8 @@ Police rules cover all four configurations and both motorcycle orders, interrupt
 driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
 entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
 along all routes against the four buildings.
+Port rules cover both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, nonrepeating rounds, side-view pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
+The port browser suite follows the visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried cargo across HMR and stage reset.
 The police browser suite exercises all four configurations on mouse and phone touch,
 including cancellation, reload, boarding, badges, replay and development HMR.
 The access tests check vehicle clearance throughout entrance/departure,

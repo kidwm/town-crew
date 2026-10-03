@@ -5,6 +5,27 @@
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
+/* Port input stays on the canvas; these outlines only show real destinations. */
+.port-targets { position: absolute; inset: 0; pointer-events: none; }
+.port-target[hidden] { display: none; }
+.port-source { position: absolute; width: 48px; height: 48px; transform: translate(-50%, -50%); border: 2px solid #fff6d2; border-radius: 13px; box-shadow: 0 0 0 4px #fff5cd24; }
+.port-world .progress { width: 205px; }
+.port-tally { position: absolute; right: 30px; bottom: 110px; display: flex; gap: 8px; pointer-events: none; }
+.port-tally > span { position: relative; width: 42px; height: 42px; background: #fff9e8dc; border-radius: 12px; padding: 4px; }
+.port-tally svg { width: 100%; height: 100%; }
+.port-tally b { position: absolute; right: -3px; top: -6px; color: #60886a; font-size: 16px; }
+.port-arrival { bottom: 160px; }
+.port-world .drag-hint { filter: drop-shadow(0 2px 2px #42523b70); }
+@media (max-width: 650px) {
+  .port-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }
+  .port-world .mission-badge strong { font-size: 13px; }
+  .port-world .mission-steps { left: 16px; right: auto; bottom: 22px; }
+  .port-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .port-world .drag-hint-hand > * { transform: scale(.75); }
+  .port-tally { right: 14px; bottom: 135px; }
+  .port-world .finish-actions { gap: 8px; padding: 10px; }
+  .port-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
 button, select, input { font: inherit; }

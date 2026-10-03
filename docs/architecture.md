@@ -25,6 +25,10 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/towing.ts — mirrored approach routes, flatbed loading and wheel-lift ground contact
        │    ├─ scene.ts + vehicles.ts — street, police, flatbed and rotating sweeper brushes
        │    └─ session.ts + ui.ts — input, hints, snapshots and audio cues
+       ├─ port-cargo/
+       │    ├─ domain/port.ts — mirrored port round, two crane lifts, two fork trips and cargo recovery
+       │    ├─ scene.ts + vehicles.ts — boat, quay, pallet boxes and forklift; shared crane/flatbed
+       │    └─ session.ts + ui.ts — pointer intent, cues, independent snapshots and stage entry
        └─ police-patrol/
             ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
             ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
@@ -125,6 +129,28 @@ CI runs desktop and touch in separate runners, with one graphical browser per
 runner; the desktop job also runs the development checks. Local suites remain
 sequential so graphical runs do not compete for the same GPU.
 
+The port mission owns a version-1 snapshot and separate production/development keys.
+Its two mirrored layouts use local work coordinates, transformed at the scene boundary
+for rendering, picking, projected hints and destinations. Unloading and loading orders
+are independent cargo-ID arrays; the current suspended box, fork choice/load, drive
+fractions and automatic elapsed time survive reload. Desired input and endpoint dwell
+are cleared. A valid early cargo release runs a safe raise/traverse/lower sequence.
+The first fork pickup approaches from the pallet's outer side, with a curved turn
+clear of the quay edge and a horizontal final insertion visible in both mirrored
+views. After the first delivery, the forklift parks between the quay bays; its
+second approach changes side to enter through the vacant first bay. This shorter
+route and the parking position derive from loaded cargo IDs, so reload retains them.
+First-trip transport reverses along the pickup route clear of the other pallet;
+the second trip can reverse out and turn directly toward the truck. Quay pallet
+orientation matches the approach, and routes remain clear of people. The side loading
+position remains outside the truck: automatic loading raises first, inserts second,
+then withdraws before lowering. Crane departure completes before fork work; forklift
+departure completes before manual hauling. Reaching the exit lane hands off the
+remaining truck departure automatically; scene exit distances account for viewport
+width and whole-vehicle lengths in either layout. Town arrival derives SVG animation from
+the saved clock. `runtime/construction-models.ts` preserves the original house chassis,
+crane and flatbed; the flatbed's optional panels default to the original house cargo.
+
 ## Further missions
 
 Read the [mission design principles and proposal checklist](mission-design.md) at the start of design.
@@ -146,7 +172,7 @@ sync with additions, moves, changes and deliberate variants.
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the five missions. Further abstractions
+progress storage are shared by the six missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History
