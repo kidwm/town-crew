@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, and move cargo at the dock in six replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, and clear a mountain road in seven replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -18,6 +18,7 @@ npm run dev
 - Help the traffic crew: <http://localhost:5173/#traffic-rescue>
 - Help the police team: <http://localhost:5173/#police-patrol>
 - Move cargo at the dock: <http://localhost:5173/#port-cargo>
+- Clear a mountain road: <http://localhost:5173/#mountain-clearance>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -39,7 +40,7 @@ The production build is a PWA. Use the browser's install action, or on iPhone/iP
 choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
 icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
 
-On the first online visit, the service worker caches the menu and **all six missions**,
+On the first online visit, the service worker caches the menu and **all seven missions**,
 including their lazy-loaded JavaScript. After that initial cache completes, reloads
 and switching to previously unopened missions work offline. New builds wait until
 all existing game tabs/windows close before activating, keeping a running mission
@@ -64,12 +65,52 @@ still allow normal text selection, and the menu retains touch scrolling.
 
 ## Choose a mission
 
-The entrance has six large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has seven large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Clear a mountain road
+
+1. Drag the yellow tracked bulldozer toward the mountain-side collection area.
+   Two diagonal routes expose the blade and moving soil within the mission's fixed
+   camera view. It raises the blade, retreats behind the soil strips and moves to
+   the second strip automatically; a new drag completes the
+   second push. Both pushes retain partial work on release, cancellation and reload.
+2. The bulldozer leaves, the empty green cleanup truck arrives in the mountain-side
+   apron, and the existing excavator parks beside it. Drag the bucket to any of
+   three original natural boulders. A 0.4-second hold or valid release aligns,
+   scoops and raises it, then parks the raised bucket clear of the targets. Start
+   a new drag on the bucket or carried rock toward the
+   real truck bed. Another hold or valid release aligns above the cab and unloads.
+   Choose all three rocks' loading order; each scoop also removes some collected
+   soil. Visible truck cargo keeps the rock identities and order, with the third
+   rock stacked above the first two. Cancellation preserves the bucket and load.
+3. The excavator leaves before the child drags the loaded truck out. Partial hauling
+   and all cargo survive release and reload. Reaching the exit hands off the rest
+   of the departure automatically.
+4. The existing sweeper arrives on the foreground road. Drag it across once; its
+   rotating brushes progressively remove the fine residue. Cleaned sections remain
+   cleaned after interruption. The sweeper leaves before the barriers move aside.
+5. A six-second reopening animation sends the waiting car along the mountain road.
+   Workers wave; confetti, replay and selection buttons appear without another tap.
+
+There are two pushes, three bucket loads, one haul and one sweep in every round.
+Two rock distributions and two mirrored layouts coordinate vehicles, targets and
+hints. New rounds change the rock distribution; layout is chosen independently.
+Reload/HMR retain the round, pushed soil, bucket/load position, chosen loading order,
+hauling/cleaning progress and automatic clocks; pointer ownership and uncommitted
+hold time are discarded. A still-held finger cannot start another push or deliver
+an automatically picked-up rock. Development stage resets retain the configuration.
+
+The original `createBoulder` geometry, radius 0.57 and grey-brown material remain.
+The road excavator, road barrier and traffic sweeper are extracted into renderer-only
+shared builders, preserving both original missions. The green dump truck, workers, trees,
+cones, barriers and passing car reuse existing models. The bulldozer, faceted mountain
+slopes, low guardrail and soil piles are new procedural scene elements. The road
+beneath the landslide is intact, so there is no extra filling or rolling operation.
 
 ## Move cargo at the dock
 
@@ -378,6 +419,13 @@ Add `layout=0|1` and `palette=0..3`. The panel switches direction and lists its 
 stages; an incompatible stage resets to boat entry. Stage resets retain direction,
 layout and palette, with independent development saves.
 
+Mountain entries use `?dev=1&mission=mountain-clearance&stage=…`:
+`intro`, `push`, `dozer-exit`, `truck-arrival`, `excavator-arrival`, `excavate`,
+`excavator-exit`, `haul`, `truck-exit`, `sweeper-arrival`, `sweep`, `sweeper-exit`,
+`reopen`, and `complete`. Add `pattern=spread|cluster` and `layout=0|1`.
+The panel selects either distribution/layout and resets stages without rerolling;
+reload and HMR preserve independent development progress.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -432,6 +480,8 @@ road-repair sequence.
 - `src/missions/police-patrol/`: independent police cooperation, four route configurations,
   two motorcycle dispatches, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
+- `src/missions/mountain-clearance/`: independent pushing, three-rock loading, hauling, sweeping, mirrored routes and versioned recovery.
+- `src/runtime/excavator-model.ts`, `excavator-arm.ts`, `road-barrier.ts`, `sweeper.ts`: the original road excavator, pure arm geometry, road barrier and original traffic sweeper shared with mountain clearance.
 - `src/runtime/construction-models.ts`: original house flatbed, crane, chassis and link helper; the flatbed can omit the house material panels.
 - `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and
   bench shared with the police mission; officer colours live in `emergency-models.ts`.
@@ -456,7 +506,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The six missions have 169 domain tests, covering fixed arm lengths,
+The seven missions have 201 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
@@ -476,6 +526,7 @@ driving and door opening, held-pointer isolation, nonrepeating rounds, valid sta
 entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
 along all routes against the four buildings.
 Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1/2 crane migration, empty hook pickup, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
+Mountain rules cover all four configurations and all six rock orders, fixed arm reach, actual vehicle footprints, partial driving/cleaning, cancelled dwell, automatic clocks, malformed saves and nonrepeating distributions. Browser checks follow all four configurations on mouse and portrait-phone touch, retain carried and truck-loaded rocks across reload, isolate held pointers, reopen the road, award badges and restart. Development checks cover carried rocks across reload/HMR and stage/configuration resets.
 The port browser suite follows both directions and layouts using visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried and suspended cargo across HMR/reload, direction switching and stage reset.
 The police browser suite exercises all four configurations on mouse and phone touch,
 including cancellation, reload, boarding, badges, replay and development HMR.

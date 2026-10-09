@@ -9,7 +9,7 @@ for (const sample of [0.05, 0.3, 0.55, 0.8]) {
     if (touch) await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(n => { Math.random = () => n; }, sample);
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(6);
+    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(7);
     await page.getByRole('button', { name: '小小警察隊', exact: true }).click();
     const app = page.locator('#app'), { down, move: touchMove, up, cancel, wait } = await fireControls(page, touch);
     const move = p => touch ? touchMove(p) : page.mouse.move(p.x, p.y);

@@ -1,4 +1,5 @@
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
+import { createRoadBarrier } from '../../runtime/road-barrier.ts';
 import { passingCarX } from '../../runtime/passing-car.ts';
 import * as THREE from 'three';
 import { pose } from './domain/dump-truck.ts';
@@ -89,14 +90,8 @@ export function createScene(host: HTMLElement) {
   const car = createCarVisual(shapes);
   site.add(car.root);
   const barriers = BARRIER_X.map(x => {
-    const root = new THREE.Group();
+    const root = createRoadBarrier(shapes);
     root.position.x = x;
-    for (const z of [-1, 1]) {
-      box(root, [0.4, 0.12, 0.55], [0, 0.03, z], '#61716b');
-      box(root, [0.14, 1.2, 0.14], [0, 0.65, z], '#e0c074');
-    }
-    box(root, [0.17, 0.4, 2.8], [0, 0.95, 0], '#f3c463');
-    for (const z of [-1.1, -0.55, 0, 0.55, 1.1]) box(root, [0.19, 0.4, 0.22], [0, 0.95, z], '#f6f1d5');
     site.add(root);
     return root;
   });

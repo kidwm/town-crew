@@ -24,6 +24,8 @@ function route(): MissionId | undefined {
   if (location.hash === '#police-patrol') return 'police-patrol';
   if (location.hash === '#fire-rescue') return 'fire-rescue';
   if (location.hash === '#port-cargo') return 'port-cargo';
+  if (location.hash === '#mountain-clearance') return 'mountain-clearance';
+  if (dev && params.get('mission') === 'mountain-clearance') return 'mountain-clearance';
   if (dev && params.get('mission') === 'port-cargo') return 'port-cargo';
   if (dev && params.get('mission') === 'police-patrol') return 'police-patrol';
   if (dev && params.get('mission') === 'traffic-rescue') return 'traffic-rescue';
@@ -77,6 +79,15 @@ async function show() {
       if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createPortScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(createPortAudio), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else if (mission === 'mountain-clearance') {
+      const [{ createMountainScene }, { createMountainSession, createMountainAudio }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/mountain-clearance/scene.ts'), import('./missions/mountain-clearance/session.ts'),
+      ]));
+      const session = createMountainSession(app, dev, home, fresh);
+      if (fresh) session.save();
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createMountainScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(createMountainAudio), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     } else if (mission === 'police-patrol') {
       const [{ createPoliceScene }, { createPoliceSession, createPoliceAudio }] = yield* Effect.promise(() => Promise.all([

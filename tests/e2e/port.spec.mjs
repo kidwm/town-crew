@@ -11,7 +11,7 @@ for (const layout of [0, 1]) {
     await page.clock.install();
     await page.addInitScript(n => { Math.random = () => n; }, layout ? 0.6 : 0.1);
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(6);
+    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(7);
     await page.getByRole('button', { name: '碼頭搬貨', exact: true }).click();
     const app = page.locator('#app'), { down, move, up, cancel } = await fireControls(page, touch);
     const wait = (phase, action = 'ready') => expect(page.locator(`#app[data-phase="${phase}"][data-action="${action}"]`)).toBeVisible();

@@ -5,6 +5,24 @@
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
 }
+.mountain-targets { position: absolute; inset: 0; pointer-events: none; }
+.mountain-goal, .mountain-grip { position: absolute; transform: translate(-50%, -50%); border: 2px dashed #fff6cf; border-radius: 50%; width: 42px; height: 42px; pointer-events: none; box-shadow: 0 0 0 3px #fff5cd25; }
+.mountain-goal[data-ready='true'] { border-style: solid; border-color: #ecffd0; background: #92c28b66; }
+.mountain-bed { width: 68px; height: 54px; border-radius: 14px; display: grid; place-items: center; color: #fff6cf; font-size: 26px; }
+.mountain-grip { border-style: solid; width: 46px; height: 46px; background: #fff5c214; box-shadow: 0 0 0 3px #82602599; }
+.mountain-grip[hidden] { display: none; }
+.mountain-world .drag-hint { filter: drop-shadow(0 2px 2px #42523b90); }
+@media (max-width: 650px) {
+  .mountain-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }
+  .mountain-world .mission-badge strong { font-size: 13px; }
+  .mountain-world .mission-steps { left: 16px; right: auto; bottom: 22px; }
+  .mountain-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .mountain-goal { width: 30px; height: 30px; }
+  .mountain-bed { width: 58px; height: 44px; }
+  .mountain-world .drag-hint-hand > * { transform: scale(.75); }
+  .mountain-world .finish-actions { gap: 8px; padding: 10px; }
+  .mountain-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}
 /* Port input stays on the canvas; these outlines only show real destinations. */
 .port-targets { position: absolute; inset: 0; pointer-events: none; }
 .port-target[hidden] { display: none; }

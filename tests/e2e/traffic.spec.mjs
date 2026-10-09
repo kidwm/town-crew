@@ -10,7 +10,7 @@ test('traffic crew controls the scene, tows both colours, sweeps and transports 
   // Exercise opposite random assignments as well as opposite child choices.
   await page.addInitScript(sample => { Math.random = () => sample; }, touch ? 0.75 : 0.25);
   page.on('pageerror', e => errors.push(e.message)); await page.clock.install();
-  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(6);
+  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(7);
   await page.getByRole('button', { name: '交通救援隊', exact: true }).click();
   const app = page.locator('#app'), { down, move, up, cancel, wait } = await fireControls(page, touch);
   async function hinted() { const hint = page.locator('.drag-hint'); await expect(hint).toBeVisible(); return gesture(page, await hint.getAttribute('data-direction')); }

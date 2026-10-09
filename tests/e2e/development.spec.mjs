@@ -4,6 +4,25 @@ import { fireControls } from './fire-controls.mjs';
 import { withPausedClock } from './timing.mjs';
 import * as THREE from 'three';
 
+test('mountain development retains a carried boulder through reload and HMR and can reset all configurations', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs'); const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/?dev=1&mission=mountain-clearance&stage=excavate&pattern=cluster&layout=1');
+  const app = page.locator('#app'), { wait, down, up } = await fireControls(page);
+  await wait('excavate'); let h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); const r = await page.locator('.mountain-goal[data-goal="2"]').boundingBox(); await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+  await expect(app).toHaveAttribute('data-carried', '2'); await up(); await wait('excavate');
+  await page.reload(); await wait('excavate'); await expect(app).toHaveAttribute('data-carried', '2');
+  const world = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, world); await wait('excavate');
+  await expect(app).toHaveAttribute('data-carried', '2'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-pattern', 'cluster'); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await wait('excavate'); await expect(app).toHaveAttribute('data-carried', ''); await expect(app).toHaveAttribute('data-delivered', '');
+  await page.locator('#layout').selectOption('0'); await page.locator('#pattern').selectOption('spread'); await wait('excavate'); await expect(app).toHaveAttribute('data-layout', '0'); await expect(app).toHaveAttribute('data-pattern', 'spread');
+  await page.locator('#stage').selectOption('haul'); await wait('haul'); await expect(app).toHaveAttribute('data-delivered', '0,1,2');
+  h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction')); await down(h.from); await page.mouse.move((h.from.x + h.to.x) / 2, (h.from.y + h.to.y) / 2); await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).haul).toBeGreaterThan(0.05); await up();
+  const work = await app.getAttribute('data-work'); await page.reload(); await wait('haul'); await expect(app).toHaveAttribute('data-work', work);
+  expect(errors).toEqual([]);
+});
+
 test('port development retains the chosen fork load through reload, HMR and stage reset', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
   const errors = []; page.on('pageerror', e => errors.push(e.message));

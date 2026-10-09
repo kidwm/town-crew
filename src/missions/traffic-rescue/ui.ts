@@ -1,13 +1,7 @@
 import { stages, towType, towDirection } from './domain/traffic.ts';
 import type { Stage, Goal, TrafficState } from './domain/traffic.ts';
-const icon = (body: string, extra: string) => `<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M3 17h30v15H3Z" fill="${body}"/><path d="M33 14h9l5 10v8H33Z" fill="${body}"/><path d="M35 17h5l4 7h-9Z" fill="#b6dcd9"/>${extra}<circle cx="11" cy="33" r="5" fill="#526c66"/><circle cx="38" cy="33" r="5" fill="#526c66"/></svg>`;
-export const icons = {
-  police: icon('#eee8d5', '<path d="M3 27h43" stroke="#749aaf" stroke-width="5"/><path d="M18 13h12" stroke="#d58d7b" stroke-width="4"/>'),
-  tow: icon('#e3b360', '<path d="M2 25h30v5H2Z" fill="#7f9b95"/><path d="M8 14h18v10H8Z" fill="#d8947e"/><path d="M11 10h11v6H11Z" fill="#b3d6ce"/>'),
-  sweeper: icon('#9aba9d', '<path d="M6 13h23v14H6Z" fill="#b4c8a7"/><path d="M8 17h18m-18 4h18" stroke="#809d8d" stroke-width="2"/><ellipse cx="29" cy="34" rx="9" ry="3" fill="#d9bb7a"/>'),
-  ambulance: icon('#f0e9d5', '<path d="M3 29h43M14 21h10m-5-5v10" stroke="#80ad9e" stroke-width="4"/><path d="M34 11h8" stroke="#d89779" stroke-width="3"/>'),
-};
-export const liftIcon = icon('#e3b360', '<path d="M29 18 11 5 3 23" fill="none" stroke="#809b93" stroke-width="4"/><path d="M3 23v5h12" fill="none" stroke="#eac87e" stroke-width="3"/>');
+import { icons, liftIcon } from '../../app/traffic-vehicle-art.ts';
+export { icons, liftIcon } from '../../app/traffic-vehicle-art.ts';
 export const names: Record<Stage, string> = { collision: '小碰撞，大家來幫忙', police: '警車 · 安全停靠', cones: '警員 · 圍好事故區', 'tow-arrival': '拖吊車來了', hook: '拖吊車 · 接上掛鉤', 'tow-exit': '拖吊車 · 送去修理', sweeper: '清掃車 · 準備清掃', sweep: '清掃車 · 刷乾淨道路', ambulance: '救護車 · 準備接送', stretcher: '救護員來幫忙', boarding: '平安送上救護車', departure: '一起出發去醫院', reopen: '收好交通錐，恢復通車', complete: '道路乾淨，大家平安！' };
 export const instructions: Record<Stage, string> = { collision: '小車停下來，居民到路旁等候', police: '把警車拖到停車位', cones: '把交通錐拖到發亮的輪廓', 'tow-arrival': '拖吊車慢慢倒進來', hook: '把拖吊工具拖到想救的小客車', 'tow-exit': '載好了，把拖吊車往外拖', sweeper: '把清掃車拖到道路起點', sweep: '按住清掃車，往右刷乾淨', ambulance: '把救護車拖到接送車位', stretcher: '把擔架拖到居民身旁', boarding: '把擔架拖回救護車後門', departure: '繫好了，平安出發', reopen: '警員收好交通錐，小車可以通過了', complete: '謝謝你，一起讓小鎮恢復通車' };
 export const goalNames: Record<Goal, string> = { 'cone-left': '交通錐', 'cone-right': '交通錐', 'car-0': '小客車', 'car-1': '小客車', patient: '居民身旁', ambulance: '救護車後門' };

@@ -1,11 +1,7 @@
 import { DAMAGE, DAMAGE_PATTERNS } from './domain/round.ts';
 
-export const icons = {
-  excavator: '<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="3" y="29" width="26" height="8" rx="4" fill="#536665"/><rect x="6" y="20" width="23" height="10" rx="2" fill="#e9b24d"/><rect x="7" y="10" width="11" height="13" rx="2" fill="#edc367"/><path d="M23 22L25 5L37 13L40 27" fill="none" stroke="#d89b35" stroke-width="4" stroke-linecap="round"/><path d="M35 26L44 25L43 32L36 32Z" fill="#e9b24d"/></svg>',
-  'haul-away': '<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 14H17V29H4Z" fill="#74a28b"/><path d="M7 16H14V22H7Z" fill="#c3e6e3"/><rect x="3" y="27" width="41" height="5" rx="2" fill="#4b6864"/><path d="M19 12H44L40 26H19Z" fill="#ad7761"/><path d="M22 12l6-4 6 3 7-2 2 4Z" fill="#535f65"/><circle cx="11" cy="32" r="5" fill="#536665"/><circle cx="35" cy="32" r="5" fill="#536665"/></svg>',
-  'dump-truck': '<svg viewBox="0 0 48 40" aria-hidden="true"><path d="M4 14H17V29H4Z" fill="#489aba"/><path d="M7 16H14V22H7Z" fill="#c3e6e3"/><rect x="3" y="27" width="41" height="5" rx="2" fill="#4b7485"/><path d="M19 12H44L40 26H19Z" fill="#edb34f"/><circle cx="11" cy="32" r="5" fill="#536665"/><circle cx="35" cy="32" r="5" fill="#536665"/></svg>',
-  roller: '<svg viewBox="0 0 48 40" aria-hidden="true"><rect x="4" y="20" width="29" height="10" rx="2" fill="#dba344"/><path d="M16 23V9H29" fill="none" stroke="#6e8074" stroke-width="3"/><rect x="12" y="6" width="22" height="4" rx="2" fill="#ecc367"/><circle cx="12" cy="31" r="7" fill="#536665"/><rect x="31" y="23" width="14" height="14" rx="6" fill="#91a9a9"/></svg>',
-};
+import { icons } from '../../app/road-vehicle-art.ts';
+export { icons } from '../../app/road-vehicle-art.ts';
 export function mountUI(app: HTMLElement, dev: boolean) {
   app.innerHTML = `
   <main class="world road-world" aria-label="小小城市隊修路任務">

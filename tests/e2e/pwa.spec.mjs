@@ -66,7 +66,7 @@ test('Cloudflare HTML redirects remain safe for offline navigation and reopening
     // A followed redirect must never be returned as a navigation response.
     const reload = await page.reload();
     expect(reload.fromServiceWorker()).toBe(true);
-    await expect(page.locator('.mission-card')).toHaveCount(6);
+    await expect(page.locator('.mission-card')).toHaveCount(7);
     // Playwright 1.63 WebKit's offline flag kills SW responses before dispatch:
     // https://github.com/microsoft/playwright/issues/42775
     // Stop the actual origin to verify cache-only navigation without that flag.
@@ -74,11 +74,11 @@ test('Cloudflare HTML redirects remain safe for offline navigation and reopening
     else await context.setOffline(true);
     const offlineReload = await page.reload();
     expect(offlineReload.fromServiceWorker()).toBe(true);
-    await expect(page.locator('.mission-card')).toHaveCount(6);
+    await expect(page.locator('.mission-card')).toHaveCount(7);
     await page.close();
     const reopened = await context.newPage();
     await reopened.goto(`${preview.url}/?source=home#menu`);
-    await expect(reopened.locator('.mission-card')).toHaveCount(6);
+    await expect(reopened.locator('.mission-card')).toHaveCount(7);
     await reopened.close();
   } finally {
     await context.setOffline(false);
@@ -92,13 +92,13 @@ test('menu reloads and all previously unopened missions load offline', async ({ 
   const preview = browserName === 'webkit' ? await cloudflarePreview() : undefined;
   try {
     await page.goto(preview?.url ?? '/');
-    await expect(page.locator('.mission-card')).toHaveCount(6);
+    await expect(page.locator('.mission-card')).toHaveCount(7);
     await waitForOfflineReady(page);
     if (preview) await preview.close();
     else await context.setOffline(true);
     await page.reload();
-    await expect(page.locator('.mission-card')).toHaveCount(6);
-    const missions = ['road-repair', 'house-build', 'fire-rescue', 'traffic-rescue', 'police-patrol', 'port-cargo'];
+    await expect(page.locator('.mission-card')).toHaveCount(7);
+    const missions = ['road-repair', 'house-build', 'fire-rescue', 'traffic-rescue', 'police-patrol', 'port-cargo', 'mountain-clearance'];
     for (const mission of missions) {
       await page.locator(`.mission-card[data-mission="${mission}"]`).click();
       await expect(page.locator('#app')).toHaveAttribute('data-mission', mission);
@@ -108,7 +108,7 @@ test('menu reloads and all previously unopened missions load offline', async ({ 
       await expect(page.locator('canvas')).toBeVisible();
       await expect(page.locator('.loading')).toBeHidden();
       await page.getByRole('button', { name: '回到選關', exact: true }).click();
-      await expect(page.locator('.mission-card')).toHaveCount(6);
+      await expect(page.locator('.mission-card')).toHaveCount(7);
     }
     expect(errors).toEqual([]);
   } finally {

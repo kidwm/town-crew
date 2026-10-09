@@ -29,6 +29,10 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/port.ts — two cargo directions, mirrored dock round, crane/fork trips and cargo recovery
        │    ├─ scene.ts + vehicles.ts — boat, quay, pallet boxes and forklift; shared crane/flatbed
        │    └─ session.ts + ui.ts — pointer intent, cues, independent snapshots and stage entry
+       ├─ mountain-clearance/
+       │    ├─ domain/mountain.ts — two pushes, three rock loads, haul/sweep and round recovery
+       │    ├─ scene.ts + vehicles.ts — mountain apron, bulldozer and shared work vehicles
+       │    └─ session.ts + ui.ts — pointer isolation, optional saves and stage/configuration selectors
        └─ police-patrol/
             ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
             ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
@@ -51,6 +55,12 @@ The Effect scope releases input/frame listeners, audio and scene resources on
 HMR. The primary-pointer adapter owns capture and cancellation. The controller
 maps screen movement to bucket/roller world coordinates or truck drag distance.
 Gameplay advances through ordinary functions and is independent of audio success.
+Each mission uses one fixed orthographic camera pose from introduction through
+completion. Phase changes, work, handoffs and celebrations must not move, rotate,
+zoom, switch or follow with the camera. Resolve occlusion through scene layout,
+vehicle orientation and routes. Responsive frustum sizing may fit the viewport
+without changing camera position or orientation; see the
+[fixed-view design rule](mission-design.md#整關維持同一視角).
 Crane picking accepts the projected final part and its assembly base, with a
 small CSS-pixel margin; the former elevated target remains an alternative.
 A continuous 0.4-second dwell commits placement before releasing pointer
@@ -170,6 +180,27 @@ width and whole-vehicle lengths in either layout. Town arrival derives SVG anima
 the saved clock. `runtime/construction-models.ts` preserves the original house chassis,
 crane and flatbed; the flatbed's optional panels default to the original house cargo.
 
+The mountain mission owns a version-1 snapshot and two rock distributions with two
+mirrored layouts. New rounds alternate distribution and independently choose layout;
+loading order is child-controlled. Both soil strips and their bulldozer routes are
+diagonal within the fixed camera view, exposing the blade and moving soil. A first
+push retreats behind both strips before changing lanes and accepting another
+gesture. The widened foreground road and guardrail leave whole-vehicle clearance.
+Pickup raises the rock and parks the high
+bucket clear of rock/bed targets so phone projections retain a usable drag distance.
+Automatic pickup/unloading releases pointer
+ownership. Bucket/load positions, ordered rock IDs, soil fractions, hauling, cleaning
+and animation clocks persist; uncommitted dwell and pointer targets are cleared.
+Truck arrival precedes excavator arrival, excavator departure precedes manual hauling,
+and truck departure precedes the sweeper. The six-second reopening clock moves
+barriers before passing traffic and resumes across reload. Development saves are
+separate and configuration selectors retain the current stage.
+`runtime/excavator-model.ts` preserves the original road renderer while pure fixed-arm
+math lives in `runtime/excavator-arm.ts`; `runtime/sweeper.ts` preserves the original
+traffic sweeper; `runtime/road-barrier.ts` preserves the original road barrier.
+Original mission exports and behavior remain. Shared SVG vehicle
+icons live in `app/road-vehicle-art.ts` and `app/traffic-vehicle-art.ts`.
+
 ## Further missions
 
 Read the [mission design principles and proposal checklist](mission-design.md) at the start of design.
@@ -191,7 +222,7 @@ sync with additions, moves, changes and deliberate variants.
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the six missions. Further abstractions
+progress storage are shared by the seven missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

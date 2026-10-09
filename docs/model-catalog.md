@@ -1,6 +1,6 @@
 # Town Crew 建模清單
 
-盤點日期：2026-10-03。範圍為目前六個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
+盤點日期：2026-10-09。範圍為目前七個 Web 關卡的程序化 3D 模型、主要道具與場景物件。
 Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式建立，沒有集中存放的外部模型檔。
 
 **新增關卡或物件前，先查本清單，再搜尋原始碼。**
@@ -29,12 +29,12 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 救援車底盤與駕駛室 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `chassis` | 消防車、雲梯車、救護車、拖吊車、清掃車 | 四輪、車窗、後視鏡、警示燈、位移帶動的車輪；上裝由各車型建立。不能因此視為所有工程車底盤都已統一。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 奶油白車身、綠色條紋、可開合後門與中空後艙，擔架可實際進入。 |
 | 擔架 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createStretcher` | 消防救援、交通救援 | 有輪底架、床墊、枕頭、護欄與乘員／毯子顯示狀態。 |
-| 居民與制服人物 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`、`createOfficer` | 消防救援、交通救援、警察隊、碼頭搬貨 | 共用人物輪廓及可動手臂；警員制服由共用函式設定，救護員由交通場景設定。蓋房子的住戶另有實作。 |
-| 天然大石頭 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder` | 保留供山路等未來關卡使用 | 原修馬路的十二面體大石頭；保留半徑 0.57、原灰褐色材質及旋轉變體。可傳入 0.38 產生原小石頭尺寸。現在市區修路不再擺放天然巨石，模型仍可直接匯入。 |
+| 居民與制服人物 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson`、`createOfficer` | 消防救援、交通救援、警察隊、碼頭搬貨、山路搶通 | 共用人物輪廓及可動手臂；警員制服由共用函式設定，救護員由交通場景設定。蓋房子的住戶另有實作。 |
+| 天然大石頭 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder` | 山路搶通／共用模型庫 | 原修馬路的十二面體大石頭；保留半徑 0.57、原灰褐色材質及旋轉變體。可傳入 0.38 產生原小石頭尺寸。現在市區修路不再擺放天然巨石，模型仍可直接匯入。 |
 | 破損瀝青路面塊 | [rocks.ts](../src/runtime/rocks.ts) · `createAsphaltChunk` | 修馬路的待挖區、挖斗及清運車載料 | 新增扁平不規則路面塊，深灰瀝青表面、淺灰碎料斷面與裂紋；與天然石頭是不同模型，不覆蓋原模型。 |
-| 修路傾卸車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路的運料車、清運車 | 從原修路場景抽取，保留四輪、後鉸鏈車斗、車斗前端抓取點與原運料車配色。清運變體採綠色車頭、棕色空斗，由關卡加入舊路面載料及設定 0.72 倍大小。 |
+| 修路傾卸車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路的運料車、清運車及山路清運車 | 從原修路場景抽取，保留四輪、後鉸鏈車斗、車斗前端抓取點與原運料車配色。清運變體採綠色車頭、棕色空斗，由關卡加入舊路面載料及設定 0.72 倍大小。 |
 | 工程底盤、材料平板車與吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createConstructionChassis`、`createFlatbed`、`createCrane` | 蓋房子、碼頭搬貨 | 原蓋房子模型抽出，保留材質、幾何、六輪平板車、四輪吊車、支撐腳及吊索。`createFlatbed` 預設保留原三層材料面板；碼頭傳入 `false`，改由關卡顯示棧板貨箱。 |
-| 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 六關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
+| 基本形體、車輪與材質 | [geometry.ts](../src/runtime/geometry.ts) · `createShapes` | 七關 | `box`、`cylinder`、`wheel`、`material` 與透明 `hitbox`。共用基本形體不代表完整物件已共用。 |
 
 小貓與小狗也已放入共用 [pets.ts](../src/runtime/pets.ts)，外觀與使用比例見下方人物／道具表。
 
@@ -42,8 +42,8 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 車輛 | 來源／搜尋入口 | 使用關卡 | 目前狀態與特色 |
 | --- | --- | --- | --- |
-| 挖土機 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createExcavatorVisual` | 修馬路 | 關卡內模型；履帶、固定長度機臂、挖斗與挖取舊路面／裝車的顯示。含修路幾何規則依賴，抽取時需分離。 |
-| 運料車／清運車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路 | 共用原修路傾卸車的整車結構；兩種配色區分送入新料與載走舊料。載貨狀態與出料粒子仍由關卡控制。 |
+| 挖土機 | [excavator-model.ts](../src/runtime/excavator-model.ts) · `createExcavatorModel` | 修馬路、山路搶通 | 原修路履帶、駕駛室、固定長度機臂與挖斗原樣抽出；`excavator-arm.ts` 提供純幾何規則。原 `createExcavatorVisual` 保留路面塊、提示與修路渲染入口。 |
+| 運料車／清運車 | [dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck` | 修馬路、山路搶通 | 共用原修路傾卸車的整車結構；兩種配色區分送入新料與載走舊料。載貨狀態與出料粒子仍由關卡控制。 |
 | 壓路機 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createRollerVisual` | 修馬路 | 關卡內模型；車身及隨位移轉動的滾筒。 |
 | 通行小客車 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createCarVisual` | 修馬路 | 關卡內模型；完工後通行。與交通救援的小客車目前是不同實作。 |
 | 砂石車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createDump` | 蓋房子 | 關卡內模型；使用蓋房子自己的底盤、活動車斗與載料。與修馬路砂石車尚未共用整車。 |
@@ -57,7 +57,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 警車 | [car.ts](../src/runtime/car.ts) · `createCar(shapes, true)` | 交通救援、警察隊 | 原交通小客車變體，保留警示燈、藍色車身條紋與徽章。 |
 | 平板拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createTowTruck` | 交通救援 | 共用救援底盤；保留原可傾斜平板、斜板、絞盤與固定帶。左右進場共用同一模型並旋轉朝向；掛鉤、鋼索在場景內，裝載位置與角度見 `domain/towing.ts`。 |
 | 吊掛拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createWheelLiftTruck`、`createWheelYoke` | 交通救援 | 沿用救援底盤與平板拖吊車配色；新增低器材車體、後吊臂、液壓桿、吊索與托輪架。托起前輪，後輪接地；不是蓋房子吊車的整車複製。 |
-| 道路清掃車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createSweeper` | 交通救援 | 共用救援底盤；集塵箱、進氣格柵、兩個旋轉圓刷及底部吸入口。 |
+| 道路清掃車 | [sweeper.ts](../src/runtime/sweeper.ts) · `createSweeper`；交通保留重新匯出 | 交通救援、山路搶通 | 共用救援底盤；集塵箱、進氣格柵、兩個旋轉圓刷及底部吸入口。 |
 
 ## 人物、道具與場景內物件
 
@@ -69,8 +69,8 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 蓋房子住戶與小孩 | [house-build/residents.ts](../src/missions/house-build/residents.ts) · `createResidents` | 蓋房子 | 沿用原住戶模型，三種家庭組合、最多四位；增加乘坐、下車與步行的腿部活動，抵達門口才揮手。與救援共用人物仍為不同實作。 |
 | 小貓 | [pets.ts](../src/runtime/pets.ts) · `createCat` | 消防救援、蓋房子 | 從消防原實作原樣抽出，共用耳朵、眼睛、腳及可動尾巴；消防保留原匯出入口與 1.2 倍比例，蓋房子採 0.8 倍。 |
 | 小狗 | [pets.ts](../src/runtime/pets.ts) · `createDog` | 蓋房子 | 新增共用模型：垂耳、口鼻、四腳、項圈及可動尾巴；蓋房子採 0.85 倍。 |
-| 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
-| 可移動路障 | [road-repair/scene.ts](../src/missions/road-repair/scene.ts) · `barriers` | 修馬路 | 場景內建立，配合進出場規則移開及關閉。 |
+| 交通錐 | [traffic-cone.ts](../src/runtime/traffic-cone.ts) · `createTrafficCone` | 修馬路、交通救援、山路搶通 | 已共用；原本直接寫在修路場景，第四關開發時抽出。 |
+| 可移動路障 | [road-barrier.ts](../src/runtime/road-barrier.ts) · `createRoadBarrier` | 修馬路、山路搶通 | 原修路路障抽為共用純模型，保留幾何、尺寸及配色；開閉／撤除仍由各關控制。 |
 | 天然岩石／破損路面 | [rocks.ts](../src/runtime/rocks.ts) · `createBoulder`、`createAsphaltChunk` | 共用模型庫／修馬路 | 原天然石頭已獨立保留；市區第一關使用扁平路面塊，裝入清運車，不再堆在路旁。詳見共用模型表。 |
 | 消防栓、水管接頭、水管 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `hydrant`、`connector`、`hose` | 消防救援 | 場景內模型；消防栓是真實接管目標，水管按曲線更新。 |
 | 雲梯工作籃 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` 的 `basket` | 消防救援 | 雲梯車組件，包含護欄、噴嘴與互動範圍。 |
@@ -85,8 +85,8 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 道路坑洞、填料、修補面 | [road-repair/road-surface.ts](../src/missions/road-repair/road-surface.ts) · `createRepairSurface` | 修馬路 | 三種破損配置各自共用坑洞、填料及修補面輪廓；整組隨工地換邊。路面塊沿用 `createAsphaltChunk`，依配置調整比例與角度，車斗保留每塊外觀及裝入順序。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |
-| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 六關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |
-| 樹木與背景建築 | 各關 `scene.ts`，搜尋 `IcosahedronGeometry`、`crown` 或背景房屋的 `box` 區段 | 六關 | 多個場景內實作；已有造型參考，不能當作尚未建模。 |
+| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 七關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |
+| 樹木與背景建築 | 各關 `scene.ts`，搜尋 `IcosahedronGeometry`、`crown` 或背景房屋的 `box` 區段 | 七關 | 多個場景內實作；已有造型參考，不能當作尚未建模。 |
 | 工地圍欄 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `Fences stay behind the site` 區段 | 蓋房子 | 場景內模型，位於施工區後方。 |
 | 長椅 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts)、[town-scenery.ts](../src/runtime/town-scenery.ts) | 消防救援、交通救援、警察隊 | 交通原版已抽為 `createTownBench`，與警察關卡共用；消防版本尺寸不同，仍獨立。 |
 
@@ -96,7 +96,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | --- | --- | --- |
 | 火苗、水柱、水滴、蒸氣及水漬 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `flameGroups`、`water`、`droplets`、`steam` | 由幾何與材質建立的動態效果，不是外部素材。 |
 | 倒料／澆灌粒子、掃地揚塵、完工紙花 | 各關 `scene.ts`，搜尋 `gravel`、`particles`、`stream`、`dust`、`confetti` | 多個場景內實作；依實際共用需求抽取。 |
-| 小手拖曳示範 | [drag-hint.ts](../src/runtime/drag-hint.ts) · `createDragHint` | 六關共用 SVG 提示，屬於操作介面；警察關卡可提供轉彎路徑，原四關維持直線示範。 |
+| 小手拖曳示範 | [drag-hint.ts](../src/runtime/drag-hint.ts) · `createDragHint` | 七關共用 SVG 提示，屬於操作介面；警察關卡可提供轉彎路徑，原四關維持直線示範。 |
 | 選關插圖 | [menu.ts](../src/app/menu.ts) 的 `roadArt`、`houseArt`；[fire-art.ts](../src/app/fire-art.ts)；[traffic-art.ts](../src/app/traffic-art.ts) | 手寫 SVG，與 3D 模型分開；外觀有辨識性修改時需一起核對。 |
 | 車輛圖示、目標光圈及完成畫面插圖 | 各關 `ui.ts` 與 [style.css](../src/style.css) | 介面資產；不能用圖示是否存在判斷 3D 模型是否存在。 |
 
@@ -140,3 +140,21 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 選關、四種運具圖示與城鎮收貨插圖 | 新增手寫 SVG：[port-art.ts](../src/app/port-art.ts)、[port-cargo/ui.ts](../src/missions/port-cargo/ui.ts) | 沿用柔和配色與既有 UI；進城平板車與對岸貨船兩種收貨動畫共用既有運具 SVG 與城鎮外觀，使用持久化時鐘，不新增另一個 3D 城鎮場景。 |
 
 首版四種運具、兩箱物資；貨櫃堆疊與多目的地留待試玩後再討論。
+
+## 第七關模型沿用與新增（2026-10-09）
+
+| 物件 | 分類與來源 | 保留或新增內容 |
+| --- | --- | --- |
+| 天然大石頭、小石 | 沿用：[rocks.ts](../src/runtime/rocks.ts) · `createBoulder` | 大石保留原半徑 0.57、十二面體、灰褐色材質與旋轉變體。地面、挖斗、車斗使用同一模型；細石使用同函式的小半徑參數，裝車順序保留身分。 |
+| 挖土機 | 沿用／抽為共用：[excavator-model.ts](../src/runtime/excavator-model.ts) · `createExcavatorModel` | 原修路模型原樣抽出，履帶、車身、機臂、液壓桿、挖斗及透明抓取範圍不變；原關卡保留 `createExcavatorVisual` 的貨物及畫面規則。 |
+| 固定長度機臂幾何 | 共用純 TypeScript：[excavator-arm.ts](../src/runtime/excavator-arm.ts) | 原 3.6／4 長度、樞紐與逆運動學原樣抽出，可指定樞紐；不依賴 Three.js、儲存或關卡狀態。 |
+| 綠色清運砂石車 | 沿用：[dump-truck.ts](../src/runtime/dump-truck.ts) · `createDumpTruck(shapes, true)` | 原四輪綠色車頭、棕色車斗與後鉸鏈，山路採整車原比例以容納天然大石頭。載料由山路關卡控制，第三塊石頭堆在前兩塊上方。 |
+| 道路清掃車 | 沿用／抽為共用：[sweeper.ts](../src/runtime/sweeper.ts) | 原交通清掃車原樣抽出，駕駛室、集塵箱、通風格柵、雙圓刷、底部吸入口、車輪與配色保留；交通關卡保留重新匯出入口。 |
+| 推土機 | 新增：[mountain-clearance/vehicles.ts](../src/missions/mountain-clearance/vehicles.ts) · `createBulldozer` | 黃色履帶式車體、駕駛室、排氣管、寬刮板、側翼、刃口、推臂與升降液壓桿；依工作／倒退／離場抬降刮板。 |
+| 工程隊員、樹木及通行小客車 | 沿用：[emergency-models.ts](../src/runtime/emergency-models.ts)、[town-scenery.ts](../src/runtime/town-scenery.ts)、[car.ts](../src/runtime/car.ts) | 原制服人物與可動揮手手臂、低多邊形樹木及可變車色小客車；小車採 0.72 比例，無新人物輪廓。 |
+| 交通錐與路障 | 沿用：[traffic-cone.ts](../src/runtime/traffic-cone.ts)、[mountain-clearance/scene.ts](../src/missions/mountain-clearance/scene.ts) | 交通錐直接匯入；路障原樣抽為 [road-barrier.ts](../src/runtime/road-barrier.ts) 供兩關共用，離場後才移開。 |
+| 山坡、護欄、裝車區與土堆 | 新增場景：[mountain-clearance/scene.ts](../src/missions/mountain-clearance/scene.ts) | 綠色低多邊形山坡、灰褐岩壁、低護欄、山側裝車區、兩片斜向排列的土石堆及細砂土殘留；整關固定視角，土堆沿刮板前方移動，道路前側與護欄留出倒退／換道空間。既有形體、材質與天然小石組成。 |
+| 小手、目標光圈與紙花 | 沿用：[drag-hint.ts](../src/runtime/drag-hint.ts)、山路 `session.ts`／`scene.ts` | 光圈對應真實大石與車斗；小手、抓取點及左右配置共用同一場景投影。 |
+| 選關與四車圖示 | SVG：[mountain-art.ts](../src/app/mountain-art.ts)、[road-vehicle-art.ts](../src/app/road-vehicle-art.ts)、[traffic-vehicle-art.ts](../src/app/traffic-vehicle-art.ts) | 新增山景推土機選關卡片及推土機圖示；原修路／交通車輛圖示原樣抽出供兩關使用，砂石清運圖示將路面塊色換為天然石頭色。 |
+
+首版兩次推土、三次裝車、一次清運及一次清掃；補路、壓路與額外車輛留待試玩後再討論。
