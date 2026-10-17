@@ -74,43 +74,35 @@ Restart clears only the current mission's progress, while its earned badge remai
 
 ## Clear a mountain road
 
-1. Drag the yellow tracked bulldozer toward the mountain-side collection area.
-   Two diagonal routes expose the blade and moving soil within the mission's fixed
-   camera view. It raises the blade, retreats behind the soil strips and moves to
-   the second strip automatically; a new drag completes the
-   second push. Both pushes retain partial work on release, cancellation and reload.
-2. The bulldozer leaves, the empty green cleanup truck arrives in the mountain-side
-   apron, and the existing excavator parks beside it. Drag the bucket to any of
-   three original natural boulders. A 0.4-second hold or valid release aligns,
-   scoops and raises it, then parks the raised bucket clear of the targets. Start
-   a new drag on the bucket or carried rock toward the
-   real truck bed. Another hold or valid release aligns above the cab and unloads.
-   Choose all three rocks' loading order; each scoop also removes some collected
-   soil. Visible truck cargo keeps the rock identities and order, with the third
-   rock stacked above the first two. Cancellation preserves the bucket and load.
-3. The excavator leaves before the child drags the loaded truck out. Partial hauling
-   and all cargo survive release and reload. Reaching the exit hands off the rest
-   of the departure automatically.
-4. The existing sweeper arrives on the foreground road. Drag it across once; its
-   rotating brushes progressively remove the fine residue. Cleaned sections remain
-   cleaned after interruption. The sweeper leaves before the barriers move aside.
-5. A six-second reopening animation sends the waiting car along the mountain road.
-   Workers wave; confetti, replay and selection buttons appear without another tap.
+1. Drag the tracked bulldozer along two horizontal lanes. The fixed camera exposes
+   its blade and moving soil from the side. It retreats before changing lanes;
+   another drag completes the second push. Partial work survives cancellation and reload.
+2. The bulldozer leaves, the original green cleanup truck parks, and the excavator
+   loads three original-size boulders in the child's chosen order. Drag its bucket
+   to a rock, then start a new drag toward the real bed. Two rocks sit below a third
+   nestled between them. The bed keeps its original length, with no soil layer
+   raising the stones. The excavator leaves before the loader arrives.
+3. A compact skid loader takes either soil pile. Each trip has three distinct actions:
+   drag to a pile to scoop, drag the loaded vehicle to the parking ring behind the
+   truck, then start a separate upward drag to raise the bucket. Parking consumes
+   the driving gesture and waits with the bucket low. Partial lift survives release,
+   cancellation and reload; reaching the upper target automatically advances and tips
+   the bucket, visibly pouring soil into gaps around the rocks. It backs clear before
+   lowering. After the first pour it waits beside the remaining pile; after the second
+   it exits from the dock. Fine residue and removed piles do not block its routes.
+4. Drag the loaded truck out. Partial hauling and all cargo survive release and reload.
+   Reaching the exit hands off the rest of the departure automatically.
+5. Drag the sweeper across the foreground road once. Its brushes progressively remove
+   the fine residue, retaining cleaned sections through interruption. It leaves before
+   the barriers move aside.
+6. The waiting car crosses in a six-second reopening animation. Workers wave; confetti,
+   replay and selection buttons appear without another tap.
 
-There are two pushes, three bucket loads, one haul and one sweep in every round.
-Two rock distributions and two mirrored layouts coordinate vehicles, targets and
-hints. New rounds change the rock distribution; layout is chosen independently.
-Reload/HMR retain the round, pushed soil, bucket/load position, chosen loading order,
-hauling/cleaning progress and automatic clocks; pointer ownership and uncommitted
-hold time are discarded. A still-held finger cannot start another push or deliver
-an automatically picked-up rock. Development stage resets retain the configuration.
-
-The original `createBoulder` geometry, radius 0.57 and grey-brown material remain.
-The road excavator, road barrier and traffic sweeper are extracted into renderer-only
-shared builders, preserving both original missions. The green dump truck, workers, trees,
-cones, barriers and passing car reuse existing models. The bulldozer, faceted mountain
-slopes, low guardrail and soil piles are new procedural scene elements. The road
-beneath the landslide is intact, so there is no extra filling or rolling operation.
+The camera stays fixed throughout both mirrored layouts. Every new round has two pushes,
+three rock loads, two soil loads, one haul and one sweep. Two rock distributions alternate;
+layout and the child's soil/rock orders remain independent. Version-3 snapshots also save
+parking and partial lift. Version-1/2 rounds retain their original soil-first sequence and
+material, including full buckets and completed rounds; replay starts the new rock-first flow.
 
 ## Move cargo at the dock
 
@@ -421,10 +413,12 @@ layout and palette, with independent development saves.
 
 Mountain entries use `?dev=1&mission=mountain-clearance&stage=…`:
 `intro`, `push`, `dozer-exit`, `truck-arrival`, `excavator-arrival`, `excavate`,
-`excavator-exit`, `haul`, `truck-exit`, `sweeper-arrival`, `sweep`, `sweeper-exit`,
+`excavator-exit`, `loader-arrival`, `load-soil`,
+`loader-exit`, `haul`, `truck-exit`, `sweeper-arrival`, `sweep`, `sweeper-exit`,
 `reopen`, and `complete`. Add `pattern=spread|cluster` and `layout=0|1`.
 The panel selects either distribution/layout and resets stages without rerolling;
 reload and HMR preserve independent development progress.
+New or reset `load-soil` entries start with all three rocks already loaded.
 
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
@@ -480,7 +474,7 @@ road-repair sequence.
 - `src/missions/police-patrol/`: independent police cooperation, four route configurations,
   two motorcycle dispatches, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
-- `src/missions/mountain-clearance/`: independent pushing, three-rock loading, hauling, sweeping, mirrored routes and versioned recovery.
+- `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
 - `src/runtime/excavator-model.ts`, `excavator-arm.ts`, `road-barrier.ts`, `sweeper.ts`: the original road excavator, pure arm geometry, road barrier and original traffic sweeper shared with mountain clearance.
 - `src/runtime/construction-models.ts`: original house flatbed, crane, chassis and link helper; the flatbed can omit the house material panels.
 - `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and

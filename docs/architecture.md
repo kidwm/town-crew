@@ -30,8 +30,9 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ scene.ts + vehicles.ts — boat, quay, pallet boxes and forklift; shared crane/flatbed
        │    └─ session.ts + ui.ts — pointer intent, cues, independent snapshots and stage entry
        ├─ mountain-clearance/
-       │    ├─ domain/mountain.ts — two pushes, three rock loads, haul/sweep and round recovery
-       │    ├─ scene.ts + vehicles.ts — mountain apron, bulldozer and shared work vehicles
+       │    ├─ domain/mountain.ts — five-vehicle flow and versioned recovery
+       │    ├─ domain/site.ts + loader.ts — shared points, rounded loader paths, scoop/pour poses
+       │    ├─ scene.ts + vehicles.ts — mountain apron, bulldozer, skid loader and shared work vehicles
        │    └─ session.ts + ui.ts — pointer isolation, optional saves and stage/configuration selectors
        └─ police-patrol/
             ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
@@ -180,19 +181,36 @@ width and whole-vehicle lengths in either layout. Town arrival derives SVG anima
 the saved clock. `runtime/construction-models.ts` preserves the original house chassis,
 crane and flatbed; the flatbed's optional panels default to the original house cargo.
 
-The mountain mission owns a version-1 snapshot and two rock distributions with two
+The mountain mission owns a version-3 snapshot and two rock distributions with two
 mirrored layouts. New rounds alternate distribution and independently choose layout;
-loading order is child-controlled. Both soil strips and their bulldozer routes are
-diagonal within the fixed camera view, exposing the blade and moving soil. A first
+soil and rock loading orders are independent child choices. Both soil strips and their bulldozer routes are
+horizontal within the fixed camera view, exposing the blade and moving soil from the side. A first
 push retreats behind both strips before changing lanes and accepting another
 gesture. The widened foreground road and guardrail leave whole-vehicle clearance.
+The excavator loads the three original boulders before the skid loader takes the two soil piles. Its
+direct cleared-ground routes, pickup/back-out, rear-bed park/manual lift/advance/pour and clear-before-
+lowering poses live in pure `domain/loader.ts`; `domain/site.ts` owns the shared
+push/soil/bed coordinates. The renderer and real-model clearance tests use these
+same helpers. Ground soil, full bucket and bed soil derive from the saved transfer
+clock, so interruptions cannot duplicate material. Loader approach, selected pile,
+full bucket, parked state, partial lift, ordered soil IDs and automatic clocks persist.
+`loaderDocked` separates driving from raising; `loaderTravel` measures the active leg
+or lift fraction. Parking consumes the pointer and accepts only a fresh upward drag.
+Version-1/2 saves keep their original soil-first order, material and completion; new
+rounds use rock-first order. `stageOrder` supplies the renderer and snapshot validator
+with the appropriate sequence, including vehicle handoffs and progress icons.
+After the first pour the loader waits beside the remaining pile; after the last pour
+it exits from the dock. Fine residue is traversable, and removed piles no longer
+affect clearance. The shared truck remains unchanged: two original boulders support a third in the
+original-length bed, then soil fills their gaps without raising the stones.
 Pickup raises the rock and parks the high
 bucket clear of rock/bed targets so phone projections retain a usable drag distance.
 Automatic pickup/unloading releases pointer
 ownership. Bucket/load positions, ordered rock IDs, soil fractions, hauling, cleaning
 and animation clocks persist; uncommitted dwell and pointer targets are cleared.
-Truck arrival precedes excavator arrival, excavator departure precedes manual hauling,
-and truck departure precedes the sweeper. The six-second reopening clock moves
+In new rounds the truck arrives before the excavator, the excavator leaves before
+the loader arrives, and the loader leaves before manual hauling. The truck departs
+before the sweeper. The six-second reopening clock moves
 barriers before passing traffic and resumes across reload. Development saves are
 separate and configuration selectors retain the current stage.
 `runtime/excavator-model.ts` preserves the original road renderer while pure fixed-arm

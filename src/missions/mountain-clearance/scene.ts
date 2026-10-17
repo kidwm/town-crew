@@ -9,8 +9,10 @@ import { createPerson } from '../../runtime/emergency-models.ts';
 import { createTownTree } from '../../runtime/town-scenery.ts';
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
 import { createRoadBarrier } from '../../runtime/road-barrier.ts';
-import { createBulldozer, bulldozerPose } from './vehicles.ts';
-import { stages, rocks, cargo, smooth, mix, canGrab, PUSH_X, PUSH_HEADING, pushPoint, ARM_Z, BED, CARRY_HEIGHT, HAUL_START, HAUL_END, SWEEP_START, SWEEP_END, SWEEP_Z, GUARDRAIL_Z } from './domain/mountain.ts';
+import { createBulldozer, bulldozerPose, createLoader, createSoilPile } from './vehicles.ts';
+import { stageOrder, rocks, cargo, smooth, mix, canGrab, PUSH_Z, PUSH_HEADING, pushPoint, soilPoint, ARM_Z, BED, CARRY_HEIGHT, HAUL_START, HAUL_END, SWEEP_START, SWEEP_END, SWEEP_Z, GUARDRAIL_Z, BARRIER_X, CONE_X } from './domain/mountain.ts';
+import { loaderPose, soilRemaining, soilInTruck, POUR_START, POUR_END, LOADER_DOCK } from './domain/loader.ts';
+import type { SoilId } from './domain/loader.ts';
 import type { MountainState, Point } from './domain/mountain.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 interface Screen { x: number; y: number }
@@ -18,7 +20,7 @@ interface Screen { x: number; y: number }
 export function createMountainScene(host: HTMLElement) {
   const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#d4e7e3');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
-  const canvas = renderer.domElement; canvas.setAttribute('aria-label', '山路搶通：推土機集中土石、挖土機裝大石頭、砂石車清運、清掃車刷乾淨'); host.append(canvas);
+  const canvas = renderer.domElement; canvas.setAttribute('aria-label', '山路搶通：推土機集中土石、鏟裝機鏟土裝車、挖土機裝大石頭、砂石車清運、清掃車刷乾淨'); host.append(canvas);
   const scene = new THREE.Scene(), site = new THREE.Group(); scene.add(site);
   const camera = new THREE.OrthographicCamera(-14, 14, 9, -9, 0.1, 200); camera.position.set(8, 19, 30); camera.lookAt(0, 0.4, -0.8);
   scene.add(new THREE.HemisphereLight('#fff9e8', '#90a787', 2.4));
@@ -31,8 +33,8 @@ export function createMountainScene(host: HTMLElement) {
   vertices.forEach(([x, z], i) => i ? outline.lineTo(x, -z) : outline.moveTo(x, -z)); outline.closePath();
   const roadGeometry = new THREE.ShapeGeometry(outline); roadGeometry.rotateX(-Math.PI / 2);
   const road = new THREE.Mesh(roadGeometry, material('#a1a794')); road.position.y = 0.02; road.receiveShadow = true; site.add(road);
-  // The loading apron is behind the intact road; all three work vehicles use separate lanes.
-  box(site, [14.3, 0.12, 3.35], [-0.4, -0.04, -4.35], '#c8b895');
+  // Excavator loads the original-size truck first, then leaves its rear clear for the loader.
+  box(site, [16.3, 0.12, 3.35], [0.6, -0.04, -4.35], '#c8b895');
   for (let x = -35; x <= 35; x += 2.7) {
     const z = Math.abs(x) > 11 ? -1.2 : Math.abs(x) > 8 ? -0.4 : 0.35;
     box(site, [1.1, 0.02, 0.08], [x, 0.04, z], '#f4e9ca');
@@ -42,26 +44,21 @@ export function createMountainScene(host: HTMLElement) {
     const hill = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 0), material('#8eaa80')); hill.position.set(x, 0.8, z); hill.scale.set(sx, sy, sz); hill.castShadow = hill.receiveShadow = true; site.add(hill);
     const face = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), material('#b0ad92')); face.position.set(x + 1, 0, z + 3); face.scale.set(sx * 0.58, sy * 0.5, sz * 0.6); face.receiveShadow = true; site.add(face);
   }
-  for (const [x, z, scale] of [[-10, -8, 0.8], [8.5, -8.3, 0.85], [14, -8, 1], [-12, 8, 0.75], [12, 9, 0.8]]) {
+  for (const [x, z, scale] of [[-10, -8, 0.8], [10.5, -8.3, 0.85], [14, -8, 1], [-12, 8, 0.75], [12, 9, 0.8]]) {
     const tree = createTownTree(shapes); tree.position.set(x, 0, z); tree.scale.setScalar(scale); site.add(tree);
   }
   for (let x = -7; x <= 7; x += 1.75) {
     box(site, [0.12, 0.78, 0.12], [x, 0.35, GUARDRAIL_Z], '#899b8c');
     box(site, [1.8, 0.17, 0.1], [x + 0.7, 0.65, GUARDRAIL_Z], '#d5d6ba');
   }
-  const barriers = [-8.4, 8.4].map(x => { const root = createRoadBarrier(shapes); root.position.set(x, 0, -0.55); site.add(root); return root; });
-  const cones = [[-7.2, 0.9], [7.1, 0.9]].map(([x, z]) => { const c = createTrafficCone(shapes); c.position.set(x, 0, z); site.add(c); return c; });
-  const dozer = createBulldozer(shapes), excavator = createExcavatorModel(shapes), truck = createDumpTruck(shapes, true), sweeper = createSweeper(shapes), car = createCar(shapes);
-  [dozer.root, excavator.root, truck.root, sweeper.root, car.root].forEach(v => site.add(v)); truck.cargo.visible = false;
+  const barriers = BARRIER_X.map(x => { const root = createRoadBarrier(shapes); root.position.set(x, 0, -0.55); site.add(root); return root; });
+  const cones = CONE_X.map(x => { const c = createTrafficCone(shapes); c.position.set(x, 0, 0.9); site.add(c); return c; });
+  const dozer = createBulldozer(shapes), loader = createLoader(shapes), excavator = createExcavatorModel(shapes), truck = createDumpTruck(shapes, true), sweeper = createSweeper(shapes), car = createCar(shapes);
+  [dozer.root, loader.root, excavator.root, truck.root, sweeper.root, car.root].forEach(v => site.add(v)); truck.cargo.visible = false;
   car.root.scale.setScalar(0.72);
   const workers = [createPerson(shapes, true), createPerson(shapes, true)]; workers.forEach((w, i) => { w.root.position.set(6.7 + i * 0.85, 0, -6.3); site.add(w.root); });
   const boulders = [0, 1, 2].map(i => { const b = createBoulder(shapes, 0.57, i); site.add(b); return b; });
-  const soil = PUSH_X.map((_, row) => {
-    const root = new THREE.Group(); site.add(root);
-    const mound = new THREE.Mesh(new THREE.DodecahedronGeometry(1, 0), material('#bb9870')); mound.scale.set(1.15, 0.4, 0.9); mound.position.y = 0.16; root.add(mound);
-    for (let i = 0; i < 8; i++) { const stone = createBoulder(shapes, 0.12 + (i % 3) * 0.035, row + i); stone.position.set(Math.sin(i * 4) * 0.8, 0.2 + (i % 2) * 0.1, Math.cos(i * 3) * 0.55); root.add(stone); }
-    root.rotation.y = PUSH_HEADING - Math.PI / 2; return root;
-  });
+  const soil = PUSH_Z.map((_, row) => { const root = createSoilPile(shapes, row); site.add(root); return root; });
   const residues = Array.from({ length: 24 }, (_, i) => {
     const root = new THREE.Group(); site.add(root); root.position.set(-2.8 + (i % 8) * 0.8 + Math.sin(i * 3) * 0.1, 0.04, 1.75 + Math.floor(i / 8) * 0.75 + Math.cos(i) * 0.12);
     const patch = new THREE.Mesh(new THREE.CircleGeometry(0.31, 7), material('#b69c76')); patch.rotation.x = -Math.PI / 2; patch.rotation.z = i * 0.7; patch.scale.set(1.2, 0.65, 1); patch.position.y = 0.015; root.add(patch);
@@ -69,6 +66,10 @@ export function createMountainScene(host: HTMLElement) {
     return root;
   });
   const dust = Array.from({ length: 12 }, (_, i) => { const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), material('#d5bd91')); site.add(puff); return puff; });
+  const soilStream = Array.from({ length: 28 }, (_, i) => {
+    const grain = new THREE.Mesh(new THREE.DodecahedronGeometry(0.1 + i % 3 * 0.025, 0), material(i % 4 ? '#bb9870' : '#9f947d'));
+    grain.castShadow = true; site.add(grain); return grain;
+  });
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.13, 0.13, 0.05], [0, 0, 0], ['#edba63', '#8bb6a1', '#df9b81'][i % 3]));
   const resize = new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
@@ -84,6 +85,12 @@ export function createMountainScene(host: HTMLElement) {
   }
   const pushPose = (s: MountainState): Point => pushPoint(s.pushIndex, s.pushes[s.pushIndex]);
   function task(s: MountainState) {
+    if (s.phase === 'load-soil') {
+      const pose = loaderPose(s), id = s.loaderSelected ?? ([0, 1] as const).find(id => !s.soilLoaded.includes(id)) ?? 0;
+      const from = screen({ ...pose.point, y: 1.1 });
+      const to = s.loaderDocked ? { x: from.x, y: from.y - Math.min(130, Math.max(80, canvas.clientHeight * 0.18)) } : screen(s.loaderCarrying ? { ...LOADER_DOCK, y: 0.15 } : soilPoint(id));
+      return { from, to, value: s.loaderTravel };
+    }
     if (s.phase === 'excavate') {
       const remaining = rocks(s.round).map((p, i) => ({ p, i })).filter(v => !s.delivered.includes(v.i));
       remaining.sort((a, b) => Math.hypot(a.p.x - s.bucket.x, a.p.z - s.bucket.z) - Math.hypot(b.p.x - s.bucket.x, b.p.z - s.bucket.z));
@@ -95,6 +102,7 @@ export function createMountainScene(host: HTMLElement) {
     return { from: screen({ x: SWEEP_START + (SWEEP_END - SWEEP_START) * s.swept, y: 1.2, z: SWEEP_Z }), to: screen({ x: SWEEP_END, y: 1.2, z: SWEEP_Z }), value: s.swept };
   }
   function goals(s: MountainState) {
+    if (s.phase === 'load-soil' && s.action !== 'auto') return s.loaderCarrying ? [{ id: s.loaderDocked ? 'raise' : 'dock', point: task(s).to }] : ([0, 1] as const).flatMap(id => s.soilLoaded.includes(id) || s.loaderSelected !== null && s.loaderTravel > 0 && s.loaderSelected !== id ? [] : [{ id: `soil-${id}`, point: screen(soilPoint(id)) }]);
     if (s.phase !== 'excavate' || s.action === 'auto') return [];
     return s.carried !== null ? [{ id: 'bed', point: screen(BED) }] : rocks(s.round).flatMap((p, i) => s.delivered.includes(i) ? [] : [{ id: String(i), point: screen(p) }]);
   }
@@ -105,7 +113,7 @@ export function createMountainScene(host: HTMLElement) {
   }
   function hit(x: number, y: number, s: MountainState) {
     if (!canGrab(s)) return false; setRay(x, y);
-    const mesh = s.phase === 'push' ? dozer.hit : s.phase === 'excavate' ? excavator.hitbox : s.phase === 'haul' ? truck.driveHitbox : sweeper.hit;
+    const mesh = s.phase === 'load-soil' ? loader.hit : s.phase === 'push' ? dozer.hit : s.phase === 'excavate' ? excavator.hitbox : s.phase === 'haul' ? truck.driveHitbox : sweeper.hit;
     const r = canvas.getBoundingClientRect(), from = task(s).from;
     return ray.intersectObject(mesh, true).length > 0 || Math.hypot(x - r.x - from.x, y - r.y - from.y) <= 48;
   }
@@ -125,25 +133,41 @@ export function createMountainScene(host: HTMLElement) {
     ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -(s.carried === null ? 0.85 : CARRY_HEIGHT)), p);
     return { x: p.x * roundSide, y: p.y, z: p.z };
   }
-  return { canvas, screen, task, goals, hit, driveTarget, bucketTarget,
+  function loaderTarget(s: MountainState, point: Screen, raw: Screen) {
+    const r = canvas.getBoundingClientRect(), finger = { x: point.x - r.x, y: point.y - r.y }, actual = { x: raw.x - r.x, y: raw.y - r.y };
+    const remaining = ([0, 1] as const).filter(id => !s.soilLoaded.includes(id));
+    const distance = (p: Screen) => Math.min(Math.hypot(p.x - finger.x, p.y - finger.y), Math.hypot(p.x - actual.x, p.y - actual.y));
+    const id: SoilId = s.loaderSelected !== null && (s.loaderCarrying || s.loaderTravel > 0) ? s.loaderSelected : remaining.sort((a, b) => distance(screen(soilPoint(a))) - distance(screen(soilPoint(b))))[0] ?? 0;
+    const startState = { ...s, loaderSelected: id, loaderTravel: 0 }, start = task(startState).from, goal = task(startState).to;
+    if (distance(goal) < 25) return { id, desired: 1 };
+    if (!s.loaderCarrying && s.loaderTravel === 0) return { id, desired: 0 };
+    const dx = goal.x - start.x, dy = goal.y - start.y;
+    return { id, desired: ((finger.x - start.x) * dx + (finger.y - start.y) * dy) / (dx * dx + dy * dy) };
+  }
+  return { canvas, screen, task, goals, hit, driveTarget, bucketTarget, loaderTarget,
     hint(s: MountainState): DragHint | undefined {
       if (!canGrab(s)) return;
       const t = task(s), dx = t.to.x - t.from.x, dy = t.to.y - t.from.y;
-      return { from: t.from, to: t.to, direction: dy < 0 && Math.abs(dy) > Math.abs(dx) ? 'up' : dx < 0 ? 'left' : 'right', label: s.phase === 'excavate' ? s.carried !== null ? '拖挖斗到砂石車車斗' : '拖挖斗到任一大石頭' : s.phase === 'push' ? '拖推土機，把土石推到山側' : '按住車子，沿箭頭拖曳' };
+      return { from: t.from, to: t.to, direction: dy < 0 && Math.abs(dy) > Math.abs(dx) ? 'up' : dx < 0 ? 'left' : 'right', label: s.phase === 'load-soil' ? s.loaderDocked ? '向上拖曳，抬高鏟斗倒料' : s.loaderCarrying ? '拖鏟裝機到車斗後方停好' : '拖鏟裝機到任一土堆' : s.phase === 'excavate' ? s.carried !== null ? '拖挖斗到砂石車車斗' : '拖挖斗到任一大石頭' : s.phase === 'push' ? '拖推土機，把土石推到旁邊' : '按住車子，沿箭頭拖曳' };
     },
     render(s: MountainState, time: number) {
       roundSide = s.round.layout === 0 ? 1 : -1; site.scale.x = roundSide;
-      const index = stages.indexOf(s.phase), at = (name: MountainState['phase']) => stages.indexOf(name), t = s.elapsed;
+      const order = stageOrder(s.workOrder), index = order.indexOf(s.phase), at = (name: MountainState['phase']) => order.indexOf(name), t = s.elapsed;
       dozer.root.visible = index <= at('dozer-exit');
       const { point: p, heading, lift } = bulldozerPose(s, exit());
       dozer.root.position.set(p.x, 0.04, p.z); dozer.root.rotation.y = heading; dozer.pose(lift);
+      loader.root.visible = index >= at('loader-arrival') && index <= at('loader-exit');
+      const loading = loaderPose(s, exit());
+      loader.root.position.set(loading.point.x, 0.04, loading.point.z); loader.root.rotation.y = loading.heading;
+      loader.pose(loading.lift, loading.tilt, loading.fill, loading.point.x + loading.point.z + (s.motion === 'loader-scoop' ? t : 0));
       truck.root.visible = index >= at('truck-arrival') && index <= at('truck-exit');
       let truckX = HAUL_START;
       if (s.phase === 'truck-arrival') truckX += (1 - smooth(t / 2.2)) * exit();
       if (s.phase === 'haul') truckX += (HAUL_END - HAUL_START) * s.haul;
       if (s.phase === 'truck-exit') truckX = HAUL_END - (exit() + HAUL_END) * smooth(t / 2.2);
       truck.root.position.set(truckX, 0.04, ARM_Z); truck.roll(truckX); truck.bed.rotation.z = 0;
-      truck.cargo.visible = s.delivered.length > 0; truck.cargo.scale.y = s.delivered.length / 3;
+      const filled = soilInTruck(s); truck.cargo.visible = filled > 0;
+      truck.cargo.scale.y = 0.25 + filled * 0.9; truck.cargo.position.y = 0.08 + filled * 0.25;
       excavator.root.visible = index >= at('excavator-arrival') && index <= at('excavator-exit');
       const offset = s.phase === 'excavator-arrival' ? -(1 - smooth(t / 2.2)) * exit() : s.phase === 'excavator-exit' ? -exit() * smooth(t / 2.5) : 0;
       excavator.root.position.set(offset, 0.04, ARM_Z);
@@ -157,12 +181,20 @@ export function createMountainScene(host: HTMLElement) {
         b.position.set(point.x, point.y + 0.04, point.z); b.rotation.set(0.2, i * 0.8, 0.1);
       });
       soil.forEach((mound, i) => {
-        const point = pushPoint(i as 0 | 1, s.pushes[i]);
-        mound.position.set(point.x + Math.cos(PUSH_HEADING) * 2.9, 0, point.z - Math.sin(PUSH_HEADING) * 2.9);
-        const remaining = Math.max(0, 1 - (s.delivered.length + (s.carried === null ? 0 : 0.65)) / 3);
-        mound.scale.set(1, remaining, 1); mound.visible = remaining > 0 && index < at('excavator-exit');
+        const point = soilPoint(i as SoilId, s.pushes[i]), remaining = soilRemaining(s, i as SoilId);
+        mound.position.set(point.x, 0, point.z);
+        mound.scale.set(1, remaining, 1); mound.visible = remaining > 0.001;
       });
-      // A scoop includes loose soil; the road retains only fine residue for the brushes.
+      // Ground, bucket and truck exchange the same two soil loads during contact/pouring.
+      loader.root.updateWorldMatrix(true, true);
+      const lip = site.worldToLocal(loader.lip.getWorldPosition(new THREE.Vector3()));
+      soilStream.forEach((grain, i) => {
+        grain.visible = s.motion === 'loader-tip' && t >= POUR_START && t <= POUR_END;
+        if (!grain.visible) return;
+        const u = ((t - POUR_START) * 2.6 + i / soilStream.length) % 1;
+        grain.position.set(lip.x + (Math.sin(i * 4) * 0.2 - 0.2) * u, lip.y + (2.1 - lip.y) * u * u, lip.z + (Math.cos(i * 3) * 0.16 - 0.1) * u);
+        grain.rotation.set(t * 3 + i, i, t * 2); grain.scale.setScalar(0.65 + Math.sin(u * Math.PI) * 0.45);
+      });
       residues.forEach(r => { r.visible = s.swept === 0 || r.position.x > SWEEP_START + (SWEEP_END - SWEEP_START) * s.swept + 0.9; });
       sweeper.root.visible = index >= at('sweeper-arrival') && index <= at('sweeper-exit');
       const sweepX = s.phase === 'sweeper-arrival' ? SWEEP_START - (1 - smooth(t / 2)) * exit() : s.phase === 'sweeper-exit' ? SWEEP_END + (exit() - SWEEP_END) * smooth(t / 2.2) : SWEEP_START + (SWEEP_END - SWEEP_START) * s.swept;

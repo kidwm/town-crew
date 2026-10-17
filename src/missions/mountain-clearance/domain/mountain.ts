@@ -1,33 +1,22 @@
 import { reachable } from '../../../runtime/excavator-arm.ts';
 import type { Point } from '../../../runtime/excavator-arm.ts';
-export type { Point } from '../../../runtime/excavator-arm.ts';
+import { ARM_Z, PIVOT, HOME, BED, CARRY_HEIGHT, DWELL, smooth, mix } from './site.ts';
+import { loaderRoute, routeLength, SCOOP_SECONDS, PARK_SECONDS, TIP_SECONDS, loaderReturnSeconds } from './loader.ts';
+import type { LoaderState, SoilId } from './loader.ts';
+export * from './site.ts';
 
-export const stages = ['intro', 'push', 'dozer-exit', 'truck-arrival', 'excavator-arrival', 'excavate', 'excavator-exit', 'haul', 'truck-exit', 'sweeper-arrival', 'sweep', 'sweeper-exit', 'reopen', 'complete'] as const;
+export const stages = ['intro', 'push', 'dozer-exit', 'truck-arrival', 'excavator-arrival', 'excavate', 'excavator-exit', 'loader-arrival', 'load-soil', 'loader-exit', 'haul', 'truck-exit', 'sweeper-arrival', 'sweep', 'sweeper-exit', 'reopen', 'complete'] as const;
+const soilFirstStages: readonly Stage[] = ['intro', 'push', 'dozer-exit', 'truck-arrival', 'loader-arrival', 'load-soil', 'loader-exit', 'excavator-arrival', 'excavate', 'excavator-exit', 'haul', 'truck-exit', 'sweeper-arrival', 'sweep', 'sweeper-exit', 'reopen', 'complete'];
+export type WorkOrder = 'rocks-first' | 'soil-first';
+export const stageOrder = (order: WorkOrder) => order === 'rocks-first' ? stages : soilFirstStages;
 export type Stage = typeof stages[number];
 export type Pattern = 'spread' | 'cluster';
 export interface Round { pattern: Pattern; layout: 0 | 1 }
 export const DEFAULT_ROUND: Round = { pattern: 'spread', layout: 0 };
-export const ARM_Z = -4.4;
-export const PIVOT: Point = { x: -4, y: 2.35, z: ARM_Z };
-export const HOME: Point = { x: -2.5, y: 1.4, z: -3.1 };
-export const BED: Point = { x: 2.35, y: 2.25, z: ARM_Z };
-export const CARRY_HEIGHT = 4.2;
-export const PUSH_X = [-5.2, -1.45] as const;
-export const PUSH_START = 4.65, PUSH_END = 1.95;
-export const PUSH_HEADING = Math.PI / 4;
-export function pushPoint(index: 0 | 1, amount: number): Point {
-  return { x: PUSH_X[index] + (PUSH_START - PUSH_END) * amount, y: 1, z: PUSH_START + (PUSH_END - PUSH_START) * amount };
-}
-export const HAUL_START = 2.4, HAUL_END = -9;
-export const SWEEP_START = -8, SWEEP_END = 8, SWEEP_Z = 3.4;
-export const GUARDRAIL_Z = 7.2;
-export const DWELL = 0.4;
-export const smooth = (t: number) => { const n = Math.max(0, Math.min(1, t)); return n * n * (3 - 2 * n); };
-export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t });
 export function rocks(round: Round): Point[] {
-  return (round.pattern === 'spread' ? [[-1.7, -1.7], [0.25, -1.25], [2.05, -1.85]] : [[-1.45, -1.75], [0.05, -1.85], [1.65, -1.45]]).map(([x, z]) => ({ x, y: 0.65, z }));
+  return (round.pattern === 'spread' ? [[-1.7, -2.35], [0.25, -1.9], [2.05, -2.5]] : [[-1.45, -2.4], [0.05, -2.5], [1.65, -2.1]]).map(([x, z]) => ({ x, y: 0.65, z }));
 }
-export function cargo(slot: number): Point { return [{ x: 1.7, y: 2.1, z: ARM_Z }, { x: 2.9, y: 2.1, z: ARM_Z }, { x: 2.3, y: 3, z: ARM_Z }][slot]; }
+export function cargo(slot: number): Point { return { x: slot === 2 ? 2.4 : 1.8 + slot * 1.2, y: slot === 2 ? 3.08 : 2.1, z: ARM_Z }; }
 export function validRound(value: unknown): value is Round {
   if (!value || typeof value !== 'object') return false;
   const r = value as Round; return ['spread', 'cluster'].includes(r.pattern) && [0, 1].includes(r.layout);
@@ -36,26 +25,33 @@ export function chooseRound(previous?: Round, random = Math.random): Round {
   const draw = () => Math.max(0, Math.min(0.999999, random()));
   return { pattern: previous ? previous.pattern === 'spread' ? 'cluster' : 'spread' : draw() < 0.5 ? 'spread' : 'cluster', layout: draw() < 0.5 ? 0 : 1 };
 }
-export interface MountainState {
-  version: 1; round: Round; phase: Stage; action: 'ready' | 'dragging' | 'auto';
-  motion: 'none' | 'lift' | 'unload' | 'return' | 'push-return' | 'drive-finish';
+export interface MountainState extends LoaderState {
+  version: 3; workOrder: WorkOrder; round: Round; phase: Stage; action: 'ready' | 'dragging' | 'auto';
+  motion: 'none' | 'lift' | 'unload' | 'return' | 'push-return' | 'drive-finish' | 'loader-finish' | 'loader-scoop' | 'loader-park' | 'loader-tip' | 'loader-return';
   elapsed: number; pushes: [number, number]; pushIndex: 0 | 1; haul: number; swept: number;
   delivered: number[]; carried: number | null; bucket: Point; from: Point; target: Point;
   desired: number; aimed: number | null; dwell: number;
 }
-const manual = (phase: Stage) => ['push', 'excavate', 'haul', 'sweep'].includes(phase);
-export function createMountain(phase: Stage = 'intro', round: Round = DEFAULT_ROUND): MountainState {
-  const index = stages.indexOf(phase);
+const manual = (phase: Stage) => ['push', 'load-soil', 'excavate', 'haul', 'sweep'].includes(phase);
+export function createMountain(phase: Stage = 'intro', round: Round = DEFAULT_ROUND, workOrder: WorkOrder = 'rocks-first'): MountainState {
+  const order = stageOrder(workOrder), index = order.indexOf(phase);
   const bucket = { ...HOME };
-  return { version: 1, round: { ...round }, phase, action: manual(phase) ? 'ready' : 'auto', motion: 'none', elapsed: 0,
-    pushes: index > stages.indexOf('push') ? [1, 1] : [0, 0], pushIndex: index > stages.indexOf('push') ? 1 : 0,
-    haul: index > stages.indexOf('haul') ? 1 : 0, swept: index > stages.indexOf('sweep') ? 1 : 0,
-    delivered: index > stages.indexOf('excavate') ? [0, 1, 2] : [], carried: null, bucket, from: bucket, target: bucket, desired: 0, aimed: null, dwell: 0 };
+  return { version: 3, workOrder, round: { ...round }, phase, action: manual(phase) ? 'ready' : 'auto', motion: 'none', elapsed: 0,
+    soilLoaded: index > order.indexOf('load-soil') ? [0, 1] : [], loaderSelected: null, loaderCarrying: false, loaderDocked: false, loaderTravel: 0,
+    pushes: index > order.indexOf('push') ? [1, 1] : [0, 0], pushIndex: index > order.indexOf('push') ? 1 : 0,
+    haul: index > order.indexOf('haul') ? 1 : 0, swept: index > order.indexOf('sweep') ? 1 : 0,
+    delivered: index > order.indexOf('excavate') ? [0, 1, 2] : [], carried: null, bucket, from: bucket, target: bucket, desired: 0, aimed: null, dwell: 0 };
 }
 function phase(s: MountainState, next: Stage): MountainState { return { ...s, phase: next, action: manual(next) ? 'ready' : 'auto', motion: 'none', elapsed: 0, dwell: 0, aimed: null, desired: 0 }; }
 export function canGrab(s: MountainState) { return manual(s.phase) && s.action === 'ready'; }
 export function grab(s: MountainState): MountainState {
-  return canGrab(s) ? { ...s, action: 'dragging', desired: s.phase === 'push' ? s.pushes[s.pushIndex] : s.phase === 'haul' ? s.haul : s.swept, aimed: null, dwell: 0 } : s;
+  return canGrab(s) ? { ...s, action: 'dragging', desired: s.phase === 'load-soil' ? s.loaderTravel : s.phase === 'push' ? s.pushes[s.pushIndex] : s.phase === 'haul' ? s.haul : s.swept, aimed: null, dwell: 0 } : s;
+}
+export function moveLoader(s: MountainState, id: SoilId, desired: number): MountainState {
+  if (s.phase !== 'load-soil' || s.action !== 'dragging' || ![0, 1].includes(id) || !Number.isFinite(desired)) return s;
+  const selected = s.loaderCarrying || s.loaderTravel > 0 ? s.loaderSelected : id;
+  if (selected === null || s.soilLoaded.includes(selected)) return s;
+  return { ...s, loaderSelected: selected, desired: Math.max(0, Math.min(1, desired)), dwell: desired >= 0.999 && selected === s.loaderSelected ? s.dwell : 0 };
 }
 export function drive(s: MountainState, desired: number): MountainState {
   return s.action === 'dragging' && ['push', 'haul', 'sweep'].includes(s.phase) && Number.isFinite(desired) ? { ...s, desired: Math.max(0, Math.min(1, desired)), dwell: desired >= 0.999 ? s.dwell : 0 } : s;
@@ -79,6 +75,9 @@ function finishDrive(s: MountainState): MountainState {
 }
 export function release(s: MountainState, cancelled = false): MountainState {
   if (s.action !== 'dragging') return s;
+  if (s.phase === 'load-soil') return !cancelled && s.loaderSelected !== null && s.desired >= 0.999
+    ? { ...s, action: 'auto', motion: 'loader-finish', elapsed: 0, dwell: 0 }
+    : { ...s, action: 'ready', desired: s.loaderTravel, dwell: 0 };
   if (!cancelled && s.phase === 'excavate') { const next = commitBucket(s); if (next !== s) return next; }
   if (!cancelled && s.phase !== 'excavate' && s.desired >= 0.999) return { ...s, action: 'auto', motion: 'drive-finish', dwell: 0, elapsed: 0 };
   return { ...s, action: 'ready', target: s.bucket, desired: s.phase === 'push' ? s.pushes[s.pushIndex] : s.phase === 'haul' ? s.haul : s.swept, dwell: 0, aimed: null };
@@ -87,6 +86,21 @@ function toward(value: number, target: number, distance: number) { return value 
 export function advance(s: MountainState, delta: number): MountainState {
   if (!Number.isFinite(delta) || delta <= 0 || s.phase === 'complete') return s;
   const dt = Math.min(delta, 0.1), elapsed = s.elapsed + dt;
+  if (s.phase === 'load-soil' && (s.action === 'dragging' || s.motion === 'loader-finish')) {
+    if (s.loaderSelected === null) return s;
+    // Choose a pile by holding at it or releasing there, rather than locking the
+    // nearer pile during the first few pixels of a continuous drag.
+    if (s.action === 'dragging' && !s.loaderCarrying && s.loaderTravel === 0 && s.desired >= 0.999) {
+      const dwell = s.dwell + dt;
+      return dwell >= DWELL ? { ...s, dwell: 0, action: 'auto', motion: 'loader-finish', elapsed: 0 } : { ...s, dwell };
+    }
+    const goal = s.motion === 'loader-finish' ? 1 : s.desired;
+    const loaderTravel = toward(s.loaderTravel, goal, dt / (s.loaderDocked ? 1.2 : routeLength(loaderRoute(s)) / 4.8));
+    const dwell = loaderTravel >= 0.999 && goal >= 0.999 ? s.dwell + dt : 0;
+    return loaderTravel >= 1 && (s.motion === 'loader-finish' || dwell >= DWELL)
+      ? { ...s, loaderTravel, dwell: 0, action: 'auto', motion: !s.loaderCarrying ? 'loader-scoop' : s.loaderDocked ? 'loader-tip' : 'loader-park', elapsed: 0 }
+      : { ...s, loaderTravel, dwell };
+  }
   if (s.action === 'dragging' || s.motion === 'drive-finish') {
     if (s.phase === 'excavate') {
       const bucket = mix(s.bucket, s.target, 1 - Math.exp(-24 * dt));
@@ -105,6 +119,14 @@ export function advance(s: MountainState, delta: number): MountainState {
     return nextValue >= 1 && (s.motion === 'drive-finish' || next.dwell >= DWELL) ? finishDrive(next) : next;
   }
   if (s.action !== 'auto') return s;
+  if (s.motion === 'loader-scoop') return elapsed >= SCOOP_SECONDS ? { ...s, action: 'ready', motion: 'none', loaderCarrying: true, loaderTravel: 0, desired: 0, elapsed: 0 } : { ...s, elapsed };
+  if (s.motion === 'loader-park') return elapsed >= PARK_SECONDS ? { ...s, action: 'ready', motion: 'none', loaderDocked: true, loaderTravel: 0, desired: 0, elapsed: 0 } : { ...s, elapsed };
+  if (s.motion === 'loader-tip') return elapsed >= TIP_SECONDS ? { ...s, motion: 'loader-return', soilLoaded: [...s.soilLoaded, s.loaderSelected!], loaderCarrying: false, loaderDocked: false, loaderTravel: 0, desired: 0, elapsed: 0 } : { ...s, elapsed };
+  if (s.motion === 'loader-return') {
+    if (elapsed < loaderReturnSeconds(s)) return { ...s, elapsed };
+    const ready: MountainState = { ...s, action: 'ready', motion: 'none', loaderSelected: null, loaderTravel: 0, elapsed: 0, desired: 0 };
+    return s.soilLoaded.length === 2 ? phase(ready, 'loader-exit') : ready;
+  }
   if (s.motion === 'push-return') return elapsed >= 1.6 ? { ...s, action: 'ready', motion: 'none', pushIndex: 1, elapsed: 0, desired: 0 } : { ...s, elapsed };
   if (s.motion === 'lift') {
     const pickup = { ...rocks(s.round)[s.carried!], y: 0.85 };
@@ -113,8 +135,8 @@ export function advance(s: MountainState, delta: number): MountainState {
     return elapsed >= 1.4 ? { ...s, action: 'ready', motion: 'none', bucket, target: bucket, elapsed: 0 } : { ...s, elapsed, bucket };
   }
   if (s.motion === 'unload') {
-    const high = { ...BED, y: CARRY_HEIGHT };
-    const drop = { ...BED, y: Math.max(BED.y, cargo(s.delivered.length).y + 0.35) };
+    const slot = cargo(s.delivered.length), high = { ...slot, y: CARRY_HEIGHT };
+    const drop = { ...slot, y: Math.max(BED.y, slot.y + 0.35) };
     const bucket = elapsed < 0.65 ? mix(s.from, high, smooth(elapsed / 0.65)) : mix(high, drop, smooth((elapsed - 0.65) / 0.3));
     return elapsed >= 1.15 ? { ...s, motion: 'return', bucket, from: bucket, delivered: [...s.delivered, s.carried!], carried: null, elapsed: 0 } : { ...s, elapsed, bucket };
   }
@@ -125,24 +147,26 @@ export function advance(s: MountainState, delta: number): MountainState {
     if (elapsed < 1) return { ...s, elapsed, bucket };
     return s.delivered.length === 3 ? phase({ ...s, bucket: { ...HOME }, target: { ...HOME } }, 'excavator-exit') : { ...s, action: 'ready', motion: 'none', bucket: { ...HOME }, target: { ...HOME }, elapsed: 0 };
   }
-  const transitions: Partial<Record<Stage, [number, Stage]>> = { intro: [1.3, 'push'], 'dozer-exit': [2.7, 'truck-arrival'], 'truck-arrival': [2.2, 'excavator-arrival'], 'excavator-arrival': [2.2, 'excavate'], 'excavator-exit': [2.5, 'haul'], 'truck-exit': [2.2, 'sweeper-arrival'], 'sweeper-arrival': [2, 'sweep'], 'sweeper-exit': [2.2, 'reopen'], reopen: [6, 'complete'] };
+  const transitions: Partial<Record<Stage, [number, Stage]>> = { intro: [1.3, 'push'], 'dozer-exit': [2.7, 'truck-arrival'], 'truck-arrival': [2.2, s.workOrder === 'rocks-first' ? 'excavator-arrival' : 'loader-arrival'], 'loader-arrival': [2, 'load-soil'], 'loader-exit': [2.7, s.workOrder === 'rocks-first' ? 'haul' : 'excavator-arrival'], 'excavator-arrival': [2.2, 'excavate'], 'excavator-exit': [2.5, s.workOrder === 'rocks-first' ? 'loader-arrival' : 'haul'], 'truck-exit': [2.2, 'sweeper-arrival'], 'sweeper-arrival': [2, 'sweep'], 'sweeper-exit': [2.2, 'reopen'], reopen: [6, 'complete'] };
   const transition = transitions[s.phase];
   return transition && elapsed >= transition[0] ? phase(s, transition[1]) : { ...s, elapsed };
 }
-export function progress(s: MountainState) { return s.phase === 'complete' ? 1 : (s.pushes[0] + s.pushes[1] + s.delivered.length + s.haul + s.swept) / 7; }
+export function progress(s: MountainState) { return s.phase === 'complete' ? 1 : (s.pushes[0] + s.pushes[1] + s.soilLoaded.length + s.delivered.length + s.haul + s.swept) / 9; }
 
 /** Only validated snapshots can resume; pointer targets and uncommitted dwell are transient. */
 export function resumeMountain(value: unknown): MountainState | undefined {
   if (!value || typeof value !== 'object') return;
-  const s = value as MountainState;
+  const raw = value as Record<string, unknown>;
+  const legacy = raw.version === 1 ? { ...raw, version: 2, soilLoaded: soilFirstStages.indexOf(raw.phase as Stage) >= soilFirstStages.indexOf('excavator-arrival') ? [0, 1] : [], loaderSelected: null, loaderCarrying: false, loaderTravel: 0 } : raw;
+  const s = (legacy.version === 2 ? { ...legacy, version: 3, workOrder: 'soil-first', loaderDocked: legacy.motion === 'loader-tip', elapsed: legacy.motion === 'loader-tip' && typeof legacy.elapsed === 'number' ? Math.max(0, legacy.elapsed - 1) : legacy.elapsed } : legacy) as unknown as MountainState;
   const fraction = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
   const point = (p: unknown): p is Point => !!p && typeof p === 'object' && ['x', 'y', 'z'].every(k => typeof (p as Record<string, unknown>)[k] === 'number' && Number.isFinite((p as Record<string, number>)[k]) && Math.abs((p as Record<string, number>)[k]) < 40);
-  if (s.version !== 1 || !validRound(s.round) || !stages.includes(s.phase) || !['ready', 'dragging', 'auto'].includes(s.action) || !['none', 'lift', 'unload', 'return', 'push-return', 'drive-finish'].includes(s.motion)) return;
+  if (s.version !== 3 || !['rocks-first', 'soil-first'].includes(s.workOrder) || !validRound(s.round) || !stages.includes(s.phase) || !['ready', 'dragging', 'auto'].includes(s.action) || !['none', 'lift', 'unload', 'return', 'push-return', 'drive-finish', 'loader-finish', 'loader-scoop', 'loader-park', 'loader-tip', 'loader-return'].includes(s.motion)) return;
   if (!Array.isArray(s.pushes) || s.pushes.length !== 2 || !s.pushes.every(fraction) || ![0, 1].includes(s.pushIndex) || !fraction(s.haul) || !fraction(s.swept)) return;
   if (!Array.isArray(s.delivered) || s.delivered.some(n => !Number.isInteger(n) || n < 0 || n > 2) || new Set(s.delivered).size !== s.delivered.length) return;
   if (s.carried !== null && (!Number.isInteger(s.carried) || s.carried < 0 || s.carried > 2 || s.delivered.includes(s.carried))) return;
   if (![s.bucket, s.target, s.from].every(point) || !Number.isFinite(s.elapsed) || s.elapsed < 0 || s.elapsed > 30) return;
-  const i = stages.indexOf(s.phase), push = stages.indexOf('push'), dig = stages.indexOf('excavate'), haul = stages.indexOf('haul'), sweep = stages.indexOf('sweep');
+  const order = stageOrder(s.workOrder), i = order.indexOf(s.phase), push = order.indexOf('push'), dig = order.indexOf('excavate'), haul = order.indexOf('haul'), sweep = order.indexOf('sweep');
   if (i < push && (s.pushes.some(n => n !== 0) || s.pushIndex !== 0) || i > push && s.pushes.some(n => n !== 1) || s.pushIndex === 1 && s.pushes[0] !== 1 || s.pushIndex === 0 && s.pushes[1] !== 0) return;
   if (i < dig && (s.delivered.length || s.carried !== null) || i > dig && (s.delivered.length !== 3 || s.carried !== null)) return;
   if (i < haul && s.haul !== 0 || i > haul && s.haul !== 1 || i < sweep && s.swept !== 0 || i > sweep && s.swept !== 1) return;
@@ -151,6 +175,18 @@ export function resumeMountain(value: unknown): MountainState | undefined {
   if (['lift', 'unload', 'return'].includes(s.motion) && s.phase !== 'excavate' || ['lift', 'unload'].includes(s.motion) && s.carried === null || s.motion === 'return' && (s.carried !== null || !s.delivered.length)) return;
   if (s.motion === 'push-return' && (s.phase !== 'push' || s.pushIndex !== 0 || s.pushes[0] !== 1) || s.motion === 'drive-finish' && !['push', 'haul', 'sweep'].includes(s.phase)) return;
   if (s.phase === 'excavate' && s.delivered.length === 3 && s.motion !== 'return') return;
+  if (!Array.isArray(s.soilLoaded) || s.soilLoaded.some(n => n !== 0 && n !== 1) || new Set(s.soilLoaded).size !== s.soilLoaded.length || !fraction(s.loaderTravel) || typeof s.loaderCarrying !== 'boolean' || typeof s.loaderDocked !== 'boolean' || s.loaderSelected !== null && s.loaderSelected !== 0 && s.loaderSelected !== 1) return;
+  const load = order.indexOf('load-soil');
+  if (i < load && s.soilLoaded.length || i > load && s.soilLoaded.length !== 2) return;
+  if (s.phase !== 'load-soil' && (s.loaderSelected !== null || s.loaderCarrying || s.loaderDocked || s.loaderTravel || s.motion.startsWith('loader-'))) return;
+  if (s.phase === 'load-soil') {
+    if (!['none', 'loader-finish', 'loader-scoop', 'loader-park', 'loader-tip', 'loader-return'].includes(s.motion)) return;
+    if (s.loaderSelected === null && (s.loaderCarrying || s.loaderTravel || s.motion !== 'none')) return;
+    if (s.motion === 'loader-return' ? s.loaderSelected === null || s.loaderCarrying || s.soilLoaded.at(-1) !== s.loaderSelected || s.loaderTravel !== 0 : s.loaderSelected !== null && s.soilLoaded.includes(s.loaderSelected)) return;
+    if (s.loaderDocked && (!s.loaderCarrying || s.motion === 'loader-park' || s.motion === 'loader-scoop')) return;
+    if (s.motion === 'loader-scoop' && (s.loaderCarrying || s.loaderTravel !== 1) || s.motion === 'loader-park' && (!s.loaderCarrying || s.loaderDocked || s.loaderTravel !== 1) || s.motion === 'loader-tip' && (!s.loaderCarrying || !s.loaderDocked || s.loaderTravel !== 1)) return;
+    if (s.soilLoaded.length === 2 && s.motion !== 'loader-return') return;
+  }
   const copy = structuredClone(s);
   return { ...release(copy, true), dwell: 0, aimed: null, desired: 0 };
 }

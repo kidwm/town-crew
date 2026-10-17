@@ -3,6 +3,42 @@ import { utimes } from 'node:fs/promises';
 import { fireControls } from './fire-controls.mjs';
 import { withPausedClock } from './timing.mjs';
 import * as THREE from 'three';
+import { createMountain } from '../../src/missions/mountain-clearance/domain/mountain.ts';
+import { loaderRoute, routeLength, PARK_SECONDS } from '../../src/missions/mountain-clearance/domain/loader.ts';
+
+test('mountain loader retains a full bucket through HMR, resumes pouring and exposes either pile after stage reset', async ({ page }) => {
+  test.setTimeout(process.env.CI ? 180_000 : 120_000);
+  const { gesture } = await import('./gesture.mjs'); const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.clock.install();
+  await page.goto('/?dev=1&mission=mountain-clearance&stage=load-soil&pattern=spread&layout=1');
+  const app = page.locator('#app'), { wait, down, up } = await fireControls(page);
+  const hinted = async () => gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  const target = async selector => { const r = await page.locator(selector).boundingBox(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+  await wait('load-soil'); await expect(page.locator('[data-goal^="soil-"]')).toHaveCount(2);
+  let h = await hinted(); await down(h.from); const pile = await target('[data-goal="soil-1"]'); await page.mouse.move(pile.x, pile.y); await up();
+  await expect(app).toHaveAttribute('data-loader-carrying', 'true'); await wait('load-soil');
+  const world = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, world); await wait('load-soil');
+  await expect(app).toHaveAttribute('data-loader-carrying', 'true'); await expect(app).toHaveAttribute('data-loader-selected', '1'); await expect(page.locator('canvas')).toHaveCount(1);
+  await withPausedClock(page, async () => {
+    h = await hinted(); await down(h.from); const dock = await target('.mountain-dock'); await page.mouse.move(dock.x, dock.y); await up();
+    const route = loaderRoute({ ...createMountain('load-soil'), loaderSelected: 1, loaderCarrying: true });
+    await page.clock.runFor(Math.ceil(routeLength(route) / 4.8 * 1000) + PARK_SECONDS * 1000 + 80);
+    await expect(app).toHaveAttribute('data-loader-docked', 'true');
+  });
+  await page.reload(); await wait('load-soil'); await expect(app).toHaveAttribute('data-loader-docked', 'true');
+  const parked = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, parked); await wait('load-soil'); await expect(app).toHaveAttribute('data-loader-docked', 'true');
+  await withPausedClock(page, async () => {
+    h = await hinted(); await down(h.from); await page.mouse.move(h.to.x, h.to.y); await up(); await page.clock.runFor(1280 + 1350);
+    await expect(app).toHaveAttribute('data-motion', 'loader-tip'); await expect(app).toHaveAttribute('data-soil-loaded', '');
+  }); await page.reload();
+  await expect(app).toHaveAttribute('data-soil-loaded', '1'); await wait('load-soil');
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await wait('load-soil');
+  await expect(app).toHaveAttribute('data-soil-loaded', ''); await expect(app).toHaveAttribute('data-loader-carrying', 'false'); await expect(page.locator('[data-goal^="soil-"]')).toHaveCount(2);
+  await page.locator('#stage').selectOption('excavate'); await wait('excavate'); await expect(app).toHaveAttribute('data-soil-loaded', '');
+  expect(errors).toEqual([]);
+});
 
 test('mountain development retains a carried boulder through reload and HMR and can reset all configurations', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs'); const errors = []; page.on('pageerror', e => errors.push(e.message));
