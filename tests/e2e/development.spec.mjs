@@ -6,6 +6,34 @@ import * as THREE from 'three';
 import { createMountain } from '../../src/missions/mountain-clearance/domain/mountain.ts';
 import { loaderRoute, routeLength, PARK_SECONDS } from '../../src/missions/mountain-clearance/domain/loader.ts';
 
+test('transfer development preserves partial doors and carried luggage through reload/HMR and resets configuration', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  await page.goto('/?dev=1&mission=passenger-transfer&stage=coach-door&layout=1&palette=2');
+  const app = page.locator('#app'), { down, up, wait, cancel } = await fireControls(page);
+  const hinted = async () => gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await wait('coach-door'); let h = await hinted(); await down(h.from); await page.mouse.move((h.from.x + h.to.x) / 2, (h.from.y + h.to.y) / 2); await cancel();
+  const doors = await app.getAttribute('data-doors'); expect(JSON.parse(doors).coach).toBeGreaterThan(0.2);
+  await page.reload(); await wait('coach-door'); await expect(app).toHaveAttribute('data-doors', doors);
+  const world = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, world); await wait('coach-door'); await expect(app).toHaveAttribute('data-doors', doors);
+  h = await hinted(); await down(h.from); await page.mouse.move(h.to.x, h.to.y); await wait('luggage'); await up();
+  h = await hinted(); await down(h.from); await page.mouse.move(h.from.x + 25, h.from.y + 40); await up();
+  const bag = await app.getAttribute('data-luggage');
+  const carrying = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, carrying); await wait('luggage'); await expect(app).toHaveAttribute('data-luggage', bag); await expect(app).toHaveAttribute('data-layout', '1'); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.locator('#layout').selectOption('0'); await page.locator('#palette').selectOption('3'); await wait('luggage'); await expect(app).toHaveAttribute('data-layout', '0'); await expect(app).toHaveAttribute('data-palette', '3');
+  await page.locator('#stage').selectOption('transfer-entrance'); await wait('transfer-entrance', 'auto');
+  await expect(page.locator('.transfer-picker')).toBeHidden();
+  await expect.poll(async () => Number(await app.getAttribute('data-elapsed'))).toBeGreaterThan(1);
+  const elapsed = Number(await app.getAttribute('data-elapsed')); await page.reload(); await wait('transfer-entrance', 'auto');
+  expect(Number(await app.getAttribute('data-elapsed'))).toBeGreaterThanOrEqual(elapsed - 0.7);
+  await wait('choose'); await expect(app).toHaveAttribute('data-order', ''); await expect(page.locator('.transfer-picker')).toBeVisible();
+  await expect(page.locator('.transfer-choice-ring:not([hidden])')).toHaveCount(2);
+  await page.locator('#stage').selectOption('coach-entrance'); await wait('coach-entrance', 'auto');
+  await expect(page.locator('.drag-hint')).toBeHidden(); await page.reload();
+  await wait('coach-arrival'); await expect(app).toHaveAttribute('data-order', 'taxi,school'); await expect(app).toHaveAttribute('data-travel', '0');
+});
+
 test('mountain loader retains a full bucket through HMR, resumes pouring and exposes either pile after stage reset', async ({ page }) => {
   test.setTimeout(process.env.CI ? 180_000 : 120_000);
   const { gesture } = await import('./gesture.mjs'); const errors = []; page.on('pageerror', e => errors.push(e.message));

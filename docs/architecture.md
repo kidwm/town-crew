@@ -34,6 +34,11 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/site.ts + loader.ts — shared points, rounded loader paths, scoop/pour poses
        │    ├─ scene.ts + vehicles.ts — mountain apron, bulldozer, skid loader and shared work vehicles
        │    └─ session.ts + ui.ts — pointer isolation, optional saves and stage/configuration selectors
+       ├─ passenger-transfer/
+       │    ├─ domain/transit.ts — passenger flow, dispatch order, doors, luggage and versioned recovery
+       │    ├─ domain/terminal.ts — fixed-view berth, shared routes and passenger paths
+       │    ├─ scene.ts + vehicles.ts — terminal, three passenger buses and shared-car taxi
+       │    └─ session.ts + ui.ts — gestures, luggage dwell, snapshots and stage/configuration entry
        └─ police-patrol/
             ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
             ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
@@ -219,6 +224,49 @@ traffic sweeper; `runtime/road-barrier.ts` preserves the original road barrier.
 Original mission exports and behavior remain. Shared SVG vehicle
 icons live in `app/road-vehicle-art.ts` and `app/traffic-vehicle-art.ts`.
 
+The transfer mission has a version-4 snapshot and two terminal configurations. A public
+bus delivers six passengers, then the taxi and a randomly selected school bus or coach
+arrive together. The child dispatches either one first; the remaining large vehicle
+arrives after both leave. The coach always stows one suitcase before boarding travellers. A single
+large-vehicle berth and separate taxi loading bay use whole-vehicle departure handoffs.
+The 5-metre road is one-way from left to right, with direction arrows and no centre
+divider. Both loading bays sit outside the through lane on the near side, next to
+one continuous platform; separate school/coach holding spaces lie on the far side.
+`domain/terminal.ts` shares platform and asphalt outlines, the small planted divider,
+all four vehicle routes, door positions and waiting points with rendering and tests.
+Forward-only lane changes carry explicit eased headings and preserve the swept
+body's curb clearance. The school bus merges onto the road before approaching the
+large-vehicle bay; the coach pulls forward diagonally from its own holding space.
+All four depart into `ROAD.outbound`, eliminating the previous turning loop.
+Clearance checks cover the full model, mirrors, the other waiting vehicle, paved
+surfaces, platform and divider; simultaneous entrance clocks also avoid overlap.
+`passenger-transfer/view.ts` supplies the same camera and resize rules to rendering
+and whole-route visibility tests.
+Approach geometry,
+door locations, actual passenger routes, luggage targets and hints derive from the
+same round. The last 30 cm of driving align automatically after a deliberate drag.
+Door work and driving fractions persist independently of input; restore discards
+stale pointer ownership and uncommitted suitcase dwell. Automatic unloading,
+boarding, luggage insertion, vehicle entrance and departure retain their clocks.
+Both transfer vehicles drive in from offscreen before choice becomes available;
+the remaining large vehicle drives in automatically after the pair fully leaves,
+then hands control to the child at its approach point. All entrance clocks survive reload.
+Version-1/2/3 saves retain the taxi/school pair and preserve work without replaying entrances.
+Final-visit stage IDs retain their original `coach-` prefix for saved progress and development
+links; vehicle identity, labels, passengers and doors derive from the saved companion.
+An early coach visit retains its selected vehicle through luggage loading and then returns
+to the pair's boarding/departure flow. The suitcase uses a coach-local pose transformed by
+the full vehicle position and heading; clearance tests keep its geometry inside the compartment.
+Neutral choice shows both vehicle rings and nearby picture labels, without defaulting
+the route hint to one vehicle. Opening a door or
+finishing a drive consumes the gesture before the next task becomes available.
+The taxi extends the original opening-door car with optional side/rear-only door
+selection; existing callers keep all-door behaviour. `runtime/resident.ts` extracts
+the original house person without changing its default geometry or colours.
+Three new passenger buses have open interiors and real boarding gaps; the coach's
+lower luggage compartment receives the suitcase lying flat. No renderer state
+enters the domain or snapshot.
+
 ## Further missions
 
 Read the [mission design principles and proposal checklist](mission-design.md) at the start of design.
@@ -240,7 +288,7 @@ sync with additions, moves, changes and deliberate variants.
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the seven missions. Further abstractions
+progress storage are shared by the eight missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

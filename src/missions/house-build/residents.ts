@@ -2,25 +2,17 @@ import * as THREE from 'three';
 import type { Shapes } from '../../runtime/geometry.ts';
 import { createCat, createDog } from '../../runtime/pets.ts';
 import { createCar } from '../../runtime/car.ts';
+import { createResident } from '../../runtime/resident.ts';
 import type { HouseState } from './domain/house.ts';
 import { HOUSE_PALETTES } from './domain/round.ts';
 import { ARRIVAL, FAMILIES, FAMILY_CAR_SCALE, arrivalCar, arrivalDoors, arrivalTime, arrivingResident, arrivingPet } from './domain/arrival.ts';
 
 /** Keep the original house residents; vary the family and add shared pets. */
 export function createResidents(shapes: Shapes, parent: THREE.Group) {
-  const { cylinder, box, material } = shapes;
   const car = createCar(shapes, false, { openingDoors: true });
   car.root.name = 'house-family-car'; car.root.scale.setScalar(FAMILY_CAR_SCALE); parent.add(car.root);
   const residents = [0, 1, 2, 3].map(i => {
-    const root = new THREE.Group(); root.name = `house-resident-${i}`; parent.add(root);
-    cylinder(root, 0.17, 0.54, [0, 0.52, 0], ['#dcaa7b', '#93b2a3', '#e9c26e', '#b2a0c2'][i], 10);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 8), material('#e6b594')); head.position.y = 0.98; root.add(head);
-    const legs = [-0.085, 0.085].map(x => {
-      const leg = new THREE.Group(); leg.position.set(x, 0.3, 0); root.add(leg);
-      box(leg, [0.12, 0.28, 0.16], [0, -0.14, 0], '#6f8a84'); return leg;
-    });
-    const arm = box(root, [0.12, 0.44, 0.12], [0.25, 0.65, 0], '#e6b594');
-    return { root, arm, legs };
+    const resident = createResident(shapes, i); resident.root.name = `house-resident-${i}`; parent.add(resident.root); return resident;
   });
   const cat = createCat(shapes), dog = createDog(shapes);
   cat.root.name = 'house-cat'; cat.root.scale.setScalar(0.8); dog.root.scale.setScalar(0.85);

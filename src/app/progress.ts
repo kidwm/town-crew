@@ -1,4 +1,4 @@
-export type MissionId = 'road-repair' | 'house-build' | 'fire-rescue' | 'traffic-rescue' | 'police-patrol' | 'port-cargo' | 'mountain-clearance';
+export type MissionId = 'road-repair' | 'house-build' | 'fire-rescue' | 'traffic-rescue' | 'police-patrol' | 'port-cargo' | 'mountain-clearance' | 'passenger-transfer';
 const memory = new Map<string, unknown>();
 const key = (id: string) => `town-crew:play:v1:${id}`;
 

@@ -3,7 +3,7 @@ import type { Shapes } from './geometry.ts';
 
 export function createCar(shapes: Shapes, police = false, options: { openingDoors?: boolean } = {}) {
   const root = new THREE.Group(), { box, wheel } = shapes;
-  const doors: { root: THREE.Group; side: number }[] = [];
+  const doors: { root: THREE.Group; side: number; rear: boolean }[] = [];
   const panels = options.openingDoors ? [
     box(root, [0.96, 0.5, 1.45], [1.12, 0.65, 0], '#d88973'),
     box(root, [0.57, 0.5, 1.45], [-1.315, 0.65, 0], '#d88973'),
@@ -18,7 +18,7 @@ export function createCar(shapes: Shapes, police = false, options: { openingDoor
   for (const z of [-0.69, 0.69]) {
     if (options.openingDoors) {
       for (const [hinge, width] of [[0.64, 0.77], [-0.15, 0.86]]) {
-        const door = new THREE.Group(); door.position.set(hinge, 0, z); root.add(door); doors.push({ root: door, side: Math.sign(z) });
+        const door = new THREE.Group(); door.position.set(hinge, 0, z); root.add(door); doors.push({ root: door, side: Math.sign(z), rear: hinge < 0 });
         panels.push(box(door, [width, 0.43, 0.07], [-width / 2, 0.78, 0], '#d88973'));
         const window = box(door, [width - 0.05, 0.39, 0.035], [-width / 2, 1.26, 0], '#b9dedd');
         window.material = glass!; window.castShadow = false;
@@ -39,7 +39,7 @@ export function createCar(shapes: Shapes, police = false, options: { openingDoor
   const dent = box(root, [0.1, 0.16, 0.42], [1.67, 0.65, 0.3], '#8d9791');
   const hit = shapes.hitbox(root, [3.6, 1.9, 2.05], [0, 0.8, 0]);
   return { root, hit,
-    openDoors(amount: number) { doors.forEach(door => { door.root.rotation.y = door.side * Math.max(0, Math.min(1, amount)) * 1.15; }); },
+    openDoors(amount: number, side?: number, rearOnly = false) { doors.forEach(door => { door.root.rotation.y = door.side * Math.max(0, Math.min(1, side !== undefined && door.side !== side || rearOnly && !door.rear ? 0 : amount)) * 1.15; }); },
     headlights(on: boolean) { lights.slice(2).forEach(light => { light.material = shapes.material(on ? '#fff8d6' : '#d7c5a1'); }); },
     pose(color: string, distance: number, time: number, hazard: boolean, damaged: boolean, frontGrounded = true) {
     panels.forEach(panel => { panel.material = shapes.material(police ? '#eee8d5' : color); });

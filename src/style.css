@@ -54,6 +54,40 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid #418b9c; outline-offset: 4px; }
 .world { position: absolute; inset: 0; overflow: hidden; background: #bde6eb; }
 .canvas-host { position: absolute; inset: 0; }
+.transfer-targets { position: absolute; inset: 0; pointer-events: none; }
+.transfer-goal, .transfer-grip { position: absolute; transform: translate(-50%, -50%); width: 46px; height: 46px; border: 2px dashed #fff6cd; border-radius: 50%; background: #fff3bd20; box-shadow: 0 0 0 3px #71857238; }
+.transfer-grip { border-style: solid; width: 38px; height: 38px; }
+.transfer-goal > span { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: #587263; border-radius: 12px; padding: 3px 9px; background: #fff7dded; }
+.transfer-goal[data-ready='true'] { background: #a8cb8e90; border-color: #f0ffd3; border-style: solid; }
+.transfer-goal[data-kind='luggage'] { width: 62px; height: 48px; border-radius: 10px; }
+.transfer-grip[hidden], .transfer-goal[hidden], .transfer-picker[hidden], .transfer-finish[hidden] { display: none; }
+.transfer-world .progress { width: 205px; }
+.transfer-world .house-caption { top: 76px; }
+.transfer-world .drag-hint { filter: drop-shadow(0 2px 2px #52684e80); }
+.transfer-picker { position: absolute; inset: 0; pointer-events: none; }
+.transfer-picker button { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; width: 120px; padding: 7px 10px; display: flex; gap: 6px; align-items: center; border: 2px solid #fff7d7; background: #fff3d6f5; color: #55745f; border-radius: 14px; font-size: 13px; box-shadow: 0 3px 12px #48684620; }
+.transfer-picker button[aria-pressed='true'] { border-color: #91b784; background: #fff0c9; }
+.transfer-picker button[hidden] { display: none; }
+.transfer-picker small { display: block; margin-top: 2px; font-size: 10px; white-space: nowrap; }
+.transfer-picker svg { flex: none; width: 35px; height: 28px; }
+.transfer-choice-ring { position: absolute; transform: translate(-50%, -50%); border: 3px solid #fff4c5; border-radius: 45%; background: #fff0c318; box-shadow: 0 0 0 5px #fff4c535; animation: transfer-choice-glow 1.5s ease-in-out infinite; }
+.transfer-choice-ring[hidden] { display: none; }
+.transfer-world .badge-icon[data-choice='true'] { display: flex; gap: 2px; width: 72px; }
+.transfer-world .badge-icon[data-choice='true'] svg { width: 32px; }
+@keyframes transfer-choice-glow { 50% { box-shadow: 0 0 0 9px #fff4c51a; border-color: #f6ffe5; } }
+@media (prefers-reduced-motion: reduce) { .transfer-choice-ring { animation: none; } }
+.transfer-finish { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); display: grid; justify-items: center; gap: 10px; white-space: nowrap; color: #5b8067; }
+.transfer-finish > span { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #fff8df; font-size: 38px; }
+@media (max-width: 600px) {
+  .transfer-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }
+  .transfer-world .mission-badge strong { font-size: 13px; }
+  .transfer-world .mission-steps { left: 16px; right: auto; bottom: 22px; }
+  .transfer-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .transfer-world .drag-hint-hand > * { transform: scale(.75); }
+  .transfer-goal { width: 34px; height: 34px; }
+  .transfer-world .finish-actions { gap: 8px; padding: 10px; }
+  .transfer-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+}
 canvas { display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 .drag-hint { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .drag-hint-line, .drag-hint-arrow { fill: none; stroke: #fff4c9; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }

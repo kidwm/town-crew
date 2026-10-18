@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, and clear a mountain road in seven replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, and help passengers transfer in eight replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -19,6 +19,7 @@ npm run dev
 - Help the police team: <http://localhost:5173/#police-patrol>
 - Move cargo at the dock: <http://localhost:5173/#port-cargo>
 - Clear a mountain road: <http://localhost:5173/#mountain-clearance>
+- Help passengers transfer: <http://localhost:5173/#passenger-transfer>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -40,7 +41,7 @@ The production build is a PWA. Use the browser's install action, or on iPhone/iP
 choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
 icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
 
-On the first online visit, the service worker caches the menu and **all seven missions**,
+On the first online visit, the service worker caches the menu and **all eight missions**,
 including their lazy-loaded JavaScript. After that initial cache completes, reloads
 and switching to previously unopened missions work offline. New builds wait until
 all existing game tabs/windows close before activating, keeping a running mission
@@ -65,12 +66,60 @@ still allow normal text selection, and the menu retains touch scrolling.
 
 ## Choose a mission
 
-The entrance has seven large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has eight large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Help passengers transfer
+
+1. Drag the public bus into the outlined berth, then pull its passenger door open.
+   Six passengers automatically alight and walk along the platform to their waiting areas.
+   The door closes before the child drags the empty bus away.
+2. Watch the taxi and a randomly chosen school bus or coach drive into their waiting areas, then choose either
+   by dragging the actual vehicle. Both have equal choice rings and nearby picture
+   labels; optional vehicle buttons only change the hint. The taxi uses its own
+   yellow-marked loading bay and pedestrian walkway; either large vehicle uses the shared
+   berth. Pull the door open, watch two residents, pupils or travellers
+   board, then drag the vehicle out. The first vehicle fully leaves before the next
+   one can approach; the child chooses their order.
+3. Once both transfer vehicles have left, the remaining large vehicle drives in from
+   offscreen. Drag it to the shared berth, open its door and let its two passengers board.
+   Whenever the coach is dispatched, its luggage hatch opens with the front door:
+   drag one suitcase into the real bay before the travellers board. A 0.4-second hold
+   or valid release stows it. Luggage stays fixed inside the compartment through turns
+   and departure. There is exactly one suitcase in either arrival arrangement.
+4. The last vehicle fully leaves, the station worker waves, and confetti leads into
+   replay and selection buttons without another confirmation.
+
+One fixed orthographic view exposes the passenger side of all four vehicles.
+The station road is a single 5-metre-wide, left-to-right lane with direction arrows
+and no centre divider. Separate recessed taxi and large-vehicle loading bays lie
+along its near edge, next to one continuous raised passenger platform. A small
+planted divider separates the bays; neither parked vehicle occupies the through lane
+or the waiting platform. The school bus and coach use independent roadside holding
+spaces on the far side. All four vehicles enter from the left and leave to the right;
+diagonal approaches and merges replace the school bus's former U-turn.
+Vehicle headings and routes leave clearance for the whole body, mirrors, curbs and
+the other waiting vehicle. The shelter covers only the platform's right-end bench.
+Two complete configurations move the berth and platform left or right while keeping
+the boarding side visible. New rounds change configuration and vehicle palette;
+passenger shirts also vary. The child chooses which of the two waiting vehicles goes first.
+Driving and partial door opening pause on release. Version-4 snapshots preserve the
+random companion, round, order, selected vehicle, driving, doors, carried luggage and automatic clocks;
+reload/HMR releases stale pointers and uncommitted luggage dwell. Completed saves do
+not replay the farewell. Version-1/2/3 saves retain the taxi/school pairing and their work without replaying
+entrances for vehicles already ready to drag. Production and development saves remain independent.
+
+The taxi reuses the original opening-door car, with a roof light and checker stripe;
+the three large passenger vehicles are new procedural bodies with real entry gaps,
+seats and folding doors. The coach has a working lower luggage hatch. Passengers
+reuse the original house residents, now extracted into `runtime/resident.ts`; the
+house retains its original geometry and colours. Scenery, the station worker, hints,
+audio lifecycle and completion storage reuse existing builders and services.
+There is no timer, penalty, fare collection or passenger sorting quiz.
 
 ## Clear a mountain road
 
@@ -420,6 +469,14 @@ The panel selects either distribution/layout and resets stages without rerolling
 reload and HMR preserve independent development progress.
 New or reset `load-soil` entries start with all three rocks already loaded.
 
+Transfer entries use `?dev=1&mission=passenger-transfer&stage=…`:
+`intro`, `bus-arrival`, `bus-door`, `unloading`, `bus-exit`, `bus-departure`,
+`transfer-entrance`, `choose`, `transfer-arrival`, `transfer-door`, `boarding`, `transfer-exit`,
+`transfer-departure`, `coach-entrance`, `coach-arrival`, `coach-door`, `luggage`, `loading`,
+`coach-boarding`, `coach-exit`, `coach-departure`, `celebrate`, and `complete`.
+Add `layout=0|1` and `palette=0..3`. Stage/configuration selectors preserve the other
+settings; reset entries create consistent passengers and cargo for that stage.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -475,6 +532,8 @@ road-repair sequence.
   two motorcycle dispatches, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
+- `src/missions/passenger-transfer/`: independent passenger transfers, child-selected taxi/school dispatch, actual door gestures, suitcase stowage, fixed-view terminal routes and versioned recovery.
+- `src/runtime/resident.ts`: the original house resident, with its seated/walking legs and waving arm, shared with the transfer station.
 - `src/runtime/excavator-model.ts`, `excavator-arm.ts`, `road-barrier.ts`, `sweeper.ts`: the original road excavator, pure arm geometry, road barrier and original traffic sweeper shared with mountain clearance.
 - `src/runtime/construction-models.ts`: original house flatbed, crane, chassis and link helper; the flatbed can omit the house material panels.
 - `src/runtime/car.ts`, `town-scenery.ts`: original traffic cars, trees, houses and
@@ -500,7 +559,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The seven missions have 201 domain tests, covering fixed arm lengths,
+The eight missions have 256 domain tests, covering fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
 ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,

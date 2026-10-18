@@ -25,6 +25,8 @@ function route(): MissionId | undefined {
   if (location.hash === '#fire-rescue') return 'fire-rescue';
   if (location.hash === '#port-cargo') return 'port-cargo';
   if (location.hash === '#mountain-clearance') return 'mountain-clearance';
+  if (location.hash === '#passenger-transfer') return 'passenger-transfer';
+  if (dev && params.get('mission') === 'passenger-transfer') return 'passenger-transfer';
   if (dev && params.get('mission') === 'mountain-clearance') return 'mountain-clearance';
   if (dev && params.get('mission') === 'port-cargo') return 'port-cargo';
   if (dev && params.get('mission') === 'police-patrol') return 'police-patrol';
@@ -79,6 +81,15 @@ async function show() {
       if (fresh) session.save();
       const scene = yield* Effect.acquireRelease(Effect.sync(() => createPortScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
       const audio = yield* Effect.acquireRelease(Effect.sync(createPortAudio), value => Effect.promise(() => value.dispose()));
+      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+    } else if (mission === 'passenger-transfer') {
+      const [{ createTransferScene }, { createTransferSession, createTransferAudio }] = yield* Effect.promise(() => Promise.all([
+        import('./missions/passenger-transfer/scene.ts'), import('./missions/passenger-transfer/session.ts'),
+      ]));
+      const session = createTransferSession(app, dev, home, fresh);
+      if (fresh) session.save();
+      const scene = yield* Effect.acquireRelease(Effect.sync(() => createTransferScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
+      const audio = yield* Effect.acquireRelease(Effect.sync(createTransferAudio), value => Effect.promise(() => value.dispose()));
       yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
     } else if (mission === 'mountain-clearance') {
       const [{ createMountainScene }, { createMountainSession, createMountainAudio }] = yield* Effect.promise(() => Promise.all([
