@@ -414,13 +414,14 @@ test('police development reload, HMR and stage resets retain configuration and p
   await wait('dispatch'); await expect(app).toHaveAttribute('data-mission', 'fire-rescue'); expect(errors).toEqual([]);
 });
 
-test('sanitation development retains both partial bin lifts through reload/HMR and keeps stage configuration', async ({ page }) => {
+test('sanitation development retains both partial bin lifts through reload/HMR and keeps stage configuration', async ({ page }, info) => {
   const { gesture } = await import('./gesture.mjs');
   const errors = []; page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/?dev=1&mission=sanitation&stage=bin-lift&layout=1&palette=2');
+  await page.goto('/?dev=1&mission=sanitation&stage=bin-lift&layout=1&palette=2&service=food-first&cargo=5');
   const app = page.locator('#app'), { down, move, cancel, up, wait } = await fireControls(page);
-  await wait('bin-lift'); await expect(app).toHaveAttribute('data-layout', '1');
+  await wait('bin-lift'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-service', 'food-first'); await expect(app).toHaveAttribute('data-cargo', 'cans,paper');
   let h = await gesture(page, 'up'); await down(h.from); await move({ x: h.from.x, y: h.from.y + (h.to.y - h.from.y) * 0.4 }); await cancel();
+  await expect.poll(async () => Number(await app.getAttribute('data-travel'))).toBeGreaterThan(0.3);
   const value = await app.getAttribute('data-travel'); expect(Number(value)).toBeGreaterThan(0.3);
   await page.reload(); await wait('bin-lift'); await expect(app).toHaveAttribute('data-travel', value);
   const world = await page.locator('.world').elementHandle(), now = new Date();
@@ -429,9 +430,23 @@ test('sanitation development retains both partial bin lifts through reload/HMR a
   await page.getByRole('button', { name: '重設目前階段' }).click(); await expect(app).toHaveAttribute('data-travel', '0');
   await page.locator('#stage').selectOption('food-lift'); await wait('food-lift'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-palette', '2');
   h = await gesture(page, 'up'); await down(h.from); await move({ x: h.from.x, y: h.from.y + (h.to.y - h.from.y) * 0.5 }); await up();
+  await expect.poll(async () => Number(await app.getAttribute('data-travel'))).toBeGreaterThan(0.4);
   const food = await app.getAttribute('data-travel'); await page.reload(); await wait('food-lift'); await expect(app).toHaveAttribute('data-travel', food);
   await page.locator('#layout').selectOption('0'); await wait('food-lift'); await expect(app).toHaveAttribute('data-travel', '0'); await expect(app).toHaveAttribute('data-layout', '0');
   await page.locator('#stage').selectOption('recycling'); await wait('recycling'); await expect(page.locator('.sanitation-source:not([hidden])')).toHaveCount(2);
+  const pairs = [['cardboard', 'bottles'], ['cardboard', 'cans'], ['cardboard', 'paper'], ['bottles', 'cans'], ['bottles', 'paper'], ['cans', 'paper']];
+  for (let i = 0; i < pairs.length; i++) {
+    await page.locator('#cargo').selectOption(String(i)); await wait('recycling'); await expect(app).toHaveAttribute('data-cargo', pairs[i].join(','));
+    for (const item of pairs[i]) await expect(page.locator(`.sanitation-source[data-item="${item}"]`)).toBeVisible();
+  }
+  await page.locator('#service').selectOption('recycle-first'); await wait('recycling'); await expect(page.locator('#stage')).toHaveValue('recycling');
+  await page.locator('#service').selectOption('food-first'); await wait('recycling'); await expect(page.locator('#stage')).toHaveValue('recycling');
+  await page.reload(); await wait('recycling'); await expect(app).toHaveAttribute('data-cargo', 'cans,paper'); await expect(app).toHaveAttribute('data-service', 'food-first');
+  await page.screenshot({ path: info.outputPath('cans-and-paper.png') });
+  for (const item of ['cans', 'paper']) {
+    h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction')); await down(h.from); await move(h.to); await wait('recycle-loading', 'auto'); await up(); await wait(item === 'cans' ? 'recycling' : 'recycle-exit');
+  }
+  await page.screenshot({ path: info.outputPath('cans-paper-loaded.png') });
   await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '垃圾車清潔隊', exact: true }).click(); await wait('garbage-arrival');
   await expect(app).toHaveAttribute('data-bags', ''); await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
 });

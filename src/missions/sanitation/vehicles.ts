@@ -70,8 +70,9 @@ export function createFoodTruck(shapes: Shapes) {
   box(v.root, [2.8, 0.15, 0.06], [-0.8, 1.4, 1.06], '#f4e9c7');
   const lift = new THREE.Group(); v.root.add(lift); box(lift, [1.15, 0.13, 0.95], [0, 0, 0], '#6e8882');
   const arm = cylinder(v.root, 0.09, 1, [0, 0, 0], '#8d9d84', 8);
-  return { ...v, pose(raise: number, open: number) {
-    lift.position.set(-0.7, 0.12 + raise * 2.65, 2.1 - raise * 1.05);
+  return { ...v, pose(raise: number, open: number, stowed = false) {
+    lift.rotation.x = stowed ? Math.PI / 2 : 0;
+    lift.position.set(-0.7, stowed ? 1.45 : 0.12 + raise * 2.65, stowed ? 1.07 : 2.1 - raise * 1.05);
     link(arm, new THREE.Vector3(-0.7, 1.15, 1.0), new THREE.Vector3(-0.7, lift.position.y, lift.position.z));
     lid.rotation.x = -open * 1.85;
   } };
@@ -107,11 +108,20 @@ export function createCollectible(shapes: Shapes, item: Item) {
   } else if (item === 'cardboard') {
     for (let i = 0; i < 3; i++) box(root, [1.3, 0.22, 0.95], [0, i * 0.22 - 0.2, 0], i % 2 ? '#d7b282' : '#c9a273');
     for (const x of [-0.37, 0.37]) box(root, [0.07, 0.72, 1.0], [x, 0.04, 0], '#eee0ba');
+  } else if (item === 'paper') {
+    for (let i = 0; i < 5; i++) box(root, [1.25, 0.11, 0.9], [0, i * 0.11 - 0.22, 0], i % 2 ? '#e5e4d3' : '#f3efdb');
+    for (const x of [-0.4, 0.4]) box(root, [0.07, 0.58, 0.95], [x, 0.03, 0], '#aa9c80');
+    for (let i = 0; i < 4; i++) box(root, [0.45, 0.012, 0.035], [0, 0.29, i * 0.13 - 0.2], '#8d9c92');
   } else {
     box(root, [1.3, 0.12, 0.95], [0, -0.32, 0], '#8aa999');
     for (const z of [-0.46, 0.46]) { box(root, [1.3, 0.17, 0.08], [0, -0.16, z], '#739587'); box(root, [1.3, 0.1, 0.08], [0, 0.1, z], '#739587'); }
     for (const x of [-0.61, 0.61]) box(root, [0.08, 0.5, 0.95], [x, -0.07, 0], '#739587');
     for (const x of [-0.38, 0, 0.38]) for (const z of [-0.2, 0.2]) {
+      if (item === 'cans') {
+        cylinder(root, 0.15, 0.38, [x, -0.02, z], '#b6c6c0', 12); cylinder(root, 0.15, 0.035, [x, 0.19, z], '#e1e4d7', 12);
+        const tab = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.014, 4, 8), shapes.material('#71867d')); tab.rotation.x = Math.PI / 2; tab.position.set(x, 0.215, z); root.add(tab);
+        continue;
+      }
       cylinder(root, 0.12, 0.46, [x, 0.02, z], '#b2d1c5', 8); cylinder(root, 0.065, 0.16, [x, 0.32, z], '#b2d1c5', 8); cylinder(root, 0.075, 0.06, [x, 0.42, z], '#e4d7a7', 8);
     }
   }

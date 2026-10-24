@@ -235,7 +235,7 @@ JSON parse／stringify 另有錯誤分類。所有操作以已恢復錯誤的同
 | [碼頭](../src/missions/port-cargo/persistence.ts) | 3 | direction、craneAttached 與操作欄位；保留兩種方向、懸吊／叉上貨物、部分行駛。 |
 | [山路](../src/missions/mountain-clearance/persistence.ts) | 3 | workOrder、loaderDocked 與完整鏟裝欄位；保留載料／交付順序、停妥與部分抬升。 |
 | [轉運站](../src/missions/passenger-transfer/persistence.ts) | 4 | round.companion；保留隨機同行車、車門、行駛、行李與自動時鐘。 |
-| [清潔隊](../src/missions/sanitation/persistence.ts) | 1 | round、兩種貨物順序、物品位置、空桶、部分升桶／清掃及自動時鐘。 |
+| [清潔隊](../src/missions/sanitation/persistence.ts) | 2 | round、兩種貨物順序、物品位置、空桶、部分升桶／清掃及自動時鐘。 |
 
 八關共用 [snapshot.ts](../src/runtime/snapshot.ts) 的「目前 Schema → domain resume → 目前 Schema」流程。
 第一次結構檢查通過後，仍將原始輸入交給 domain，避免 Schema 先剝除未知鍵而掩蓋警察 work 的精確鍵集合不變量。
@@ -688,10 +688,10 @@ HMR 的完成狀態由開發控制選擇，非手勢通關。storage 被拒時�
 分類啟動錯誤、可選音效解鎖、Schema／同步儲存邊界、注入 persistence／scoped audio、六階段 startup span，
 以及 700 ms 的共用 autosave 與 frame-loop 互相監督。全站導航與 PWA 策略沿用，新增 lazy 關卡入口。
 
-清潔隊版本 1 保留部分行車、兩種升桶高度、兩組裝載順序、物品位置、空桶、單向清掃成果與倒料時鐘；
+清潔隊版本 2 保留抽選的回收組合與接棒次序、部分行車、兩種升桶高度、兩組裝載順序、物品位置、空桶、單向清掃成果與倒料時鐘；
 重載／HMR 清掉舊手指與未提交停留，已完成不重播離場。只接受完整目前格式，不增加遷移分支。
 
-新增 20 個清潔隊檢查及 26 個正式／開發共用整合回歸，`npm run check` 合計 **581 個測試**與正式建置通過。
+新增 110 個清潔隊檢查及 26 個正式／開發共用整合回歸，`npm run check` 合計 **671 個測試**與正式建置通過。
 共用回歸涵蓋部分初始化與清理失敗、frame／HUD 故障、音效解鎖、Schema／不變量、同步離頁保存、服務注入、
 音效清理順序、啟動失敗及 TestClock 存檔排程。14 個正式 Playwright 案例通過：兩配置的桌面／直向手機模擬觸控全程、部分升桶與倒料重載、徽章／重玩與九關離線載入；另 1 個開發案例通過兩種升桶、HMR 與配置重設。
 Codex 內建瀏覽器亦對照原清掃車外觀、新車尾／側邊桶架與實際向上拖曳；未宣稱實體 iPad／Android 或可聽音訊已驗證。

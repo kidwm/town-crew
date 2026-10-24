@@ -109,7 +109,7 @@ share `runtime/snapshot.ts`: validate the input, call the pure domain resume fun
 keys, then validate/strip the recovered state. Road retains its snapshot envelope and tuning facade.
 Domain invariants and input cancellation remain ordinary TypeScript; legacy migrations have been removed.
 Formal and development saves only resume complete current formats: road 1, house 6, fire 1, traffic 3,
-police 1, port 3, mountain 3, transfer 4 and sanitation 1. Old versions, missing required fields and invalid states
+police 1, port 3, mountain 3, transfer 4 and sanitation 2. Old versions, missing required fields and invalid states
 start fresh with a typed development diagnostic. Badges and mute preferences keep their own keys.
 Mission adapters remain lazy-loaded; measured bundle costs are recorded in the Effect adoption document. `tests/manual/effect-storage.html` isolates test keys and
 provides fault controls for Codex built-in browser validation.
@@ -362,12 +362,15 @@ enters the domain or snapshot.
 ## Sanitation mission
 
 `src/missions/sanitation/` owns pure collection/drive/lift rules, the validated
-version-1 round, independent garbage/recycling orders and automatic handoff clocks.
+version-2 round, random recycling pair and middle-truck order, independent loading orders and automatic handoff clocks.
 `domain/site.ts` supplies the same parked, prop, intake, cargo and bin-lift poses to
 rendering, hit targets and tests. The rear garbage lift and side food-bin lift need
 fresh upward gestures after locking. Lift height follows the pointer directly;
 driving has bounded speed, while cleaning keeps a monotonic swept fraction.
 The fixed rear three-quarter camera exposes both loading directions in both layouts.
+The centred through road, separate collection bay, diagonal approaches/merges and full
+vehicle headings share site coordinates. Loaded parcels use truck-local transforms;
+the food side lift folds for travel. Stage and progress order follow the saved round.
 The scene reuses the original sweeper and six-wheel construction flatbed, plus
 shared people/scenery/chassis. New collection bodies have actual hopper/roof openings.
 The mission follows E01–E09: scoped scene/audio/session ownership, frame/auto-save

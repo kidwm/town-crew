@@ -149,7 +149,7 @@ for (const fixture of snapshotFixtures) {
   if (fixture.id === 'fire-rescue') continue; // This mission has no randomized last-round record.
   test(`${fixture.id}: failed last-round writes never replace newer memory with stale storage`, t => {
     browser(t); t.mock.method(Math, 'random', () => 0);
-    const key = fixture.id === 'traffic-rescue' ? 'town-crew:traffic:last-colors:v1' : `town-crew:${fixture.prefix}:last-round:v1`;
+    const key = fixture.id === 'traffic-rescue' ? 'town-crew:traffic:last-colors:v1' : `town-crew:${fixture.prefix}:last-round:v${fixture.id === 'sanitation' ? 2 : 1}`;
     const original = fixture.valid() as { round?: unknown; colors?: unknown };
     const { fault } = storage(t, new Map([[key, JSON.stringify(original.round ?? original.colors)]])); fault.writeDenied = true;
     const next = () => {

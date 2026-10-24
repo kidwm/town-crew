@@ -18,9 +18,9 @@ export function createSanitationPersistence(
   development: DevelopmentStore = createDevelopmentStore(storage),
 ) {
   let previousRound: Round | undefined;
-  const roundKey = 'town-crew:sanitation:last-round:v1';
+  const roundKey = 'town-crew:sanitation:last-round:v2';
   function rememberRound(round: Round) {
-    previousRound = { ...round }; storage.writeJson(roundKey, previousRound);
+    previousRound = { ...round, cargo: [...round.cargo] }; storage.writeJson(roundKey, previousRound);
   }
   return {
     ...createMissionPersistence('sanitation', decodeSanitationSnapshot, store, development),

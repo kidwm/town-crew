@@ -76,39 +76,43 @@ Restart clears only the current mission's progress, while its earned badge remai
 
 ## Help the sanitation crew
 
-1. Drag the yellow garbage truck into the collection bay. Choose either of two
-   tied rubbish bags and drag it into the actual rear hopper. A 0.4-second hold
-   or valid release stows each bag; the plate then compresses them automatically.
-2. Drag the wheeled bin to the rear lift. After it locks, start a **new upward
-   drag** on the bin. Its height follows the finger and stays on release,
-   cancellation or reload. At full height it automatically tips, empties, lowers
-   and returns to the pavement. Drag the garbage truck out.
-3. The recycling truck arrives after the garbage truck fully leaves. Drag it into
-   the bay, then load a cardboard bundle and a crate of bottles in either order.
-   Both remain visibly secured in its real bed through departure. Drag the truck out.
-4. Bring the food-waste truck into the bay. Drag the food-marked lidded bin to its
-   side lift, then start another upward drag. The truck's roof hatch opens, the bin
-   tips into the actual opening, and the empty bin returns before departure.
-5. Drag the original street sweeper across the foreground once. Brushes remove
-   leaves progressively; cleaned sections survive reversing, cancellation and reload.
-   The whole sweeper leaves before residents wave, confetti and replay/selection.
+1. Drag the yellow garbage truck from the through lane into the recessed collection
+   bay. Choose either tied rubbish bag and drag it into the actual rear hopper.
+   A 0.4-second hold or valid release stows each; the plate then compresses them.
+2. Drag the wheeled bin to the rear lift, then start a **new upward drag**.
+   Its height follows the finger and stays on release, cancellation or reload.
+   At full height it automatically tips, empties, lowers and returns to the pavement.
+   Drag the garbage truck out along the merge back into the through lane.
+3. The recycling and food-waste trucks visit in a randomly selected order.
+   When the recycling truck parks in the bay, load either of the two selected
+   packages first. Each round draws two different types from cardboard, bottles,
+   cans and newspapers; all six pairs are possible. Both packages rest on the real
+   flatbed deck and stay fixed inside it while the truck turns and departs.
+4. Whenever the food-waste truck visits, drag the food-marked bin to its side lift,
+   then start another upward drag. The roof hatch opens and the bin tips into the
+   actual opening. The empty bin returns and the side lift folds before departure.
+5. The original sweeper clears the collection apron after both trucks fully leave.
+   Cleaned patches survive reversing, cancellation and reload. The whole sweeper
+   leaves before residents wave, confetti and replay/selection.
 
-One fixed rear three-quarter orthographic view exposes the rear hopper and side
-loading throughout. Two complete left/right collection-bay layouts keep vehicle
-headings unchanged; new rounds switch layout and recycling palette. Each round
-has two rubbish bags, one rubbish-bin lift, two recycling packages, one food-bin
-lift and one sweep. Bag and recycling orders are independent child choices.
-Complete version-1 snapshots retain layout, cargo, prop positions, partial driving,
-lifting, sweeping and automatic clocks. Reload/HMR releases stale pointers and
-uncommitted dwell; completed saves do not replay the farewell. Production and
-stage-entry development progress are separate; invalid/older saves start fresh.
-There is no timer, penalty or sorting quiz.
+The main road has a divider centred between its two edges. The lighter collection
+bay sits entirely outside the through lane, with diagonal approaches and merges.
+The same fixed rear three-quarter camera exposes tools and cargo in both layouts.
+Each round keeps two rubbish bags, two bin lifts, two recycling packages and one sweep.
+New rounds switch layout/palette and avoid the previous unordered recycling pair;
+the middle-truck order is an independent random choice and may repeat. Children
+choose bag and recycling loading orders independently, without a sorting quiz.
 
-The sweeper, original flatbed, residents, uniform workers, houses, trees, bench and
-hint/audio/storage services are reused. New models include the garbage hopper and
-lift, a sealed food-waste collection body with roof hatch and side lift, wheeled
-bins, bags, cardboard and bottle crate. Recycling rails extend the original six-wheel
-flatbed. Multi-stop routes and disposal-site unloading remain deferred.
+Complete version-2 snapshots retain bay configuration, content pair, truck order,
+prop positions, loaded cargo, partial driving/lifting/sweeping and automatic clocks.
+Reload/HMR releases stale pointers and uncommitted dwell without rerolling.
+Older or incomplete saves start fresh; earned badges remain. Completed rounds do
+not replay departure. Production/development progress are separate.
+
+The sweeper, original flatbed, residents, workers, houses, trees, bench and runtime
+services are reused. New can crates reuse the bottle crate structure; newspaper
+bundles extend the existing collected-prop style. Multi-stop routes and disposal
+sites remain deferred.
 
 ## Help passengers transfer
 
@@ -511,9 +515,9 @@ Transfer entries use `?dev=1&mission=passenger-transfer&stage=…`:
 Add `layout=0|1` and `palette=0..3`. Stage/configuration selectors preserve the other
 settings; reset entries create consistent passengers and cargo for that stage.
 
-Sanitation entries use `?dev=1&mission=sanitation&stage=bin-lift&layout=0&palette=0`.
+Sanitation entries use `?dev=1&mission=sanitation&stage=bin-lift&layout=0&palette=0&service=food-first&cargo=5`.
 The stage selector includes collection, locking, independent lifting, tipping,
-vehicle handoffs, food collection and sweeping. Layout and palette selectors retain
+vehicle handoffs, food collection and sweeping. Layout, palette, middle-truck order and content-pair selectors retain
 the selected stage; reload/HMR preserves the current round and partial lift.
 
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
@@ -571,7 +575,7 @@ road-repair sequence.
   two motorcycle dispatches, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
-- `src/missions/sanitation/`: four-vehicle collection, rear/side bin lifts, independent cargo orders, fixed-view routes and version-1 recovery.
+- `src/missions/sanitation/`: four-vehicle collection, rear/side bin lifts, independent cargo orders, fixed-view pullout/merge routes, random content/dispatch and version-2 recovery.
 - `src/missions/passenger-transfer/`: independent passenger transfers, child-selected taxi/school dispatch, actual door gestures, suitcase stowage, fixed-view terminal routes and versioned recovery.
 - `src/runtime/resident.ts`: the original house resident, with its seated/walking legs and waving arm, shared with the transfer station.
 - `src/runtime/excavator-model.ts`, `excavator-arm.ts`, `road-barrier.ts`, `sweeper.ts`: the original road excavator, pure arm geometry, road barrier and original traffic sweeper shared with mountain clearance.
@@ -627,8 +631,8 @@ pagehide saves, last-round precedence and throwing injected reporters. Another 7
 audio Layer lifetime, startup failures, parallel-load spans, cancellation and diagnostic sink/clock failures.
 Another 48 E09 tests cover scheduled autosave in all eight missions, real formal/development sessions,
 navigation Fibers and bounded PWA retries (535 tests in total).
-The ninth sanitation mission adds 20 collection/geometry checks and 26 lifecycle,
-persistence, service-injection and autosave regressions, for **581 tests in total**.
+The ninth sanitation mission adds 110 collection/geometry checks and 26 lifecycle,
+persistence, service-injection and autosave regressions, for **671 tests in total**.
 The sanitation browser suite passed both layouts on desktop mouse and portrait-phone
 emulated touch, including cancelled dwell, partial lift/drive/sweep reloads, mid-tip
 recovery, independent loading orders, all four departures, badges and replay.

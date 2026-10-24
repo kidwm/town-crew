@@ -35,20 +35,32 @@ for (const layout of [0, 1]) test(`sanitation layout ${layout}: four trucks, two
   // A still-held finger after docking cannot begin the separate lift.
   h = await hinted(); await move(h.from); await move(h.to); await expect(app).toHaveAttribute('data-travel', '0'); await up();
   h = await hinted(); await down(h.from); await move({ x: h.from.x, y: h.from.y + (h.to.y - h.from.y) * 0.45 }); await cancel();
+  await expect.poll(async () => Number(await app.getAttribute('data-travel'))).toBeGreaterThan(0.35);
   const lift = await app.getAttribute('data-travel'); expect(Number(lift)).toBeGreaterThan(0.35); expect(Number(lift)).toBeLessThan(0.55);
   await page.reload(); await wait('bin-lift'); await expect(app).toHaveAttribute('data-travel', lift); await page.screenshot({ path: info.outputPath('bin-partly-raised.png') });
   await start('bin'); await wait('bin-tip', 'auto');
   await expect.poll(async () => Number(await app.getAttribute('data-elapsed'))).toBeGreaterThan(0.7);
   await page.screenshot({ path: info.outputPath('bin-tipping.png') }); await page.reload(); await wait('garbage-exit'); await up(); await expect(app).toHaveAttribute('data-bin-empty', 'true');
-  await go('recycle-arrival'); await go('recycling');
-  const recycling = touch === Boolean(layout) ? ['bottles', 'cardboard'] : ['cardboard', 'bottles'];
-  for (let i = 0; i < 2; i++) { await start(recycling[i]); await wait('recycle-loading', 'auto'); await up(); await wait(i ? 'recycle-exit' : 'recycling'); }
-  await expect(app).toHaveAttribute('data-recycled', recycling.join(',')); await page.screenshot({ path: info.outputPath('recycling-loaded.png') });
-  await page.reload(); await wait('recycle-exit'); await expect(app).toHaveAttribute('data-recycled', recycling.join(','));
-  await go('food-arrival'); await go('food-dock'); await start('food'); await wait('food-lift'); await up();
-  await page.screenshot({ path: info.outputPath('food-truck.png') });
-  await start('food'); await wait('food-tip', 'auto'); await up(); await expect.poll(async () => Number(await app.getAttribute('data-elapsed'))).toBeGreaterThan(0.7); await page.screenshot({ path: info.outputPath('food-tipping.png') });
-  await wait('food-exit'); await expect(app).toHaveAttribute('data-food-empty', 'true'); await go('sweep');
+  const service = layout ? 'food-first' : 'recycle-first', cargo = (await app.getAttribute('data-cargo')).split(',');
+  await expect(app).toHaveAttribute('data-service', service);
+  const order = layout ? ['food', 'recycle'] : ['recycle', 'food']; await go(`${order[0]}-arrival`);
+  for (let visit = 0; visit < order.length; visit++) {
+    if (order[visit] === 'recycle') {
+      await go('recycling');
+      const recycling = touch === Boolean(layout) ? [...cargo].reverse() : [...cargo];
+      await expect(page.locator('.sanitation-source:not([hidden])')).toHaveCount(2);
+      for (const id of cargo) await expect(page.locator(`.sanitation-source[data-item="${id}"]`)).toBeVisible();
+      for (let i = 0; i < 2; i++) { await start(recycling[i]); await wait('recycle-loading', 'auto'); await up(); await wait(i ? 'recycle-exit' : 'recycling'); }
+      await expect(app).toHaveAttribute('data-recycled', recycling.join(',')); await page.screenshot({ path: info.outputPath('recycling-loaded.png') });
+      await page.reload(); await wait('recycle-exit'); await expect(app).toHaveAttribute('data-recycled', recycling.join(','));
+    } else {
+      await go('food-dock'); await start('food'); await wait('food-lift'); await up(); await page.screenshot({ path: info.outputPath('food-truck.png') });
+      await start('food'); await wait('food-tip', 'auto'); await up(); await expect.poll(async () => Number(await app.getAttribute('data-elapsed'))).toBeGreaterThan(0.7); await page.screenshot({ path: info.outputPath('food-tipping.png') });
+      await page.reload(); await wait('food-exit'); await expect(app).toHaveAttribute('data-food-empty', 'true');
+    }
+    await expect(app).toHaveAttribute('data-cargo', cargo.join(',')); await expect(app).toHaveAttribute('data-service', service);
+    await go(visit ? 'sweep' : `${order[1]}-arrival`);
+  }
   h = await hinted(); await down(h.from); await move({ x: (h.from.x + h.to.x) / 2, y: (h.from.y + h.to.y) / 2 });
   await expect.poll(async () => Number(await app.getAttribute('data-swept'))).toBeGreaterThan(0.1); await cancel(); const swept = await app.getAttribute('data-swept');
   await page.reload(); await wait('sweep'); await expect(app).toHaveAttribute('data-swept', swept); await page.screenshot({ path: info.outputPath('sweeper.png') });
@@ -56,7 +68,7 @@ for (const layout of [0, 1]) test(`sanitation layout ${layout}: four trucks, two
   await page.screenshot({ path: info.outputPath('complete.png') }); await page.reload(); await wait('complete');
   await page.locator('.finish-home').click(); await expect(page.locator('.sanitation .completed-mark')).toBeVisible(); await expect(page.locator('canvas')).toHaveCount(0);
   await page.getByRole('button', { name: '垃圾車清潔隊', exact: true }).click(); await wait('garbage-arrival'); await expect(app).not.toHaveAttribute('data-layout', String(layout));
-  await expect(app).toHaveAttribute('data-bags', ''); await expect(app).toHaveAttribute('data-food-empty', 'false');
+  await expect(app).toHaveAttribute('data-bags', ''); await expect(app).toHaveAttribute('data-food-empty', 'false'); await expect(app).not.toHaveAttribute('data-cargo', cargo.join(','));
   const fresh = await app.getAttribute('data-layout'); await page.getByRole('button', { name: '重新開始清潔隊任務' }).click(); await wait('garbage-arrival'); await expect(app).not.toHaveAttribute('data-layout', fresh);
   await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
 });
