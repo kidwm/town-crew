@@ -11,7 +11,7 @@ export const HOUSE_PALETTES = [
 export interface HouseRound {
   roof: RoofType; layout: 0 | 1; palette: number; family: 0 | 1 | 2; pet: 'none' | 'cat' | 'dog';
 }
-// Old homes keep their original appearance and local coordinates on migration.
+// Stable defaults for construction and development stage entry.
 export const DEFAULT_ROUND: Readonly<HouseRound> = { roof: 'gable', layout: 0, palette: 0, family: 0, pet: 'none' };
 export function validRound(value: unknown): value is HouseRound {
   if (!value || typeof value !== 'object') return false;

@@ -1,4 +1,6 @@
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import { createRoadBarrier } from '../../runtime/road-barrier.ts';
 import { passingCarX } from '../../runtime/passing-car.ts';
 import * as THREE from 'three';
@@ -15,15 +17,15 @@ import { createRepairSurface } from './road-surface.ts';
 import { createDumpTruck } from '../../runtime/dump-truck.ts';
 import { createExcavatorVisual, createRollerVisual, createCarVisual } from './vehicles.ts';
 
-export function createScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+export const createScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true, alpha: false })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setClearColor('#bde6eb');
   renderer.domElement.setAttribute('aria-label', '修路工地：挖除舊路面、裝車清運、運料填補與壓平通車');
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   host.append(renderer.domElement);
-  const scene = new THREE.Scene();
+  const scene = yield* acquireScene();
   const site = new THREE.Group(); scene.add(site);
   let currentRound = DEFAULT_ROUND;
   const camera = new THREE.OrthographicCamera(-10, 10, 6, -6, 0.1, 100);
@@ -31,6 +33,7 @@ export function createScene(host: HTMLElement) {
   camera.lookAt(0, 0.4, 0);
   scene.add(new THREE.HemisphereLight('#ffffff', '#7c9b7c', 2.5));
   const sun = new THREE.DirectionalLight('#fff4dc', 3);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
   sun.position.set(-5, 12, 8);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -38,6 +41,7 @@ export function createScene(host: HTMLElement) {
   sun.shadow.normalBias = 0.04;
   scene.add(sun);
   const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
   const { box, cylinder, material } = shapes;
 
   box(site, [70, 0.5, 70], [0, -0.5, 0], '#99c98a');
@@ -102,7 +106,7 @@ export function createScene(host: HTMLElement) {
 
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect();
     if (!width || !height) return;
     const aspect = width / height;
@@ -113,7 +117,7 @@ export function createScene(host: HTMLElement) {
     camera.bottom = -viewHeight / 2;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
-  });
+  })), value => Effect.sync(() => value.disconnect()));
   resize.observe(host);
   function setRay(clientX: number, clientY: number) {
     const bounds = renderer.domElement.getBoundingClientRect();
@@ -271,23 +275,7 @@ export function createScene(host: HTMLElement) {
       car.render(passingCarX(trafficTime - 0.85, -10, 10));
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect();
-      const geometries = new Set<THREE.BufferGeometry>();
-      const usedMaterials = new Set<THREE.Material>();
-      scene.traverse((object) => {
-        if (object instanceof THREE.Mesh) {
-          geometries.add(object.geometry);
-          for (const value of Array.isArray(object.material) ? object.material : [object.material]) usedMaterials.add(value);
-        }
-      });
-      geometries.forEach((value) => value.dispose());
-      usedMaterials.forEach((value) => value.dispose());
-      sun.shadow.dispose();
-      shapes.disposeMaterials();
-      renderer.dispose();
-      renderer.forceContextLoss();
-      renderer.domElement.remove();
-    },
   };
-}
+});
+
+export type RoadScene = Effect.Success<ReturnType<typeof createScene>>;

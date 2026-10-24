@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createDump, createMixer, createFlatbed, createCrane, link } from './vehicles.ts';
@@ -12,22 +14,26 @@ import { createResidents } from './residents.ts';
 import { createGarage } from './garage.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 
-export function createHouseScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+export const createHouseScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#d2e8e5');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement;
   canvas.setAttribute('aria-label', '蓋房子工地：拖車斗倒砂石、移動出料槽、運送材料和吊裝兩層樓');
   host.append(canvas);
-  const scene = new THREE.Scene();
+  const scene = yield* acquireScene();
   const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 100);
   camera.position.set(8, 10, 18); camera.lookAt(0, 1.8, 0.5);
   scene.add(new THREE.HemisphereLight('#fff9ec', '#97ab91', 2.5));
-  const sun = new THREE.DirectionalLight('#fff1d3', 2.7); sun.position.set(-7, 14, 7); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight('#fff1d3', 2.7);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-7, 14, 7); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.04;
   Object.assign(sun.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, far: 45 }); scene.add(sun);
   const site = new THREE.Group(); scene.add(site);
-  const shapes = createShapes(); const { box, cylinder, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, cylinder, material } = shapes;
   box(site, [70, 0.5, 70], [0, -0.5, 0], '#b7cf9e');
   box(site, [17.5, 0.12, 8], [0, -0.15, -0.2], '#e2cea7');
   box(site, [70, 0.09, 3.2], [0, -0.13, 5.1], '#c8b393');
@@ -94,12 +100,13 @@ export function createHouseScene(host: HTMLElement) {
     scene.updateMatrixWorld(true); camera.updateMatrixWorld(true);
     ray.setFromCamera(new THREE.Vector2((x - rect.left) / rect.width * 2 - 1, -(y - rect.top) / rect.height * 2 + 1), camera);
   }
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
     const aspect = width / height, view = Math.max(14.5, 24 / aspect);
     camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function projectPoint(p: THREE.Vector3) {
     const r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
     const v = p.clone().project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
@@ -284,11 +291,7 @@ export function createHouseScene(host: HTMLElement) {
       });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect();
-      const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(object => { if (object instanceof THREE.Mesh) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type HouseScene = Effect.Success<ReturnType<typeof createHouseScene>>;

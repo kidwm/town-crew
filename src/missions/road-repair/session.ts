@@ -1,12 +1,15 @@
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
 import { Effect } from 'effect';
 import type { createAudio } from '../../runtime/audio.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import type { roadSounds } from './sounds.ts';
-import { restoreDevelopment, restoreRoadSnapshot, saveDevelopment } from './devtools.ts';
+import { roadPersistence } from './services.ts';
+import type { createRoadPersistence } from './services.ts';
 type ViteHotContext = NonNullable<ImportMeta['hot']>;
-import type { createScene } from './scene.ts';
+import type { RoadScene } from './scene.ts';
 import { defaultTuning, input as truckInput, pose } from './domain/dump-truck.ts';
 import type { Tuning } from './domain/dump-truck.ts';
 import { HOME, CARRY_HEIGHT, grabBucket, hasBucketLoad, moveBucket, overTruck, releaseBucket, tapBucketTarget } from './domain/excavator.ts';
@@ -17,18 +20,7 @@ import { chooseRound, validRound, DEFAULT_ROUND, roadDamage, haulDirection, roll
 import type { RoadRound } from './domain/round.ts';
 import { mountUI, icons } from './ui.ts';
 
-const roundKey = 'town-crew:road:last-round:v1';
-let previousRound: RoadRound | undefined;
-function rememberRound(round: RoadRound) {
-  previousRound = { ...round };
-  try { sessionStorage.setItem(roundKey, JSON.stringify(round)); } catch { /* Optional storage. */ }
-}
-function newRound(previous?: RoadRound) {
-  try { const saved: unknown = JSON.parse(sessionStorage.getItem(roundKey) ?? 'null'); if (validRound(saved)) previousRound = saved; } catch { /* Optional storage. */ }
-  const round = chooseRound(previous ?? previousRound); rememberRound(round); return round;
-}
-
-export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}, fresh = false) {
+export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteHotContext, onHome: () => void = () => {}, fresh = false, persistence: ReturnType<typeof createRoadPersistence> = roadPersistence) {
   const bootStartedAt = performance.now();
   const params = new URLSearchParams(location.search);
   document.body.dataset.dev = String(dev);
@@ -41,23 +33,18 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
   let tuning = { ...defaultTuning };
   let targetStage: EntryStage = entry;
   const snapshotKey = `town-crew:road:v2:${location.search}`;
-  if (dev && !fresh) {
-    const restored = restoreDevelopment(snapshotKey, hot);
-    if (restored) { ({ state, tuning, targetStage } = restored); restoredRound = true; }
-  }
-  if (!dev && !fresh) {
-    const restored = restoreRoadSnapshot(loadProgress('road-repair'), 'play');
+  if (!fresh) {
+    const restored = persistence.load(dev, snapshotKey, hot);
     if (restored) { ({ state, tuning, targetStage } = restored); restoredRound = true; }
   }
   if (!restoredRound) {
     const configured = { pattern: params.get('pattern') ?? DEFAULT_ROUND.pattern, layout: Number(params.get('layout') ?? 0) };
-    state = createRoad(entry, dev ? validRound(configured) ? configured : DEFAULT_ROUND : newRound());
+    state = createRoad(entry, dev ? validRound(configured) ? configured : DEFAULT_ROUND : persistence.newRound());
     if (queryStage === 'ready' || queryStage === 'dumping') { state.truck.phase = queryStage; state.access = 'working'; }
   }
-  if (!dev) rememberRound(state.round);
+  if (!dev) persistence.rememberRound(state.round);
   function save() {
-    if (dev) saveDevelopment({ key: snapshotKey, state, tuning, targetStage }, hot);
-    else saveProgress('road-repair', { key: 'play', state, tuning, targetStage });
+    persistence.save(dev, { key: dev ? snapshotKey : 'play', state, tuning, targetStage }, hot);
   }
   function ready() {
     if (state.access !== 'working') return false;
@@ -67,18 +54,19 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     if (state.phase !== 'traffic' && state.phase !== 'complete' && state.access !== 'working') return state.access;
     return state.phase === 'excavator' ? state.excavator.action : state.phase === 'haul-away' ? state.hauler.action : state.phase === 'dump-truck' ? state.truck.phase : state.phase === 'roller' ? state.roller.action : state.phase;
   }
-  function connect(scene: ReturnType<typeof createScene>, audio: ReturnType<typeof createAudio<keyof typeof roadSounds>>) {
-    const events = new AbortController();
+  const connect = (scene: RoadScene, audio: ReturnType<typeof createAudio<keyof typeof roadSounds>>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
     const options = { signal: events.signal };
     const canvas = scene.canvas;
-    const dragHint = createDragHint(app.querySelector<HTMLElement>('.world')!);
+    const dragHint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     const gestureCaption = app.querySelector<HTMLElement>('.gesture-caption')!;
     const bucketGrip = app.querySelector<HTMLElement>('.excavator-grip')!;
     const dropTarget = app.querySelector<HTMLElement>('.excavator-drop')!;
     let bucketSelected = false, lastBucketInput = -Infinity;
-    let muted = isMuted(), frame = 0, firstReady = false;
+    let muted = persistence.isMuted(), firstReady = false;
+    yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    let previousTime = performance.now(), visualTime = 0, lastSave = 0;
+    let previousTime = performance.now(), visualTime = 0;
     const progress = app.querySelector<HTMLElement>('.progress')!;
     const fillBar = app.querySelector<HTMLElement>('.progress span')!;
     const success = app.querySelector<HTMLElement>('.success')!;
@@ -108,15 +96,10 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       if (next.truck.phase === 'dumping' && state.truck.phase !== 'dumping') audio.play('dump');
       if (next.roller.passes > state.roller.passes) audio.play('compact');
       if (next.phase === 'traffic' && next.elapsed >= 2.05 && state.elapsed < 2.05) audio.play('horn');
-      if (next.phase === 'complete' && state.phase !== 'complete') { audio.play('complete'); if (!dev) markCompleted('road-repair'); }
+      if (next.phase === 'complete' && state.phase !== 'complete') { audio.play('complete'); if (!dev) persistence.markCompleted(); }
       state = next;
     }
-    function unlock() {
-      try {
-        const promise = audio.unlock(); // Call synchronously inside the actual user gesture.
-        void Effect.runPromise(Effect.tryPromise(() => promise).pipe(Effect.catch(() => Effect.void)));
-      } catch { /* A missing audio device must not block the game. */ }
-    }
+    const unlock = createAudioUnlocker('road-repair', audio, events.signal, dev);
     const pointer = bindPrimaryDrag<{ phase: MissionPhase; startX: number; startY: number; lastX: number; lastY: number; height: number; offset: Point; moved: boolean; destination: boolean; chunk: number | undefined }>(canvas, {
       start(event) {
         unlock();
@@ -177,6 +160,7 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
       },
     }, events.signal);
     const cancelPointer = pointer.cancel;
+    yield* Effect.addFinalizer(() => Effect.sync(cancelPointer));
     canvas.addEventListener('keydown', event => {
       if (state.phase !== 'excavator') return;
       if (event.key === 'Escape') { cancelPointer(); bucketSelected = false; return; }
@@ -189,14 +173,14 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
     }, options);
     document.addEventListener('visibilitychange', () => { if (document.hidden) save(); previousTime = performance.now(); }, options);
     window.addEventListener('pagehide', save, options);
-    app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', () => { unlock(); cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad('excavator', dev ? chooseRound(state.round) : newRound(state.round)); syncRound(); save(); }, options));
+    app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', () => { unlock(); cancelPointer(); bucketSelected = false; lastBucketInput = -Infinity; state = createRoad('excavator', dev ? chooseRound(state.round) : persistence.newRound(state.round)); syncRound(); save(); }, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { cancelPointer(); save(); onHome(); }, options));
     const soundButton = app.querySelector<HTMLButtonElement>('.sound')!;
     soundButton.textContent = muted ? '♩' : '♪';
     soundButton.setAttribute('aria-pressed', String(muted));
     soundButton.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效');
     soundButton.addEventListener('click', () => {
-      unlock(); muted = !muted; audio.setMuted(muted); setMuted(muted);
+      unlock(); muted = !muted; audio.setMuted(muted); persistence.setMuted(muted);
       soundButton.textContent = muted ? '♩' : '♪';
       soundButton.setAttribute('aria-pressed', String(muted));
       soundButton.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效');
@@ -288,13 +272,11 @@ export function createRoadSession(app: HTMLDivElement, dev: boolean, hot?: ViteH
         label('#phase', phaseNames[state.phase]); label('#action', actions[action()] ?? action());
         label('#rocks', `${state.excavator.cleared} / 3`); label('#passes', `${state.roller.passes} / 2`);
         label('#angle', state.phase === 'dump-truck' ? `${Math.round(pose(state.truck, tuning).tilt * 180 / Math.PI)}°` : '—');
-        if (!firstReady && ready()) { label('#boot-time', `${Math.round(now - bootStartedAt)} ms`); firstReady = true; }
+        if (!firstReady && ready()) { label('#boot-time', `${Math.round(performance.now() - bootStartedAt)} ms`); firstReady = true; }
       }
-      if (now - lastSave > 800) { save(); lastSave = now; }
-      frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { cancelPointer(); save(); cancelAnimationFrame(frame); events.abort(); dragHint.dispose(); };
-  }
+    // The caller waits on this outside the initialization error boundary.
+    return withAutosave('road-repair', runFrameLoop('road-repair', animate), save, 800);
+  });
   return { connect, save };
 }

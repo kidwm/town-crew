@@ -1,38 +1,39 @@
+import { Effect } from 'effect';
+import { mountainPersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import { createAudio } from '../../runtime/audio.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
-import { createMountain, chooseRound, validRound, resumeMountain, stages, grab, drive, moveLoader, moveBucket, release, advance, progress, canGrab } from './domain/mountain.ts';
-import type { Round, Stage, Pattern, MountainState } from './domain/mountain.ts';
-import type { createMountainScene } from './scene.ts';
+import { createMountain, chooseRound, stages, grab, drive, moveLoader, moveBucket, release, advance, progress, canGrab } from './domain/mountain.ts';
+import type { Stage, Pattern, MountainState } from './domain/mountain.ts';
+import type { MountainScene } from './scene.ts';
 import { mountMountainUI, names, instruction, step, vehicleSteps } from './ui.ts';
 import { mountainIcons } from '../../app/mountain-art.ts';
 export const createMountainAudio = () => createAudio({ work: [294, 392], depart: [392, 523], horn: [392, 494], complete: [523, 659, 784, 1047] });
-const roundKey = 'town-crew:mountain:last-round:v1'; let previousRound: Round | undefined;
-function newRound(previous?: Round) {
-  try { const saved: unknown = JSON.parse(sessionStorage.getItem(roundKey) ?? 'null'); if (validRound(saved)) previousRound = saved; } catch { /* Optional storage. */ }
-  previousRound = chooseRound(previous ?? previousRound);
-  try { sessionStorage.setItem(roundKey, JSON.stringify(previousRound)); } catch { /* Optional storage. */ }
-  return previousRound;
-}
-export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = mountainPersistence) {
   const params = new URLSearchParams(location.search), query = params.get('stage');
   const phase: Stage = dev && !fresh && stages.includes(query as Stage) ? query as Stage : 'intro';
   const devKey = `town-crew:mountain:dev:v1:${location.search}`;
-  let restored: MountainState | undefined;
-  try { if (!fresh) restored = resumeMountain(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('mountain-clearance')); } catch { /* Optional storage. */ }
-  let state = restored ?? createMountain(phase, dev ? { pattern: params.get('pattern') === 'cluster' ? 'cluster' : 'spread', layout: params.get('layout') === '1' ? 1 : 0 } : newRound());
-  function save() { if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } } else saveProgress('mountain-clearance', state); }
+  const restored = fresh ? undefined : persistence.load(dev, devKey);
+  let state = restored ?? createMountain(phase, dev ? { pattern: params.get('pattern') === 'cluster' ? 'cluster' : 'spread', layout: params.get('layout') === '1' ? 1 : 0 } : persistence.newRound());
+  if (!dev && restored) persistence.rememberRound(state.round);
+  function save() { persistence.save(dev, devKey, state); }
   mountMountainUI(app, dev);
-  function connect(scene: ReturnType<typeof createMountainScene>, audio: ReturnType<typeof createMountainAudio>) {
-    const events = new AbortController(), options = { signal: events.signal }, hint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(); audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Audio is optional. */ } }
+  const connect = (scene: MountainScene, audio: ReturnType<typeof createMountainAudio>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('mountain-clearance', audio, events.signal, dev);
     function update(next: MountainState) {
       if (next === state) return;
       const checkpoint = next.phase !== state.phase || next.motion !== state.motion || next.delivered.length !== state.delivered.length || next.carried !== state.carried || next.loaderCarrying !== state.loaderCarrying || next.soilLoaded.length !== state.soilLoaded.length;
       if (checkpoint) audio.play(next.phase === 'complete' ? 'complete' : next.phase === 'reopen' ? 'horn' : next.phase.endsWith('exit') ? 'depart' : 'work');
-      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) markCompleted('mountain-clearance');
+      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) persistence.markCompleted();
       state = next; if (checkpoint) save();
     }
     const pointer = bindPrimaryDrag<{ phase: Stage; origin: { x: number; y: number }; offset: { x: number; y: number } }>(scene.canvas, {
@@ -49,12 +50,13 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
       },
       end(held, cancelled) { if (state.phase === held.phase) update(release(state, cancelled)); save(); },
     }, events.signal);
-    const restart = () => { unlock(); pointer.cancel(); state = createMountain('intro', dev ? chooseRound(state.round) : newRound(state.round)); save(); };
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
+    const restart = () => { unlock(); pointer.cancel(); state = createMountain('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), pattern = app.querySelector<HTMLSelectElement>('#pattern');
     const reset = () => { pointer.cancel(); state = createMountain(select!.value as Stage, { layout: Number(layout!.value) as 0 | 1, pattern: pattern!.value as Pattern }); save(); };
     select?.addEventListener('change', reset, options); layout?.addEventListener('change', reset, options); pattern?.addEventListener('change', reset, options); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
@@ -87,10 +89,8 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
       app.querySelectorAll<HTMLElement>('[data-step]').forEach(n => { const rank = vehicles.indexOf(Number(n.dataset.step)); n.dataset.state = state.phase === 'complete' || rank < active ? 'done' : rank === active ? 'active' : 'upcoming'; });
       if (displayed !== state.phase) { label('#vehicle-name', names[state.phase]); app.querySelector('.badge-icon')!.innerHTML = mountainIcons[step(state)]; if (select) select.value = state.phase; displayed = state.phase; }
       if (dev) { label('#phase', names[state.phase]); label('#action', `${state.action} · ${state.motion}`); layout!.value = String(state.round.layout); pattern!.value = state.round.pattern; }
-      if (now - saved > 700) { save(); saved = now; } frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); events.abort(); hint.dispose(); };
-  }
+    return withAutosave('mountain-clearance', runFrameLoop('mountain-clearance', animate), save, 700);
+  });
   return { connect, save };
 }

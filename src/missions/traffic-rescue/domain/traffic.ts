@@ -132,45 +132,21 @@ export function progress(s: TrafficState) {
 }
 export function resumeTraffic(value: unknown): TrafficState | undefined {
   if (!value || typeof value !== 'object') return;
-  const saved = value as Omit<TrafficState, 'version' | 'phase' | 'firstTow'> & { version: number; phase: Stage | 'tow-choice'; firstTow?: 0 | 1 };
-  const phase = saved.phase === 'tow-choice' ? 'tow-arrival' : saved.phase;
+  const s = value as TrafficState, phase = s.phase;
   const index = stages.indexOf(phase), sweep = stages.indexOf('sweep'), towing = ['tow-arrival', 'hook', 'tow-exit'].includes(phase);
   const boolPair = (v: unknown): v is [boolean, boolean] => Array.isArray(v) && v.length === 2 && v.every(x => typeof x === 'boolean');
-  const legacy = saved.version === 1, old = legacy || saved.version === 2;
-  if ((!old && saved.version !== 3) || index < 0 || saved.phase === 'tow-choice' && !old) return;
-  let s: TrafficState = { ...saved, version: 3, phase, firstTow: saved.firstTow ?? 0 };
+  if (s.version !== 3 || index < 0 || s.firstTow !== 0 && s.firstTow !== 1) return;
   if (!['ready', 'dragging', 'entering', 'working'].includes(s.action) || !Number.isFinite(s.elapsed) || s.elapsed < 0 || s.elapsed > 10) return;
   if (!Array.isArray(s.colors) || s.colors.length !== 2 || s.colors.some(c => !Number.isInteger(c) || c < 0 || c >= PALETTE.length) || s.colors[0] === s.colors[1]) return;
   if (!boolPair(s.cones) || !boolPair(s.towed) || ![null, 0, 1].includes(s.selected) || !Number.isInteger(s.cleaned) || s.cleaned < 0 || s.cleaned > DEBRIS.length) return;
-  if (!s.handle || ![s.handle.x, s.handle.y, s.handle.z, s.truckX].every(Number.isFinite) || s.truckX < (legacy ? -10 : -11) || s.truckX > (legacy ? 12 : 11) || Math.abs(s.handle.x) > 11 || Math.abs(s.handle.z) > 6.5 || s.handle.y < 0 || s.handle.y > 2) return;
+  if (!s.handle || ![s.handle.x, s.handle.y, s.handle.z, s.truckX].every(Number.isFinite) || s.truckX < -11 || s.truckX > 11 || Math.abs(s.handle.x) > 11 || Math.abs(s.handle.z) > 6.5 || s.handle.y < 0 || s.handle.y > 2) return;
   if (index < 2 && s.cones.some(Boolean) || index > 2 && !s.cones.every(Boolean)) return;
   if (index < 3 && s.towed.some(Boolean) || index >= stages.indexOf('sweeper') && !s.towed.every(Boolean) || towing && s.towed.every(Boolean)) return;
   if (index < sweep && s.cleaned !== 0 || index > sweep && s.cleaned !== DEBRIS.length) return;
   if (s.selected !== null && s.towed[s.selected]) return;
   if (s.action === 'entering' && !['police', 'sweeper', 'ambulance'].includes(s.phase)) return;
-  if (['collision', 'tow-arrival', 'departure', 'reopen'].includes(s.phase) && saved.phase !== 'tow-choice' && s.action !== 'working') return;
+  if (['collision', 'tow-arrival', 'departure', 'reopen'].includes(s.phase) && s.action !== 'working') return;
   if (s.phase === 'complete' && s.action !== 'ready') return;
-  const loaded = s.phase === 'tow-exit' || s.phase === 'hook' && s.action === 'working';
-  if (legacy) {
-    if (saved.phase === 'tow-choice' || loaded !== (s.selected !== null)) return;
-    if (s.action === 'working' && isDriving(s) && Math.abs(s.truckX - (s.phase === 'tow-exit' ? 12 : driveEnd(s))) > 0.03) return;
-    // Version 1 had a different rig. Re-dispatch safely, retaining completed trips.
-    s = { ...s, towTypes: ['flatbed', 'wheel-lift'], firstTow: s.towed.some(Boolean) ? (s.towed[0] ? 0 : 1) : s.selected ?? 0 };
-    if (towing) s = next({ ...s, selected: null, truckX: -10 }, 'tow-arrival', 'working');
-  } else if (saved.version === 2) {
-    if ((saved.phase !== 'tow-choice' && towing) !== (s.selected !== null)) return;
-    if (saved.phase === 'tow-choice' && !['ready', 'dragging'].includes(s.action)) return;
-    // The old selected car also identified the rig. Keep that rig and any load
-    // already in motion, but let a not-yet-attached hook choose either car.
-    const rig = s.selected ?? (s.towed[0] ? 1 : 0);
-    s.firstTow = (s.towed.some(Boolean) ? 1 - rig : rig) as 0 | 1;
-    if (!loaded) s.selected = null;
-    if (saved.phase === 'tow-choice') s = next(s, 'tow-arrival', 'working');
-  } else if (saved.firstTow !== 0 && saved.firstTow !== 1) return;
-  if (old && s.phase === 'reopen' && s.elapsed > REOPEN_PASS_START) {
-    if (s.elapsed > 4) return;
-    s.elapsed = REOPEN_PASS_START + (s.elapsed - REOPEN_PASS_START) * PASS_DURATION / 1.4;
-  }
   if (!Array.isArray(s.towTypes) || s.towTypes.length !== 2 || s.towTypes.some(t => !['flatbed', 'wheel-lift'].includes(t)) || s.towTypes[0] === s.towTypes[1]) return;
   if ((s.phase === 'tow-exit' || s.phase === 'hook' && s.action === 'working') !== (s.selected !== null)) return;
   if (s.phase === 'tow-exit' && (s.truckX * towDirection(s) < 8 || s.truckX * towDirection(s) > 11)) return;

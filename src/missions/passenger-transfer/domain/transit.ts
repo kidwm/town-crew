@@ -117,9 +117,8 @@ export function progress(s: TransitState) {
 /** Validate phase relationships as well as numbers; never restore phantom passengers or cargo. */
 export function resumeTransit(value: unknown): TransitState | undefined {
   if (!value || typeof value !== 'object') return;
-  const candidate = value as Omit<TransitState, 'version'> & { version: number };
-  if (![1, 2, 3, 4].includes(candidate.version) || !validRound(candidate.round)) return;
-  const s: TransitState = { ...candidate, version: 4, round: { ...candidate.round, companion: candidate.version < 4 ? 'school' : companion(candidate.round) } };
+  const s = value as TransitState;
+  if (s.version !== 4 || !validRound(s.round) || !['school', 'coach'].includes(s.round.companion!)) return;
   if (!stages.includes(s.phase) || !validRound(s.round) || !['ready', 'dragging', 'auto'].includes(s.action)) return;
   const pair = transferPair(s.round);
   if (!Array.isArray(s.order) || s.order.length > 2 || s.order.some(v => !pair.includes(v)) || new Set(s.order).size !== s.order.length || s.selected !== null && !pair.includes(s.selected)) return;

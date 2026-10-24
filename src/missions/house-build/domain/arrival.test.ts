@@ -11,14 +11,12 @@ test('arrival resumes its precise clock, preserves the round and cannot be dragg
     const restored = resumeHouse(JSON.parse(JSON.stringify(state)))!;
     assert.deepEqual(restored, state); assert.deepEqual(grab(restored), restored);
     assert.deepEqual(advance(restored, 0.02), advance(state, 0.02));
-    assert.deepEqual(resumeHouse({ ...state, version: 4 }), state);
+    assert.equal(resumeHouse({ ...state, version: 4 }), undefined);
   }
   assert.equal(resumeHouse({ ...createHouse('decorate'), elapsed: ARRIVAL.duration }), undefined);
-  for (const version of [1, 2, 3, 4, 5]) {
-    const complete = resumeHouse({ ...createHouse('complete', round), version })!;
-    assert.equal(advance(complete, 0.1).phase, 'complete');
-    if (version >= 3) assert.deepEqual(complete.round, round);
-  }
+  const complete = resumeHouse(createHouse('complete', round))!;
+  assert.equal(advance(complete, 0.1).phase, 'complete'); assert.deepEqual(complete.round, round);
+  for (const version of [1, 2, 3, 4, 5]) assert.equal(resumeHouse({ ...complete, version }), undefined);
 });
 
 test('the whole turning car clears garage walls in both layouts and stops before anyone exits', () => {

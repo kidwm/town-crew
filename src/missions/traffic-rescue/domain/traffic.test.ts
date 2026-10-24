@@ -102,38 +102,21 @@ test('both departures retain their own rig and side regardless of the chosen car
     assert.equal(accept(grab(s), goal).action, 'dragging');
   }
 });
-test('version 1 preserves completed work and dispatches a hook for the remaining car', () => {
+test('obsolete traffic version 1 is rejected without redispatching a rig', () => {
   const state = { ...createTraffic('tow-exit', [3, 4]), version: 1, selected: 1, towed: [true, false], truckX: 10 };
-  const migrated = resumeTraffic(state)!;
-  assert.equal(migrated.version, 3); assert.equal(migrated.phase, 'tow-arrival');
-  assert.equal(migrated.selected, null); assert.deepEqual(migrated.colors, [3, 4]); assert.deepEqual(migrated.towed, [true, false]);
-  assert.deepEqual(goals(settle(migrated)), ['car-1']); assert.equal(towType(migrated), 'wheel-lift');
-  assert.deepEqual(resumeTraffic(migrated), migrated);
+  assert.equal(resumeTraffic(state), undefined);
   const sweeping = createTraffic('sweep', [3, 4]); sweeping.cleaned = 4; sweeping.truckX = 0;
-  assert.equal(resumeTraffic({ ...sweeping, version: 1 })?.cleaned, 4);
+  assert.deepEqual(resumeTraffic(sweeping), sweeping);
+  assert.equal(resumeTraffic({ ...sweeping, version: 1 }), undefined);
 });
-test('version 2 preserves loading clocks and rig identity while removing uncommitted car choices', () => {
-  for (const selected of [0, 1] as const) for (const second of [false, true]) {
-    const towed: [boolean, boolean] = [second && selected === 1, second && selected === 0];
-    for (const phase of ['tow-arrival', 'hook', 'tow-exit'] as const) {
-      for (const action of phase === 'tow-arrival' ? ['working'] as const : ['ready', 'working'] as const) {
-        const loaded = phase === 'tow-exit' || phase === 'hook' && action === 'working';
-        const snapshot = { ...createTraffic(phase, [1, 3], ['wheel-lift', 'flatbed']), version: 2, selected, towed,
-          action, elapsed: 0.5, truckX: (selected === 0 ? -1 : 1) * (action === 'working' ? 11 : 9) };
-        const restored = resumeTraffic(snapshot)!;
-        assert.ok(restored); assert.equal(restored.selected, loaded ? selected : null);
-        assert.equal(restored.elapsed, 0.5); assert.equal(towDirection(restored), selected === 0 ? -1 : 1);
-        assert.equal(towType(restored), snapshot.towTypes[selected]); assert.deepEqual(resumeTraffic(restored), restored);
-      }
-    }
+
+test('obsolete traffic version 2 and tow-choice saves are rejected', () => {
+  for (const selected of [0, 1]) for (const phase of ['tow-arrival', 'hook', 'tow-exit'] as const) {
+    assert.equal(resumeTraffic({ ...createTraffic(phase), version: 2, selected }), undefined);
   }
-  for (const towed of [[false, false], [false, true], [true, false]] as [boolean, boolean][]) {
-    const pending = { ...createTraffic('hook'), version: 2, phase: 'tow-choice', towed };
-    const restored = resumeTraffic(pending)!;
-    assert.equal(restored.phase, 'tow-arrival'); assert.equal(restored.selected, null);
-    assert.equal(goals(settle(restored)).length, towed.some(Boolean) ? 1 : 2);
-  }
+  assert.equal(resumeTraffic({ ...createTraffic('hook'), phase: 'tow-choice' }), undefined);
 });
+
 test('reopening uses road-repair pacing and cannot finish while the car is still crossing', () => {
   const start = REOPEN_PASS_START, end = durations.reopen!;
   assert.equal(end - start, 6.6);
@@ -142,7 +125,6 @@ test('reopening uses road-repair pacing and cannot finish while the car is still
   assert.equal(advance({ ...createTraffic('reopen'), elapsed: 4 }, 0.1).phase, 'reopen');
   const mid = { ...createTraffic('reopen'), elapsed: start + 3.3 };
   assert.deepEqual(resumeTraffic(mid), mid); assert.equal(settle(mid).phase, 'complete');
-  const legacy = resumeTraffic({ ...mid, version: 2, elapsed: start + 0.7 })!;
-  assert.ok(Math.abs(reopeningCarX(legacy.elapsed)) < 1e-10);
+  assert.equal(resumeTraffic({ ...mid, version: 2, elapsed: start + 0.7 }), undefined);
   assert.equal(resumeTraffic({ ...mid, version: 2, elapsed: 4.1 }), undefined);
 });

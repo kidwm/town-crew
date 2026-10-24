@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createResident } from '../../runtime/resident.ts';
@@ -11,15 +13,20 @@ import { dock, berth as vehicleBerth, waiting, suitcaseHome, cargoTarget, arriva
 import type { Point, Position } from './domain/terminal.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 interface Screen { x: number; y: number }
-export function createTransferScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce8d6');
+export const createTransferScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce8d6');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '乘客轉運站：拖車進站、開門接送與裝行李'); host.append(canvas);
-  const scene = new THREE.Scene(), camera = createTransferCamera();
+  const scene = yield* acquireScene();
+  const camera = createTransferCamera();
   scene.add(new THREE.HemisphereLight('#fff7df', '#a3b39a', 2.4));
-  const sun = new THREE.DirectionalLight('#fff1d5', 2.6); sun.position.set(-12, 24, 14); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
+  const sun = new THREE.DirectionalLight('#fff1d5', 2.6);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-12, 24, 14); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
   Object.assign(sun.shadow.camera, { left: -25, right: 25, top: 22, bottom: -22, far: 80 }); scene.add(sun);
-  const shapes = createShapes(), { box, cylinder, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, cylinder, material } = shapes;
   box(scene, [180, 0.35, 180], [0, -0.27, 0], '#bed2ac');
   box(scene, [100, 0.12, ROAD.front - ROAD.back], [0, -0.03, ROAD.centre], '#a4aaa0');
   const site = new THREE.Group(); scene.add(site);
@@ -92,10 +99,11 @@ export function createTransferScene(host: HTMLElement) {
   const berth = new THREE.Group(); site.add(berth);
   for (const z of [-1.45, 1.45]) for (let x = -3.4; x <= 3.4; x += 0.55) box(berth, [0.3, 0.03, 0.06], [x, 0.065, z], '#fff0c3');
   for (const x of [-3.75, 3.75]) for (let z = -1.35; z <= 1.35; z += 0.5) box(berth, [0.06, 0.03, 0.28], [x, 0.065, z], '#fff0c3');
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
     resizeTransferCamera(camera, r.width / r.height); renderer.setSize(r.width, r.height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function screen(p: Point, y = 1): Screen {
     camera.updateMatrixWorld(true); const r = canvas.getBoundingClientRect(), v = new THREE.Vector3(p.x, y, p.z).project(camera);
     return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
@@ -248,10 +256,7 @@ export function createTransferScene(host: HTMLElement) {
       confetti.forEach((p, n) => { p.visible = atLeast(s, 'celebrate'); const t = (time * 0.22 + n / 36) % 1; p.position.set(d.x + Math.sin(n * 5) * 8, 7 - t * 6, 3 + Math.cos(n * 7) * 3); p.rotation.set(time, n, time + n); p.scale.setScalar(Math.sin(t * Math.PI)); });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type TransferScene = Effect.Success<ReturnType<typeof createTransferScene>>;

@@ -231,13 +231,17 @@ test('staggered taxi and either companion never overlap on their shared one-way 
     }
   }
 });
-test('version-1/2/3 snapshots retain the taxi/school pairing and partial work without replaying entrances', () => {
-  for (const version of [1, 2, 3]) for (const phase of ['choose', 'transfer-door', 'coach-arrival', 'complete'] as const) {
-    const current = createTransit(phase), old = { ...current, version };
-    if (phase === 'transfer-door') old.doors.taxi = 0.4;
-    const restored = resumeTransit(old)!; assert.equal(restored.version, 4); assert.equal(restored.round.companion, 'school'); assert.equal(restored.phase, phase); assert.deepEqual(restored.order, old.order); assert.deepEqual(restored.doors, old.doors);
+test('obsolete transit versions and missing companion are rejected without migration', () => {
+  for (const phase of ['choose', 'transfer-door', 'coach-arrival', 'complete'] as const) {
+    const current = createTransit(phase);
+    if (phase === 'transfer-door') current.doors.taxi = 0.4;
+    assert.deepEqual(resumeTransit(current), current);
+    for (const version of [1, 2, 3]) assert.equal(resumeTransit({ ...current, version }), undefined);
+    const { companion, ...round } = current.round;
+    assert.equal(resumeTransit({ ...current, round }), undefined);
   }
 });
+
 test('the remaining large vehicle enters after the pair leaves and resumes its clock before child input', () => {
   for (const companion of ['school', 'coach'] as const) for (const last of ['taxi', companion] as const) {
     const first = last === 'taxi' ? companion : 'taxi';

@@ -42,7 +42,7 @@ test('the fifth placement leaves an empty hook for roof pickup and preserves its
   s = tick(release(moveLoad(grab(lift(s)), HOUSE)), 4 + SITE_FINISH_SECONDS + ARRIVAL.duration);
   assert.equal(s.phase, 'complete'); assert.equal(s.placed, 6); assert.equal(s.color, 2);
 });
-test('parking and walking finish without input after the crane leaves, including old doorbell saves', () => {
+test('parking and walking finish without input after the crane leaves', () => {
   let s = tick({ ...createHouse('roof-color'), color: 1 });
   s = tick(release(moveLoad(grab(s), HOUSE)), 1.3);
   assert.equal(s.placed, 6); assert.equal(s.action, 'leaving');
@@ -55,30 +55,17 @@ test('parking and walking finish without input after the crane leaves, including
   s = tick(s, ARRIVAL.duration);
   assert.equal(s.phase, 'complete'); assert.equal(s.color, 1); assert.equal(progress(s), 1);
   assert.deepEqual(tick(s), s);
-  for (const version of [1, 2, 3]) {
-    const restored = resumeHouse({ ...createHouse('decorate'), version, color: 2, elapsed: 42 })!;
-    assert.equal(restored.elapsed, 0);
-    assert.equal(advance(restored, 0).phase, 'decorate');
-    const complete = tick(restored, ARRIVAL.duration + 0.1);
-    assert.equal(complete.phase, 'complete'); assert.equal(complete.color, 2);
-    assert.equal(complete.placed, 6); assert.equal(progress(complete), 1);
-  }
+  for (const version of [1, 2, 3]) assert.equal(resumeHouse({ ...createHouse('decorate'), version, elapsed: 42 }), undefined);
 });
-test('old colour-selection saves continue automatically with their existing colour', () => {
-  const legacy = { ...createHouse('crane-two'), version: 1, placed: 5, action: 'ready', color: 1 };
-  const restored = resumeHouse(legacy)!;
-  assert.equal(restored.version, 6); assert.equal(restored.phase, 'roof-color'); assert.equal(restored.color, 1);
-  const ready = tick(restored); assert.equal(ready.phase, 'crane-two'); assert.equal(ready.placed, 5); assert.equal(ready.color, 1);
-  for (const version of [1, 2]) {
-    const legacyChoice = { ...createHouse('roof-color'), version, color: 2 };
-    const pickedUp = tick(resumeHouse(legacyChoice)!);
-    assert.equal(pickedUp.phase, 'crane-two'); assert.equal(pickedUp.action, 'ready'); assert.equal(pickedUp.color, 2);
+test('obsolete house versions are rejected while current completion keeps its colour', () => {
+  for (const version of [1, 2, 3, 4, 5]) for (const phase of ['crane-two', 'roof-color', 'complete'] as const) {
+    assert.equal(resumeHouse({ ...createHouse(phase), version, color: 2 }), undefined);
   }
-  const complete = resumeHouse({ ...createHouse('complete'), version: 1, color: 2 })!;
-  assert.equal(complete.phase, 'complete'); assert.equal(complete.color, 2);
+  assert.equal(resumeHouse({ ...createHouse('complete'), color: 2 })!.color, 2);
   assert.equal(resumeHouse({ ...createHouse('roof-color'), placed: 6 }), undefined);
   assert.equal(resumeHouse({ ...createHouse('roof-color'), action: 'dragging' }), undefined);
 });
+
 test('short or cancelled tipping does not fill gravel', () => {
   let s = tick(createHouse());
   s = release(dragGravel(grab(s), 25), true); s = tick(s, 3);
@@ -154,8 +141,8 @@ test('empty hook pickup cannot install a wall and reload retains empty approach,
   assert.equal(pickup.action, 'pickup'); assert.equal(pickup.attached, true); assert.equal(pickup.placed, 0);
   const lifting = tick(pickup, 0.7); assert.deepEqual(resumeHouse(lifting), lifting);
   const carried = tick(lifting); assert.ok(carried.attached); assert.equal(carried.action, 'ready');
-  const old = { ...carried, version: 5 }; assert.deepEqual(resumeHouse(old), carried);
+  const old = { ...carried, version: 5 }; assert.equal(resumeHouse(old), undefined);
   const oldPickup = { ...pickup, version: 5, elapsed: 0.3 };
-  assert.ok(Math.abs(resumeHouse(oldPickup)!.elapsed - 0.7) < 1e-8);
+  assert.equal(resumeHouse(oldPickup), undefined);
   for (const patch of [{ attached: undefined }, { attached: false, action: 'placing' }, { attached: true, action: 'unhooking' }]) assert.equal(resumeHouse({ ...empty, ...patch }), undefined);
 });

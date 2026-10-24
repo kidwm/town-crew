@@ -26,11 +26,11 @@ test('every roof/layout preserves its round, player colour and work across snaps
     for (const x of [-21, -6, -3.1, 0.5, 2, 15]) assert.equal(siteX(round, siteX(round, x)), x);
   }
 });
-test('legacy saves keep the original home and partial work; invalid round fields are rejected', () => {
+test('missing or invalid house rounds are rejected without supplying defaults', () => {
   const legacy = { ...createHouse('concrete'), version: 2, pours: [1, 0.4, 0], color: 2 };
   delete (legacy as { round?: unknown }).round;
-  const restored = resumeHouse(legacy)!;
-  assert.deepEqual(restored.round, DEFAULT_ROUND); assert.deepEqual(restored.pours, legacy.pours); assert.equal(restored.color, 2);
+  assert.equal(resumeHouse(legacy), undefined);
+  assert.equal(resumeHouse({ ...legacy, version: 6 }), undefined);
   for (const field of [{ roof: 'unknown' }, { layout: 2 }, { palette: NaN }, { family: -1 }, { pet: 'lion' }]) {
     assert.equal(resumeHouse({ ...createHouse(), round: { ...DEFAULT_ROUND, ...field } }), undefined);
   }

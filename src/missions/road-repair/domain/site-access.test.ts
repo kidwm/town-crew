@@ -84,14 +84,8 @@ test('loaded cleanup truck keeps the exit clear through dragging, cancellation a
   assert.equal(roadPose(state, defaultTuning).barrierZ[0], BARRIER_CLEAR_Z);
 });
 
-test('reload preserves gate animation; old snapshots restart an entrance safely', () => {
+test('reload preserves the current gate animation', () => {
   const opening = advanceRoad(createRoad('dump-truck'), 0.2);
   assert.deepEqual(roadPose(resumeRoad(opening), defaultTuning), roadPose(opening, defaultTuning));
-  const { access: _access, ...legacy } = createRoad('dump-truck');
-  legacy.truck.elapsed = 0.4;
-  const migrated = resumeRoad(legacy as RoadState);
-  assert.equal(migrated.access, 'opening-entry');
-  assert.equal(migrated.truck.elapsed, 0);
-  assertClear(migrated);
   assert.deepEqual(roadPose(createRoad(), defaultTuning).barrierZ, [0, 0]);
 });

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>八關 E07／E08 服務與啟動驗證</title>
+<style>
+  body { margin: 0; font: 13px system-ui; background: #f6f4eb; color: #23453e; }
+  #startup-controls { height: 200px; box-sizing: border-box; padding: 10px; overflow: auto; }
+  #startup-controls select, #startup-controls button { display: inline-block; width: auto; margin: 0 6px 6px 0; padding: 4px; font: inherit; }
+  #reports { display: flex; gap: 14px; } #reports section { min-width: 260px; } #reports pre { margin: 4px 0; font-size: 11px; }
+  body #app { position: relative; height: calc(100% - 200px); }
+</style>
+<header id="startup-controls">
+  <strong>E07／E08 八關驗證</strong>
+  <select id="mission" aria-label="任務"><option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option><option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option><option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option></select>
+  <select id="mode" aria-label="存檔模式"><option value="1">開發存檔</option><option value="0">正式存檔</option></select>
+  <select id="fault" aria-label="故障案例"><option value="none">正常啟動</option><option value="scene">場景初始化失敗</option><option value="connect">控制器連接失敗</option><option value="storage">儲存 getter 拒絕</option></select>
+  <button id="apply">載入案例</button><button id="frame">下一幀排程失敗</button><button id="pagehide">同步保存並檢查</button>
+  <div id="status">準備中</div><div id="saved"></div><div id="reports"></div>
+</header>
+<div id="app"></div>
+<script type="module">
+  // Isolated manual entry for the real main.ts; never imported by the production app.
+  const { snapshotFixtures } = await import('../helpers/snapshots.ts');
+  const params = new URLSearchParams(location.search);
+  if (!params.has('run')) location.replace(`${location.pathname}?dev=1&stage=roller-return&fault=none&run=${Date.now()}#road-repair`);
+  else {
+    const mission = document.querySelector('#mission');
+    mission.value = location.hash.slice(1);
+    const selected = snapshotFixtures.find(item => item.id === mission.value);
+    window.addEventListener('hashchange', () => {
+      const id = location.hash.slice(1);
+      if (id === 'road-repair' || snapshotFixtures.some(item => item.id === id)) mission.value = id;
+    });
+    const mode = document.querySelector('#mode'), fault = document.querySelector('#fault'), app = document.querySelector('#app');
+    mode.value = params.get('dev'); fault.value = params.get('fault'); const faultMode = fault.value;
+    document.querySelector('#apply').onclick = () => {
+      const fixture = snapshotFixtures.find(item => item.id === mission.value);
+      location.href = `${location.pathname}?dev=${mode.value}&stage=${fixture?.stage ?? 'roller-return'}&fault=${fault.value}&run=${Date.now()}#${mission.value}`;
+    };
+    const native = { sessionStorage: window.sessionStorage, localStorage: window.localStorage }, prefix = `manual:effect-startup:${params.get('run')}:`;
+    const key = mode.value === '1' ? selected ? `town-crew:${selected.prefix}:dev:v1:${location.search}` : `town-crew:road:v2:${location.search}` : `town-crew:play:v1:${mission.value}`;
+    if (!native.sessionStorage.getItem(prefix + 'seeded')) {
+      if (selected) native.sessionStorage.setItem(prefix + key, JSON.stringify(selected.valid()));
+      else {
+      const { createRoad } = await import('/src/missions/road-repair/domain/road.ts');
+      const { defaultTuning } = await import('/src/missions/road-repair/domain/dump-truck.ts');
+      native.sessionStorage.setItem(prefix + key, JSON.stringify({ key: mode.value === '1' ? key : 'play', state: createRoad('roller-return'), tuning: { ...defaultTuning, dragThreshold: 90 }, targetStage: 'roller-return' }));
+      }
+      native.sessionStorage.setItem(prefix + 'seeded', 'true');
+    }
+    let writes = 0, errors = 0, failures = 0, warnings = 0;
+    const history = [], status = document.querySelector('#status');
+    const update = () => {
+      status.textContent = `啟動紀錄 ${history.length} 筆；Mission failed ${failures}；可選 warning ${warnings}；未處理錯誤 ${errors}`;
+      const host = document.querySelector('#reports'); host.replaceChildren();
+      for (const report of history.slice(-3)) {
+        const section = document.createElement('section'), title = document.createElement('strong'), detail = document.createElement('pre');
+        title.textContent = `#${report.startupId} ${report.mission} ${report.outcome} ${report.durationMs.toFixed(1)} ms`;
+        detail.textContent = report.stages.map(item => `${item.stage.padEnd(15)} ${item.outcome.padEnd(9)} ${item.durationMs.toFixed(1)} ms`).join('\n');
+        section.append(title, detail); host.append(section);
+      }
+    };
+    for (const level of ['debug', 'log', 'error', 'warn']) {
+      const original = console[level].bind(console);
+      console[level] = (...args) => {
+        if (level === 'debug' && args[0] === 'Mission startup') history.push(args[1]);
+        if (args.some(arg => typeof arg === 'string' && arg.includes('Mission failed'))) failures++;
+        if (level === 'warn') warnings++;
+        update(); original(...args);
+      };
+    }
+    window.addEventListener('error', () => { errors++; update(); });
+    window.addEventListener('unhandledrejection', () => { errors++; update(); });
+    for (const area of ['sessionStorage', 'localStorage']) Object.defineProperty(window, area, { configurable: true, get() {
+      if (faultMode === 'storage') throw new Error('Manual storage getter denied');
+      const mapped = key => key.startsWith('town-crew:') ? prefix + key : key;
+      return { getItem: key => native[area].getItem(mapped(key)), setItem: (key, value) => { writes++; native[area].setItem(mapped(key), value); }, removeItem: key => native[area].removeItem(mapped(key)) };
+    } });
+    if (faultMode === 'scene') {
+      const Original = window.ResizeObserver;
+      window.ResizeObserver = class extends Original {
+        observe(...args) { window.ResizeObserver = Original; throw new Error('Manual scene initialization failed'); }
+      };
+    }
+    if (faultMode === 'connect') {
+      const original = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function(...args) {
+        if (this instanceof HTMLElement && this.matches('.sound')) {
+          EventTarget.prototype.addEventListener = original;
+          throw new Error('Manual controller connection failed');
+        }
+        return original.apply(this, args);
+      };
+    }
+    document.querySelector('#frame').onclick = () => {
+      const original = window.requestAnimationFrame;
+      window.requestAnimationFrame = () => { window.requestAnimationFrame = original; throw new Error('Manual frame scheduling failed'); };
+    };
+    document.querySelector('#pagehide').onclick = () => {
+      const before = writes; window.dispatchEvent(new Event('pagehide'));
+      const id = location.hash.slice(1), current = snapshotFixtures.find(item => item.id === id);
+      const currentKey = mode.value === '1' ? current ? `town-crew:${current.prefix}:dev:v1:${location.search}` : `town-crew:road:v2:${location.search}` : `town-crew:play:v1:${id}`;
+      const saved = JSON.parse(native.sessionStorage.getItem(prefix + currentKey));
+      const state = current ? saved : saved?.state;
+      document.querySelector('#saved').textContent = `pagehide 同步寫入 ${writes - before} 次；磁碟階段 ${state?.phase ?? '無'}；版本 ${state?.version ?? '無'}`;
+      document.querySelector('#saved').dataset.snapshot = JSON.stringify(saved);
+    };
+    update(); await import('/src/main.ts');
+  }
+</script>
+</html>

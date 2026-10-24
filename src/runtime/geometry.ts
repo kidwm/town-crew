@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { releaseAll } from './cleanup.ts';
 
 export function createShapes() {
   const materials = new Map<string, THREE.MeshStandardMaterial>();
@@ -36,6 +37,9 @@ export function createShapes() {
     parent.add(group);
     return group;
   };
-  return { material, box, cylinder, hitbox, wheel, disposeMaterials() { materials.forEach(value => value.dispose()); materials.clear(); } };
+  return { material, box, cylinder, hitbox, wheel, disposeMaterials() {
+    const owned = Array.from(materials.values()); materials.clear();
+    releaseAll(owned.map(value => () => value.dispose()));
+  } };
 }
 export type Shapes = ReturnType<typeof createShapes>;

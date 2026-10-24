@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E05／E06 存檔驗證</title>
+<style>
+  body { margin: 0; font: 14px system-ui; background: #f6f4eb; color: #23453e; }
+  #storage-controls { height: 150px; padding: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-content: center; align-items: center; }
+  #storage-controls select, #storage-controls button { width: auto; margin: 0; font: inherit; padding: 4px; }
+  #storage-controls output { flex-basis: 100%; font-size: 12px; overflow-wrap: anywhere; }
+  body #app { position: relative; height: calc(100% - 150px); }
+</style>
+<header id="storage-controls">
+  <strong>E05／E06</strong>
+  <select id="mission" aria-label="測試任務">
+    <option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option>
+    <option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option>
+    <option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option>
+  </select>
+  <select id="mode" aria-label="存檔模式"><option value="1">開發存檔</option><option value="0">正式存檔</option></select>
+  <select id="fixture" aria-label="存檔案例">
+    <option value="valid">有效部分進度</option><option value="json">損壞 JSON</option><option value="schema">錯誤數字型別</option>
+    <option value="invariant">矛盾狀態</option><option value="legacy">舊版本（應開新局）</option>
+  </select>
+  <select id="fault" aria-label="儲存故障">
+    <option value="none">正常儲存</option><option value="getter">Storage getter 拒絕</option><option value="get">讀取拒絕</option>
+    <option value="set">寫入拒絕</option><option value="remove">刪除拒絕</option><option value="readonly">寫入與刪除拒絕</option>
+  </select>
+  <button id="apply">載入測試案例</button><button id="pagehide">觸發 pagehide 並檢查存檔</button>
+  <output id="status">準備測試…</output><output id="stored"></output><output id="diagnostics"></output>
+</header>
+<div id="app"></div>
+<script type="module">
+  // Independent Vite entry. Only test-prefixed keys are persisted; production never imports this file.
+  const params = new URLSearchParams(location.search);
+  if (!params.has('run')) {
+    location.replace(`${location.pathname}?mission=road-repair&dev=1&fixture=valid&fault=none&run=${Date.now()}#road-repair`);
+  } else {
+    const mission = document.querySelector('#mission'), mode = document.querySelector('#mode'), fixture = document.querySelector('#fixture'), fault = document.querySelector('#fault');
+    mission.value = params.get('mission') ?? 'road-repair'; mode.value = params.get('dev'); fixture.value = params.get('fixture'); fault.value = params.get('fault');
+    const missionId = mission.value, faultMode = fault.value;
+    document.querySelector('#apply').onclick = () => {
+      location.href = `${location.pathname}?mission=${mission.value}&dev=${mode.value}&fixture=${fixture.value}&fault=${fault.value}&run=${Date.now()}#${mission.value}`;
+    };
+    const { snapshotFixtures } = await import('/tests/helpers/snapshots.ts');
+    const missionFixture = snapshotFixtures.find(value => value.id === missionId);
+    const original = { sessionStorage: window.sessionStorage, localStorage: window.localStorage };
+    const prefix = `manual:effect-storage:${params.get('run')}:`;
+    const key = mode.value === '1' ? (missionId === 'road-repair' ? `town-crew:road:v2:${location.search}` : `town-crew:${missionFixture.prefix}:dev:v1:${location.search}`) : `town-crew:play:v1:${missionId}`;
+    let seed;
+    if (missionId === 'road-repair') {
+      const { createRoad } = await import('/src/missions/road-repair/domain/road.ts');
+      const { defaultTuning } = await import('/src/missions/road-repair/domain/dump-truck.ts');
+      seed = { key: mode.value === '1' ? key : 'play', state: createRoad('roller-return'), tuning: { ...defaultTuning, dragThreshold: 90 }, targetStage: 'roller-return' };
+      if (fixture.value === 'schema') seed.tuning.dragThreshold = '90';
+      if (fixture.value === 'invariant') seed.state.excavator.delivered = [0, 0, 1];
+      if (fixture.value === 'legacy') { delete seed.state.version; delete seed.state.round; }
+    } else {
+      seed = fixture.value === 'invariant' ? missionFixture.invalid() : fixture.value === 'legacy' ? missionFixture.legacy?.() ?? { ...missionFixture.valid(), version: 0 } : missionFixture.valid();
+      if (fixture.value === 'schema') seed.elapsed = '0';
+    }
+    if (!original.sessionStorage.getItem(prefix + 'seeded')) {
+      original.sessionStorage.setItem(prefix + key, fixture.value === 'json' ? '{invalid' : JSON.stringify(seed));
+      original.sessionStorage.setItem(prefix + 'seeded', 'true');
+    }
+    const counts = { get: 0, set: 0, remove: 0 }, warnings = new Map();
+    let errors = 0;
+    const diagnostics = document.querySelector('#diagnostics');
+    const showDiagnostics = () => { diagnostics.textContent = `診斷：${[...warnings].map(([key, n]) => `${key} × ${n}`).join('；') || '無 warning'}；error ${errors}`; };
+    const warn = console.warn.bind(console), error = console.error.bind(console);
+    console.warn = (...args) => {
+      if (args[0] === 'Optional storage failed') {
+        const failure = args[1], kind = `${failure._tag}/${failure.operation ?? failure.stage ?? 'encode'}`;
+        warnings.set(kind, (warnings.get(kind) ?? 0) + 1); showDiagnostics();
+      }
+      warn(...args);
+    };
+    console.error = (...args) => { errors++; showDiagnostics(); error(...args); };
+    window.addEventListener('error', () => { errors++; showDiagnostics(); });
+    window.addEventListener('unhandledrejection', () => { errors++; showDiagnostics(); });
+    function access(area, operation, key, value) {
+      const testing = key.startsWith('town-crew:');
+      if (testing) {
+        counts[operation]++;
+        if (faultMode === operation || faultMode === 'readonly' && operation !== 'get') throw new Error(`Manual storage ${operation} denied`);
+      }
+      const target = testing ? prefix + key : key;
+      if (operation === 'get') return original[area].getItem(target);
+      if (operation === 'set') return original[area].setItem(target, value);
+      return original[area].removeItem(target);
+    }
+    for (const area of ['sessionStorage', 'localStorage']) Object.defineProperty(window, area, { configurable: true, get() {
+      if (faultMode === 'getter') throw new Error(`Manual ${area} getter denied`);
+      return { getItem: key => access(area, 'get', key), setItem: (key, value) => access(area, 'set', key, value), removeItem: key => access(area, 'remove', key) };
+    } });
+    const status = document.querySelector('#status'), stored = document.querySelector('#stored');
+    status.textContent = `隔離存檔：${mission.selectedOptions[0].textContent}／${mode.selectedOptions[0].textContent}／${fixture.selectedOptions[0].textContent}／${fault.selectedOptions[0].textContent}`;
+    document.querySelector('#pagehide').onclick = () => {
+      const before = counts.set; window.dispatchEvent(new Event('pagehide'));
+      let saved;
+      try { saved = JSON.parse(original.sessionStorage.getItem(prefix + key)); } catch { /* A corrupt fixture can remain unwritable. */ }
+      const state = saved?.state ?? saved;
+      stored.textContent = `pagehide 同步寫入嘗試 ${counts.set - before} 次；儲存階段 ${state?.phase ?? '無有效資料'}，版本 ${state?.version ?? '舊版'}；讀／寫／刪次數 ${counts.get}/${counts.set}/${counts.remove}`;
+      stored.dataset.phase = state?.phase ?? ''; stored.dataset.version = String(state?.version ?? '');
+    };
+    showDiagnostics();
+    await import('/src/main.ts');
+  }
+</script>
+</html>

@@ -143,31 +143,9 @@ export function roadPose(state: RoadState, tuning: Tuning) {
   return { fill, flatten, compact, rollerX, haulerX, progress, barrierZ, departure: state.access === 'leaving' ? smooth(state.elapsed / DEPARTURE_DURATION) : 0 };
 }
 export function resumeRoad(state: RoadState, tuning: Tuning = defaultTuning): RoadState {
-  if (!state.hauler) {
-    // Legacy roadside piles become loaded cargo. Restart an unfinished scoop
-    // on the road so an old animation cannot drop it at the former dump site.
-    const e = state.excavator;
-    state = { ...state, hauler: createRoad(state.phase).hauler,
-      excavator: state.phase === 'excavator' && ['scooping', 'unloading', 'returning', 'dragging'].includes(e.action)
-        ? { ...e, action: e.cleared === 3 ? 'complete' : 'ready', elapsed: 0, bucket: { ...HOME }, from: { ...HOME }, target: { ...HOME } } : e };
-  }
-  // Upgrade pre-gate snapshots without discarding completed work. Restart an
-  // interrupted entrance outside the gate instead of restoring a crossing pose.
-  if (!accessModes.includes(state.access)) {
-    const action = state.phase === 'excavator' ? state.excavator.action : state.phase === 'dump-truck' ? state.truck.phase : state.phase === 'roller' ? state.roller.action : undefined;
-    state = {
-      ...state,
-      access: action === 'entering' ? 'opening-entry' : action === 'complete' ? 'opening-exit' : 'working',
-      elapsed: state.phase === 'traffic' || state.phase === 'complete' ? state.elapsed : 0,
-      excavator: state.excavator.action === 'entering' ? { ...state.excavator, elapsed: 0 } : state.excavator,
-      truck: state.truck.phase === 'entering' ? { ...state.truck, elapsed: 0 } : state.truck,
-      roller: state.roller.action === 'entering' ? { ...state.roller, elapsed: 0 } : state.roller,
-    };
-  }
   // Pointer capture never survives module replacement or document reload.
   return {
     ...state,
-    version: 1, round: state.round ?? { ...DEFAULT_ROUND },
     excavator: resumeExcavator(state.excavator),
     truck: state.truck.phase === 'dragging' ? { ...state.truck, phase: 'resetting', elapsed: 0, fromTilt: truckPose(state.truck, tuning).tilt } : state.truck,
     roller: releaseRoller(state.roller),

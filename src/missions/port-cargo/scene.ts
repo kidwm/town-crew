@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createCrane, createFlatbed, link } from '../../runtime/construction-models.ts';
@@ -11,16 +13,21 @@ import type { PortState, Cargo, Point } from './domain/port.ts';
 type Screen = { x: number; y: number };
 export type Task = { from: Screen; to: Screen; via: Screen[]; points: Screen[]; route: Point[]; value: number; id?: Cargo; label: string };
 
-export function createPortScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#c9e2dd');
+export const createPortScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#c9e2dd');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '碼頭搬貨：貨船、吊車、堆高機、平板車合作搬貨'); host.append(canvas);
-  const scene = new THREE.Scene(), site = new THREE.Group(); scene.add(site);
+  const scene = yield* acquireScene();
+  const site = new THREE.Group(); scene.add(site);
   const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 100); camera.position.set(7, 13, 20); camera.lookAt(0, 0.5, -1);
   scene.add(new THREE.HemisphereLight('#fff8e6', '#97af9b', 2.5));
-  const sun = new THREE.DirectionalLight('#fff1d3', 2.7); sun.position.set(-7, 16, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.04;
+  const sun = new THREE.DirectionalLight('#fff1d3', 2.7);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-7, 16, 9); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.04;
   Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 16, bottom: -16, far: 50 }); scene.add(sun);
-  const shapes = createShapes(), { box, cylinder, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, cylinder, material } = shapes;
   box(site, [70, 0.4, 28], [0, -0.25, 10.4], '#d9d0b3');
   box(site, [70, 0.16, 50], [0, -0.55, -28.6], '#9dc8c6');
   box(site, [70, 0.72, 0.38], [0, -0.26, -3.55], '#c3b89b');
@@ -73,12 +80,13 @@ export function createPortScene(host: HTMLElement) {
   let previousTime: number | undefined, previousBoatX: number | undefined, wakeStrength = 0;
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.13, 0.13, 0.05], [0, 0, 0], ['#e4bc6c', '#84b2a4', '#d5927a'][i % 3]));
   const routeDots = Array.from({ length: 45 }, () => { const mesh = new THREE.Mesh(new THREE.CircleGeometry(0.09, 8), material('#f8edc9')); mesh.rotation.x = -Math.PI / 2; site.add(mesh); return mesh; });
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
     const aspect = r.width / r.height, height = Math.max(16, 25 / aspect);
     camera.left = -height * aspect / 2; camera.right = height * aspect / 2; camera.top = height / 2; camera.bottom = -height / 2;
     camera.updateProjectionMatrix(); renderer.setSize(r.width, r.height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function screen(s: PortState, p: Point, y = 1): Screen {
     const q = mirror(s.round, p), r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
     const v = new THREE.Vector3(q.x, y, q.z).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
@@ -279,10 +287,7 @@ export function createPortScene(host: HTMLElement) {
       });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh || o instanceof THREE.Line) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type PortScene = Effect.Success<ReturnType<typeof createPortScene>>;

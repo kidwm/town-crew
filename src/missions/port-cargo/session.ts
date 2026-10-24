@@ -1,39 +1,40 @@
+import { Effect } from 'effect';
+import { portPersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import { createAudio } from '../../runtime/audio.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
-import { createPort, chooseRound, readRound, resumePort, missionStages, isCraneStage, forkCount, available, grab, drive, moveLoad, release, advance, progress, smooth } from './domain/port.ts';
-import type { Round, Stage, PortState, Cargo } from './domain/port.ts';
-import type { createPortScene } from './scene.ts';
+import { createPort, chooseRound, missionStages, isCraneStage, forkCount, available, grab, drive, moveLoad, release, advance, progress, smooth } from './domain/port.ts';
+import type { Stage, PortState, Cargo } from './domain/port.ts';
+import type { PortScene } from './scene.ts';
 import { mountPortUI, iconsFor, stepIndex, vehicleIcon, phaseName, stageOptions, instruction } from './ui.ts';
 export const createPortAudio = () => createAudio({ arrival: [262, 330, 392], parked: [440, 660], pickup: [392, 494], depart: [330, 440], complete: [523, 659, 784, 1047] });
-const roundKey = 'town-crew:port:last-round:v1'; let previousRound: Round | undefined;
-function newRound(previous?: Round) {
-  try { const saved = readRound(JSON.parse(sessionStorage.getItem(roundKey) ?? 'null')); if (saved) previousRound = saved; } catch { /* Storage is optional. */ }
-  previousRound = chooseRound(previous ?? previousRound);
-  try { sessionStorage.setItem(roundKey, JSON.stringify(previousRound)); } catch { /* Storage is optional. */ }
-  return previousRound;
-}
-export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = portPersistence) {
   const params = new URLSearchParams(location.search), requested = params.get('stage'), direction = params.get('direction') === 'load' ? 'load' : 'unload';
   const phase: Stage = dev && !fresh && missionStages(direction).includes(requested as Stage) ? requested as Stage : 'boat';
   const devKey = `town-crew:port:dev:v1:${location.search}`;
-  let restored: PortState | undefined;
-  try { if (!fresh) restored = resumePort(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('port-cargo')); } catch { /* Storage is optional. */ }
+  const restored = fresh ? undefined : persistence.load(dev, devKey);
   const palette = Number(params.get('palette') ?? 0), layout = params.get('layout') === '1' ? 1 : 0;
-  let state = restored ?? createPort(phase, dev ? { layout, direction, palette: Number.isInteger(palette) && palette >= 0 && palette < 4 ? palette : 0 } : newRound());
-  function save() { if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Storage is optional. */ } } else saveProgress('port-cargo', state); }
+  let state = restored ?? createPort(phase, dev ? { layout, direction, palette: Number.isInteger(palette) && palette >= 0 && palette < 4 ? palette : 0 } : persistence.newRound());
+  if (!dev && restored) persistence.rememberRound(state.round);
+  function save() { persistence.save(dev, devKey, state); }
   mountPortUI(app, dev, state.round.direction);
-  function connect(scene: ReturnType<typeof createPortScene>, audio: ReturnType<typeof createPortAudio>) {
-    const events = new AbortController(), options = { signal: events.signal }, hint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(); audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Audio is optional. */ } }
+  const connect = (scene: PortScene, audio: ReturnType<typeof createPortAudio>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('port-cargo', audio, events.signal, dev);
     function update(next: PortState) {
       if (next === state) return;
       const checkpoint = next.phase !== state.phase || next.action !== state.action || next.unloaded.length !== state.unloaded.length || next.loaded.length !== state.loaded.length;
       if (next.phase !== state.phase) audio.play(next.phase === 'complete' ? 'complete' : ['transport', 'ship-transport', 'departure'].includes(next.phase) ? 'depart' : 'parked');
       else if (next.action !== state.action && ['picking', 'hoisting', 'lowering'].includes(next.action)) audio.play('pickup');
-      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) markCompleted('port-cargo');
+      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) persistence.markCompleted();
       state = next; if (checkpoint) save();
     }
     const pointer = bindPrimaryDrag<{ phase: Stage; cargo: boolean; origin: { x: number; y: number }; offset: { x: number; y: number } }>(scene.canvas, {
@@ -52,12 +53,13 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       },
       end(held, cancelled) { if (state.phase === held.phase) update(release(state, cancelled)); save(); },
     }, events.signal);
-    const restart = () => { unlock(); pointer.cancel(); state = createPort('boat', dev ? chooseRound(state.round) : newRound(state.round)); save(); };
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
+    const restart = () => { unlock(); pointer.cancel(); state = createPort('boat', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const stage = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), palette = app.querySelector<HTMLSelectElement>('#palette'), directionControl = app.querySelector<HTMLSelectElement>('#direction');
     if (directionControl) directionControl.value = state.round.direction;
     const reset = () => { pointer.cancel(); state = createPort(stage!.value as Stage, { layout: Number(layout!.value) as 0 | 1, palette: Number(palette!.value), direction: directionControl!.value === 'load' ? 'load' : 'unload' }); save(); };
@@ -109,10 +111,8 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       app.querySelectorAll<HTMLElement>('[data-step]').forEach((node, n) => { const done = n === 0 ? state.boat === 1 && state.truck === 1 : n === 1 ? state.unloaded.length === 2 : n === 2 ? state.loaded.length === 2 : state.haul === 1; node.dataset.state = active === n && state.phase !== 'complete' ? 'active' : done ? 'done' : 'upcoming'; });
       scene.canvas.style.cursor = state.action === 'dragging' ? 'grabbing' : info ? 'grab' : 'default';
       if (dev) { label('#phase', phaseName(state.phase, state.round.direction)); label('#action', state.action); layout!.value = String(state.round.layout); palette!.value = String(state.round.palette); directionControl!.value = state.round.direction; }
-      if (now - saved > 700) { save(); saved = now; } frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); events.abort(); hint.dispose(); };
-  }
+    return withAutosave('port-cargo', runFrameLoop('port-cargo', animate), save, 700);
+  });
   return { connect, save };
 }

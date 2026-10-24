@@ -3,7 +3,7 @@ export type Point = { x: number; z: number };
 export type Cargo = 0 | 1;
 export type Direction = 'unload' | 'load';
 export type Round = { layout: 0 | 1; palette: number; direction: Direction };
-type LegacyRound = Omit<Round, 'direction'>;
+type RoundOptions = Omit<Round, 'direction'>;
 export const stages = ['boat', 'truck', 'unload', 'crane-exit', 'forklift', 'forklift-exit', 'transport', 'departure', 'arrival', 'complete', 'crane-ready', 'load-ship', 'ship-transport'] as const;
 export type Stage = typeof stages[number];
 const unloadStages: Stage[] = ['boat', 'truck', 'unload', 'crane-exit', 'forklift', 'forklift-exit', 'transport', 'departure', 'arrival', 'complete'];
@@ -36,25 +36,23 @@ export const clamp = (n: number, min = 0, max = 1) => Math.max(min, Math.min(max
 export const smooth = (n: number) => { const t = clamp(n); return t * t * (3 - 2 * t); };
 export const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t });
 export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.z - b.z);
-export const mirror = (round: Round | LegacyRound, p: Point): Point => ({ x: round.layout ? -p.x : p.x, z: p.z });
+export const mirror = (round: Round | RoundOptions, p: Point): Point => ({ x: round.layout ? -p.x : p.x, z: p.z });
 export function validRound(value: unknown): value is Round {
   if (!value || typeof value !== 'object') return false;
   const r = value as Round;
   return (r.layout === 0 || r.layout === 1) && Number.isInteger(r.palette) && r.palette >= 0 && r.palette < 4 && (r.direction === 'unload' || r.direction === 'load');
 }
 export function readRound(value: unknown): Round | undefined {
-  if (!value || typeof value !== 'object') return;
-  const r = value as Partial<Round>, normalized = { ...r, direction: r.direction === undefined ? 'unload' : r.direction };
-  return validRound(normalized) ? normalized : undefined;
+  return validRound(value) ? { ...value } : undefined;
 }
-export function chooseRound(previous?: Round | LegacyRound, random = Math.random): Round {
+export function chooseRound(previous?: Round | RoundOptions, random = Math.random): Round {
   const n = clamp(random(), 0, 0.999999);
   const old = readRound(previous);
   return { layout: n < 0.5 ? 0 : 1, direction: old ? old.direction === 'unload' ? 'load' : 'unload' : Math.floor(n * 4) % 2 ? 'load' : 'unload',
     palette: previous ? (previous.palette + 1 + Math.floor(n * 3)) % 4 : Math.floor(n * 4) };
 }
-export function createPort(phase: Stage = 'boat', round: Round | LegacyRound = { layout: 0, palette: 0, direction: 'unload' }): PortState {
-  const normalized = readRound(round)!, sequence = missionStages(normalized.direction);
+export function createPort(phase: Stage = 'boat', round: Round | RoundOptions = { layout: 0, palette: 0, direction: 'unload' }): PortState {
+  const normalized: Round = { direction: 'unload', ...round }, sequence = missionStages(normalized.direction);
   if (!sequence.includes(phase)) phase = 'boat';
   const i = sequence.indexOf(phase), outgoing = normalized.direction === 'load';
   return { version: 3, round: normalized, phase, action: manualStages.includes(phase) ? 'ready' : 'auto', craneAttached: false,
@@ -296,23 +294,14 @@ export function progress(s: PortState) {
 }
 export function resumePort(value: unknown): PortState | undefined {
   if (!value || typeof value !== 'object') return;
-  const raw = value as Omit<Partial<PortState>, 'version' | 'round'> & { version?: unknown; round?: unknown }, legacy = raw.version === 1;
-  const round = legacy ? readRound(raw.round) : validRound(raw.round) ? raw.round : undefined;
-  if (!round || legacy && round.direction !== 'unload' || !legacy && raw.version !== 2 && raw.version !== 3) return;
-  const s = { ...raw, version: 3, round } as PortState;
-  if (raw.version !== 3) {
-    s.craneAttached = isCraneStage(s) && s.selected !== null;
-  }
+  const s = value as PortState, round = s.round;
+  if (s.version !== 3 || !validRound(round)) return;
   const fraction = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
   const order = (a: unknown): a is Cargo[] => Array.isArray(a) && a.length <= 2 && a.every(id => id === 0 || id === 1) && new Set(a).size === a.length;
   if (typeof s.craneAttached !== 'boolean' || !missionStages(round.direction).includes(s.phase) || !['ready', 'dragging', 'auto', 'lowering', 'picking', 'loading', 'returning', 'hoisting', 'unhooking'].includes(s.action)) return;
   if (![s.boat, s.truck, s.haul, s.forkTravel, s.lift].every(fraction) || !order(s.unloaded) || !order(s.loaded) || !s.loaded.every(id => s.unloaded.includes(id))) return;
   if (s.selected !== null && s.selected !== 0 && s.selected !== 1 || typeof s.carrying !== 'boolean' || !Number.isFinite(s.elapsed) || s.elapsed < 0) return;
   if (!s.load || !Number.isFinite(s.load.x) || !Number.isFinite(s.load.z) || s.load.x < -1.8 || s.load.x > 4.3 || s.load.z < -5.8 || s.load.z > -1.35) return;
-  if (raw.version !== 3) {
-    if (isCraneStage(s) && !s.craneAttached) s.load = { ...CRANE_HOME };
-    if (s.craneAttached && s.lift < 1 && s.action !== 'lowering') { s.action = 'hoisting'; s.elapsed = CRANE_ATTACH_SECONDS + s.lift * 0.55; }
-  }
   const i = stageIndex(s), outgoing = round.direction === 'load', haulIndex = outgoing ? 7 : 6;
   const auto = !manualStages.includes(s.phase);
   if (i > 0 && s.boat !== 1 || i > 1 && s.truck !== 1 || i > haulIndex && s.haul !== 1) return;

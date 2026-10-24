@@ -156,9 +156,7 @@ export function progress(s: MountainState) { return s.phase === 'complete' ? 1 :
 /** Only validated snapshots can resume; pointer targets and uncommitted dwell are transient. */
 export function resumeMountain(value: unknown): MountainState | undefined {
   if (!value || typeof value !== 'object') return;
-  const raw = value as Record<string, unknown>;
-  const legacy = raw.version === 1 ? { ...raw, version: 2, soilLoaded: soilFirstStages.indexOf(raw.phase as Stage) >= soilFirstStages.indexOf('excavator-arrival') ? [0, 1] : [], loaderSelected: null, loaderCarrying: false, loaderTravel: 0 } : raw;
-  const s = (legacy.version === 2 ? { ...legacy, version: 3, workOrder: 'soil-first', loaderDocked: legacy.motion === 'loader-tip', elapsed: legacy.motion === 'loader-tip' && typeof legacy.elapsed === 'number' ? Math.max(0, legacy.elapsed - 1) : legacy.elapsed } : legacy) as unknown as MountainState;
+  const s = value as MountainState;
   const fraction = (n: unknown) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 1;
   const point = (p: unknown): p is Point => !!p && typeof p === 'object' && ['x', 'y', 'z'].every(k => typeof (p as Record<string, unknown>)[k] === 'number' && Number.isFinite((p as Record<string, number>)[k]) && Math.abs((p as Record<string, number>)[k]) < 40);
   if (s.version !== 3 || !['rocks-first', 'soil-first'].includes(s.workOrder) || !validRound(s.round) || !stages.includes(s.phase) || !['ready', 'dragging', 'auto'].includes(s.action) || !['none', 'lift', 'unload', 'return', 'push-return', 'drive-finish', 'loader-finish', 'loader-scoop', 'loader-park', 'loader-tip', 'loader-return'].includes(s.motion)) return;

@@ -362,10 +362,10 @@ test('house arrival HMR keeps the parked car and ongoing walk at the same instan
 test('traffic reload during wheel lifting keeps the same car, rig and animation position', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
   const key = 'town-crew:traffic:dev:v1:?dev=1&mission=traffic-rescue&stage=hook';
-  // An old uncommitted hook choice migrates to free choice on the same wheel-lift rig.
+  // Current-format free choice on the left wheel-lift rig; no migration is needed.
   await page.addInitScript(key => {
     if (!sessionStorage.getItem(key)) sessionStorage.setItem(key, JSON.stringify({
-      version: 2, phase: 'hook', action: 'ready', elapsed: 0, selected: 0,
+      version: 3, firstTow: 0, phase: 'hook', action: 'ready', elapsed: 0, selected: null,
       colors: [0, 2], cones: [true, true], towed: [false, false], towTypes: ['wheel-lift', 'flatbed'],
       cleaned: 0, truckX: -10, handle: { x: -4.3, y: 0.7, z: 4.2 },
     }));

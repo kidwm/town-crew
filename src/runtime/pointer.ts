@@ -12,8 +12,8 @@ export function bindPrimaryDrag<T>(canvas: HTMLCanvasElement, handlers: DragHand
     if (!active) return;
     const { id, context } = active;
     active = undefined;
-    handlers.end(context, cancelled);
-    if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+    try { handlers.end(context, cancelled); }
+    finally { if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id); }
   }
   canvas.addEventListener('pointerdown', event => {
     if (!event.isPrimary || event.button !== 0 || active) return;

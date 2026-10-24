@@ -79,7 +79,7 @@ test('traffic crew controls the scene, tows both colours, sweeps and transports 
   expect(errors).toEqual([]);
 });
 
-test('traffic ignores shortcuts, rejects contradictory saves and resumes the last legacy car automatically', async ({ page }) => {
+test('traffic ignores shortcuts and starts fresh for malformed or obsolete saves', async ({ page }) => {
   await page.goto('/?dev=1&mission=traffic-rescue&stage=complete'); await expect(page.locator('#app')).toHaveAttribute('data-screen', 'menu');
   await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:traffic-rescue', JSON.stringify({ version: 1, phase: 'complete', towed: [false, false] })));
   await page.goto('/#traffic-rescue'); await expect(page.locator('#app')).toHaveAttribute('data-phase', 'police'); await expect(page.locator('.dev-panel')).toHaveCount(0);
@@ -93,11 +93,9 @@ test('traffic ignores shortcuts, rejects contradictory saves and resumes the las
   })));
   // Change the document URL: a menu-to-mission hash change intentionally starts a new round.
   await page.goto('/?resume=legacy#traffic-rescue');
-  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'hook');
+  await expect(page.locator('#app')).toHaveAttribute('data-phase', 'police');
   await expect(page.locator('#app')).toHaveAttribute('data-selected', 'null');
-  await expect(page.locator('.traffic-target')).toHaveCount(1);
-  await expect(page.locator('.traffic-target')).toHaveAttribute('data-goal', 'car-1');
-  await expect(page.locator('#app')).toHaveAttribute('data-towed', '1');
-  await expect(page.locator('#app')).toHaveAttribute('data-colors', '1,3');
-  await expect(page.locator('#app')).toHaveAttribute('data-tow-type', 'wheel-lift');
+  await expect(page.locator('#app')).toHaveAttribute('data-towed', '0');
+  await expect(page.locator('#app')).toHaveAttribute('data-cleaned', '0');
+  await expect(page.locator('canvas')).toHaveCount(1);
 });

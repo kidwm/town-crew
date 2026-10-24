@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>全任務 Effect 生命週期驗證</title>
+<style>
+  body { margin: 0; font: 14px system-ui; background: #f6f4eb; color: #23453e; display: flex; flex-direction: column; height: 100dvh; }
+  #runtime-controls { padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  #runtime-controls button, #runtime-controls select { font: inherit; padding: 6px 10px; }
+  #runtime-controls select { width: auto; margin: 0; }
+  #runtime-controls output { flex-basis: 100%; }
+  body #app { position: relative; flex: 1; min-height: 0; height: auto; }
+  #runtime-controls { flex: none; min-height: 100px; height: auto; }
+</style>
+<header id="runtime-controls">
+  <strong>Effect 音效／生命週期驗證</strong>
+  <select id="mission" aria-label="測試任務">
+    <option value="road-repair">修路</option>
+    <option value="house-build">蓋房子</option>
+    <option value="fire-rescue">救火</option>
+    <option value="traffic-rescue">交通救援</option>
+    <option value="police-patrol">警察</option>
+    <option value="port-cargo">碼頭</option>
+    <option value="mountain-clearance">山路</option>
+    <option value="passenger-transfer">轉運站</option>
+  </select>
+  <button id="reload">重新載入測試頁</button>
+  <button id="frame">下一幀排程失敗</button>
+  <button id="sync">下一次音效同步失敗</button>
+  <button id="async">下一次音效非同步失敗</button>
+  <button id="partial">下一次水聲節點建立失敗</button>
+  <button id="close-log">音效關閉與診斷同時失敗</button>
+  <output id="status" aria-live="polite">載入中…</output>
+  <output id="metrics" aria-live="polite"></output>
+</header>
+<div id="app"></div>
+<script type="module">
+  // Served only as a manual Vite test entry; the production game never imports it.
+  if (new URLSearchParams(location.search).get('dev') !== '1') {
+    const url = new URL(location.href);
+    url.searchParams.set('dev', '1');
+    if (!url.hash) url.hash = 'road-repair';
+    location.replace(url.href);
+  } else {
+    const app = document.querySelector('#app'), status = document.querySelector('#status');
+    const mission = document.querySelector('#mission');
+    mission.value = location.hash.slice(1) || 'road-repair';
+    mission.onchange = () => {
+      // Changing the query starts a fresh document and resets all fault controls.
+      location.href = `${location.pathname}?dev=1&mission=${mission.value}#${mission.value}`;
+    };
+    const armed = new Set();
+    const counts = { contexts: 0, noiseStarts: 0, filtersReleased: 0, closed: 0, unlockWarnings: 0, closeReports: 0, failures: 0, unhandled: 0 };
+    const metrics = document.querySelector('#metrics');
+    function refresh() {
+      metrics.textContent = `Context ${counts.contexts}／水聲啟動 ${counts.noiseStarts}／濾波器釋放 ${counts.filtersReleased}／已關閉 ${counts.closed}／解鎖警告 ${counts.unlockWarnings}／關閉診斷 ${counts.closeReports}／Mission failed ${counts.failures}／未處理 ${counts.unhandled}／canvas ${app.querySelectorAll('canvas').length}`;
+    }
+    const NativeAudio = window.AudioContext;
+    window.AudioContext = class extends NativeAudio {
+      constructor(...args) { super(...args); counts.contexts++; refresh(); }
+      createBufferSource() {
+        const node = super.createBufferSource(), start = node.start.bind(node);
+        node.start = (...args) => { start(...args); counts.noiseStarts++; refresh(); };
+        return node;
+      }
+      createBiquadFilter() {
+        const node = super.createBiquadFilter(), disconnect = node.disconnect.bind(node);
+        node.disconnect = (...args) => { disconnect(...args); counts.filtersReleased++; refresh(); };
+        return node;
+      }
+      createGain() {
+        if (armed.delete('partial')) {
+          status.textContent = '已觸發水聲部分初始化失敗。再按音效鍵應沿用同一 Context 並成功啟動水聲。';
+          throw new Error('Manual verification: water gain creation failed');
+        }
+        return super.createGain();
+      }
+      async close() {
+        await super.close(); counts.closed++; refresh();
+        if (armed.delete('close')) throw new Error('Manual verification: audio close rejected after releasing the context');
+      }
+    };
+    const warn = console.warn.bind(console), error = console.error.bind(console), log = console.log.bind(console);
+    console.log = (...args) => {
+      if (args.some(value => String(value).includes('Mission failed'))) counts.failures++;
+      refresh(); log(...args);
+    };
+    console.warn = (...args) => { if (String(args[0]).includes('audio unlock')) counts.unlockWarnings++; refresh(); warn(...args); };
+    console.error = (...args) => {
+      if (String(args[0]).includes('Mission audio cleanup failed')) {
+        counts.closeReports++; refresh();
+        if (armed.delete('close-log')) throw new Error('Manual verification: audio cleanup logger failed');
+      }
+      if (args.some(value => String(value).includes('Mission failed'))) counts.failures++;
+      refresh(); error(...args);
+    };
+    for (const event of ['error', 'unhandledrejection']) window.addEventListener(event, () => { counts.unhandled++; refresh(); });
+    setInterval(refresh, 150);
+    let audioUsed = false;
+    app.addEventListener('pointerdown', () => { audioUsed = true; }, { capture: true, once: true });
+    app.addEventListener('keydown', () => { audioUsed = true; }, { capture: true, once: true });
+    status.textContent = '音效測試請先設定故障，再於遊戲中拖曳或按音效鍵；每次音效測試前重新載入。';
+    document.querySelector('#reload').onclick = () => location.reload();
+    document.querySelector('#frame').onclick = () => {
+      if (armed.has('frame')) return;
+      armed.add('frame');
+      const win = window, request = win.requestAnimationFrame;
+      win.requestAnimationFrame = () => {
+        win.requestAnimationFrame = request; armed.delete('frame');
+        status.textContent = '已觸發一次 rAF 排程失敗。應顯示錯誤提示、移除 canvas，並可返回選關。';
+        throw new win.Error('Manual verification: frame scheduling failed');
+      };
+    };
+    function armAudio(kind) {
+      if (audioUsed || armed.has('audio')) {
+        status.textContent = '請先重新載入測試頁，再設定下一次音效故障。'; return;
+      }
+      const win = window, Original = win.AudioContext;
+      if (!Original) { status.textContent = '此瀏覽器沒有 AudioContext。'; return; }
+      armed.add('audio');
+      win.AudioContext = class extends Original {
+        constructor(...args) {
+          if (kind === 'sync') {
+            win.AudioContext = Original; armed.delete('audio');
+            status.textContent = '已觸發音效同步失敗。遊戲應繼續運作。';
+            throw new win.Error('Manual verification: audio construction failed');
+          }
+          super(...args);
+          win.AudioContext = Original; armed.delete('audio');
+          // Make createAudio take its resume path once, using a real context for cleanup.
+          Object.defineProperty(this, 'state', { configurable: true, value: 'suspended' });
+          this.resume = () => {
+            delete this.state; delete this.resume;
+            status.textContent = '已觸發音效非同步拒絕。遊戲應繼續運作。';
+            return win.Promise.reject(new win.Error('Manual verification: audio resume rejected'));
+          };
+        }
+      };
+      status.textContent = `已設定音效${kind === 'sync' ? '同步' : '非同步'}故障，請在遊戲中操作。`;
+    }
+    document.querySelector('#sync').onclick = () => armAudio('sync');
+    document.querySelector('#async').onclick = () => armAudio('async');
+    document.querySelector('#partial').onclick = () => {
+      if (mission.value !== 'fire-rescue' || audioUsed) { status.textContent = '請選擇救火並重新載入，再設定水聲節點故障。'; return; }
+      armed.add('partial'); status.textContent = '已設定水聲節點故障，請按遊戲的音效鍵。';
+    };
+    document.querySelector('#close-log').onclick = () => {
+      armed.add('close'); armed.add('close-log'); status.textContent = '已設定關閉與診斷故障；解鎖音效後返回選關，應正常清理且沒有 Mission failed。';
+    };
+    await import('/src/main.ts');
+  }
+</script>
+</html>

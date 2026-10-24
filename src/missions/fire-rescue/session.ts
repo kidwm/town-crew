@@ -1,27 +1,33 @@
+import { Effect } from 'effect';
+import { firePersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
-import { createFire, resumeFire, stages, grab, drive, moveHandle, spray, accept, release, advance, progress, isDriving, isSpraying, isBasket, FIRES, SETTLE_SECONDS } from './domain/fire.ts';
+import { createFire, stages, grab, drive, moveHandle, spray, accept, release, advance, progress, isDriving, isSpraying, isBasket, FIRES, SETTLE_SECONDS } from './domain/fire.ts';
 import type { FireState, Stage, Point, Goal } from './domain/fire.ts';
-import type { createFireScene } from './scene.ts';
+import type { FireScene } from './scene.ts';
 import type { createFireAudio } from './sounds.ts';
 import { mountFireUI, names, instructions, icons, goalNames } from './ui.ts';
 
-export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = firePersistence) {
   const query = new URLSearchParams(location.search).get('stage');
   const stage: Stage = dev && !fresh && stages.includes(query as Stage) ? query as Stage : 'dispatch';
   const devKey = `town-crew:fire:dev:v1:${location.search}`;
   let state = createFire(stage);
-  try { if (!fresh) state = resumeFire(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('fire-rescue')) ?? state; } catch { /* Optional storage. */ }
-  function save() {
-    if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } }
-    else saveProgress('fire-rescue', state);
-  }
+  if (!fresh) state = persistence.load(dev, devKey) ?? state;
+  function save() { persistence.save(dev, devKey, state); }
   mountFireUI(app, dev);
-  function connect(scene: ReturnType<typeof createFireScene>, audio: ReturnType<typeof createFireAudio>) {
-    const events = new AbortController(), options = { signal: events.signal }, hint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(); audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Audio is optional. */ } }
+  const connect = (scene: FireScene, audio: ReturnType<typeof createFireAudio>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    yield* Effect.addFinalizer(() => Effect.sync(() => audio.setSpraying(false)));
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('fire-rescue', audio, events.signal, dev);
     function update(next: FireState) {
       if (next === state) return;
       if (next.fires.some((heat, i) => heat === 0 && state.fires[i] > 0)) audio.play('out');
@@ -30,7 +36,7 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
         if (next.phase === 'ground-fire') audio.play('connected');
         if (['ladder-arrival', 'ambulance', 'departure'].includes(next.phase)) audio.play('depart');
         if (next.phase === 'rescue') audio.play('cat');
-        if (next.phase === 'complete') { audio.play('complete'); if (!dev) markCompleted('fire-rescue'); }
+        if (next.phase === 'complete') { audio.play('complete'); if (!dev) persistence.markCompleted(); }
       }
       if (next.rescued.some((done, i) => done && !state.rescued[i])) audio.play('arrived');
       state = next;
@@ -67,12 +73,13 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
         update(release(state, cancelled, goal)); audio.setSpraying(false); save();
       },
     }, events.signal);
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
     const restart = () => { unlock(); pointer.cancel(); update(createFire()); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     const syncSound = () => { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); };
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
     select?.addEventListener('change', () => { pointer.cancel(); state = createFire(select.value as Stage); save(); }, options);
     app.querySelector('.reset-stage')?.addEventListener('click', () => { pointer.cancel(); state = createFire(select!.value as Stage); save(); }, options);
@@ -128,11 +135,8 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
         if (select) select.value = state.phase; displayed = state.phase;
       }
       if (dev) { label('#phase', names[state.phase]); label('#action', state.action); label('#extinguished', `${extinguished} / 4`); label('#rescued', `${rescued} / 2`); }
-      if (now - saved > 800) { save(); saved = now; }
-      frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); audio.setSpraying(false); events.abort(); hint.dispose(); };
-  }
+    return withAutosave('fire-rescue', runFrameLoop('fire-rescue', animate), save, 800);
+  });
   return { connect, save };
 }

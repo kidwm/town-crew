@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createCar } from '../../runtime/car.ts';
@@ -8,16 +10,21 @@ import { routes, pathPose, pathLength, guardRoute, suspectRoute, boardingRoute, 
 import type { PoliceState, Vehicle, Point } from './domain/police.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 interface Screen { x: number; y: number }
-export function createPoliceScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce9e0');
+export const createPoliceScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce9e0');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '警察協作現場：警車跟進、兩台重機包抄、偵防車押送'); host.append(canvas);
-  const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-18, 18, 11, -11, 0.1, 300);
+  const scene = yield* acquireScene();
+  const camera = new THREE.OrthographicCamera(-18, 18, 11, -11, 0.1, 300);
   camera.position.set(12, 57, 60); camera.lookAt(0, 0, 0.8);
   scene.add(new THREE.HemisphereLight('#fff7e0', '#a3b59c', 2.4));
-  const sun = new THREE.DirectionalLight('#fff1da', 2.5); sun.position.set(-10, 18, 8); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
+  const sun = new THREE.DirectionalLight('#fff1da', 2.5);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-10, 18, 8); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
   Object.assign(sun.shadow.camera, { left: -25, right: 25, top: 22, bottom: -22, far: 65 }); scene.add(sun);
-  const shapes = createShapes(), { box, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, material } = shapes;
   box(scene, [200, 0.4, 200], [0, -0.31, 0], '#b9cea7');
   // Four real street blocks: a perimeter road, a central street and two short alleys.
   // Sidewalks frame the buildings; the child can see why an outer route is needed.
@@ -75,12 +82,13 @@ export function createPoliceScene(host: HTMLElement) {
   const confetti = Array.from({ length: 30 }, (_, i) => box(scene, [0.13, 0.13, 0.05], [0, 0, 0], ['#e5bc6b', '#89b8a7', '#db9a85'][i % 3]));
   const routeGeometry = new THREE.CircleGeometry(0.12, 8), routeMaterial = new THREE.MeshBasicMaterial({ color: '#fff1c7' });
   const routeMarkers = Array.from({ length: 120 }, () => { const m = new THREE.Mesh(routeGeometry, routeMaterial); m.rotation.x = -Math.PI / 2; scene.add(m); return m; });
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
     const aspect = r.width / r.height, height = Math.max(27, 35 / aspect);
     camera.left = -height * aspect / 2; camera.right = height * aspect / 2; camera.top = height / 2; camera.bottom = -height / 2;
     camera.updateProjectionMatrix(); renderer.setSize(r.width, r.height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function screen(p: Point, y = 1): Screen { camera.updateMatrixWorld(true); const r = canvas.getBoundingClientRect(), v = new THREE.Vector3(p.x, y, p.z).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 }; }
   function pose(s: PoliceState, vehicle: Vehicle) {
     const r = routes(s.round), w = s.work;
@@ -212,10 +220,7 @@ export function createPoliceScene(host: HTMLElement) {
       });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type PoliceScene = Effect.Success<ReturnType<typeof createPoliceScene>>;

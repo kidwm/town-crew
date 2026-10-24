@@ -3,7 +3,7 @@
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
 Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, and help passengers transfer in eight replayable town missions,
-using Vite, TypeScript, Three.js and Effect **4.0.0-beta.107**. The game runs in the browser with mouse or single-touch
+using Vite, TypeScript, Three.js and Effect **4.0.5**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
 ```sh
@@ -24,8 +24,8 @@ npm run dev
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
 - Use Node 24 or newer; `.nvmrc` pins the CI/development major version.
-- `npm test` runs the domain regression tests with Node's built-in test runner.
-- `npm run check` runs domain tests and the production build.
+- `npm test` runs domain and lifecycle regression tests with Node's built-in test runner.
+- `npm run check` runs those tests, TypeScript checks and the production build.
 - `npx playwright install chromium webkit` installs the browsers for end-to-end tests.
 - `npm run test:e2e` tests the production build with mouse, emulated touch and WebKit PWA checks.
   Run `npm run build` first; the test runner starts its own preview on port 4173.
@@ -110,8 +110,8 @@ passenger shirts also vary. The child chooses which of the two waiting vehicles 
 Driving and partial door opening pause on release. Version-4 snapshots preserve the
 random companion, round, order, selected vehicle, driving, doors, carried luggage and automatic clocks;
 reload/HMR releases stale pointers and uncommitted luggage dwell. Completed saves do
-not replay the farewell. Version-1/2/3 saves retain the taxi/school pairing and their work without replaying
-entrances for vehicles already ready to drag. Production and development saves remain independent.
+not replay the farewell. Only complete version-4 snapshots are accepted; older versions start a fresh round.
+Production and development saves remain independent.
 
 The taxi reuses the original opening-door car, with a roof light and checker stripe;
 the three large passenger vehicles are new procedural bodies with real entry gaps,
@@ -150,8 +150,8 @@ There is no timer, penalty, fare collection or passenger sorting quiz.
 The camera stays fixed throughout both mirrored layouts. Every new round has two pushes,
 three rock loads, two soil loads, one haul and one sweep. Two rock distributions alternate;
 layout and the child's soil/rock orders remain independent. Version-3 snapshots also save
-parking and partial lift. Version-1/2 rounds retain their original soil-first sequence and
-material, including full buckets and completed rounds; replay starts the new rock-first flow.
+parking and partial lift. Only complete version-3 snapshots resume; older versions start fresh.
+Current version-3 soil-first saves remain valid; new rounds use the rock-first flow.
 
 ## Move cargo at the dock
 
@@ -193,8 +193,8 @@ boat, then the child drags the loaded boat toward the opposite town. Truck unloa
 and ship loading orders remain independent. Automatic truck pickup raises before
 inserting, lifts the box clear, withdraws before lowering and turns toward the quay.
 
-Version-3 saves track empty/hanging hooks and preserve version-1/2 progress,
-including already suspended cargo and partial automatic lifting.
+Version-3 saves track empty/hanging hooks, suspended cargo and partial automatic lifting.
+Version-1/2 snapshots are rejected and start a fresh round.
 Reload/HMR retains the current direction, layout, unloading/loading
 orders, partial vehicle movement, suspended cargo, fork load and automatic clocks.
 Pointer ownership and uncommitted dwell are discarded on restore. A still-held
@@ -259,8 +259,7 @@ procedural models; the van has its own passenger body rather than the truck chas
    stay on the road. Drag the loaded truck back out on its arrival side.
    The other truck automatically arrives from the opposite side; drag its tool
    to the only remaining car. Rig assignment, arrival order and loading progress
-   survive reload. Version-2 saves retain an attached load and its rig; an unattached
-   tool resumes with free choice of the remaining cars.
+   survive reload in complete version-3 saves. Older versions start a fresh round.
 4. Drag the street sweeper to the start, then right across the debris. Rotating
    brushes clear the patches as they pass. Partial driving and cleaning survive
    release, cancellation and reload; driving back does not restore debris.
@@ -341,8 +340,7 @@ opposite side and changes the wall/door palette. Three family arrangements and a
 optional cat or dog greet the finished house. The illustrated plan previews the
 actual roof and palette without requiring a tap. All variants remain two-storey homes
 with four vehicle types, two deliveries and six lifts. Reload retains the same home,
-family, pet, colour and partial work. Old colour-selection saves automatically pick up
-the roof in the previously chosen colour; completed old homes keep their appearance.
+family, pet, colour and partial work in complete version-6 snapshots. Older versions start a fresh round.
 
 Crane loads travel above the completed structure before automatically lowering.
 Misses and cancelled placements retain the current hook or suspended material position. Taps and
@@ -388,9 +386,8 @@ one filling operation and two roller passes.
 The original natural boulder model is preserved in `src/runtime/rocks.ts` as
 `createBoulder`, with its original geometry, colour and size. The same module
 provides the separate flat `createAsphaltChunk`. Both are in the model catalog.
-Old saves retain completed work: former roadside piles become truck cargo;
-unfinished automatic scoops from earlier versions restart on the road and later
-stages do not replay cleanup. New saves preserve paused, loaded buckets; an
+Only complete version-1 saves resume; missing version, round, gate, hauler or cargo fields
+start a fresh round. Current saves preserve paused, loaded buckets; an
 already committed tipping animation finishes only once after reload. Delivered
 piece identities and their loading order are preserved, including each piece's appearance.
 
@@ -429,7 +426,7 @@ restarting the mission draws a new round. Normal gameplay ignores these shortcut
 
 House-building development entries use `?dev=1&mission=house-build&stage=…`:
 `gravel`, `concrete`, `delivery-one`, `crane-one`, `delivery-two`, `crane-two`,
-`decorate`, and `complete`. The legacy `roof-color` entry automatically starts the final pickup.
+`decorate`, and `complete`. The `roof-color` development entry automatically starts the final pickup.
 Add `roof=gable|shed|flat`, `layout=0|1`, `palette=0..3`, `family=0..2`, and
 `pet=none|cat|dog` to select a development round. The panel exposes the same selectors;
 changing or resetting stages retains the configuration. The development panel can jump to or reset each stage,
@@ -545,13 +542,31 @@ road-repair sequence.
 - `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
 - `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
   listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
+- `src/runtime/mission-lifecycle.ts`: typed startup and audio-close errors for all eight missions,
+  plus interruption-aware failure reporting. All scene and connection resources register cleanup as they are acquired.
+- `src/runtime/scene-lifecycle.ts`: shared scoped ownership of renderers and scene graph resources,
+  including geometry and materials for meshes, lines and points.
+- `src/runtime/frame-loop.ts` and `audio-unlock.ts`: shared E03/E04 handling for all eight missions; frame failures end
+  the mission scope, while gesture-bound audio failures remain optional and cancellation-aware.
+- `src/runtime/storage.ts`: synchronous optional storage and JSON boundaries; shared formal progress/preferences and
+  all eight missions use typed failures, diagnostic deduplication and caller-owned memory fallback.
+- `src/app/development.ts`: copied, per-key development memory snapshots for seven missions; road retains its HMR data facade.
+- `src/runtime/snapshot.ts` and each mission’s `persistence.ts`: E06 Schema validation for complete current-version saves,
+  domain invariants and input cancellation. Older versions or missing required fields start fresh; no legacy migrations remain.
+- Each mission’s `services.ts` and `startup.ts`: E07 injected synchronous persistence and scoped audio Layers for all eight missions; round memory survives navigation and main.ts HMR.
+- `src/app/mission-persistence.ts`: shared load/save/decoder and preference boundary for seven missions, with mission-specific round policies retained.
+- `src/runtime/mission-startup.ts`: E08 startup spans and stage timings for all eight missions, correlated Effect error logs, and normal-cancellation handling.
+- `src/runtime/autosave.ts`: E09 across all eight missions, scoped Schedule workers supervised with their frame loops (800 ms for road/house/fire/traffic; 700 ms for police/port/mountain/transfer); hidden pages skip periodic writes, while pagehide/finalizer saves remain synchronous.
+- `src/app/navigation.ts`: global navigation Fibers; the latest request waits for all earlier cleanup, including through superseded requests and HMR.
+- `src/app/pwa.ts`: optional production registration with at most three attempts, 1/2-second backoff for TypeError/NetworkError, and pagehide/HMR cancellation.
+- `tests/manual/effect-runtime.html`, `effect-storage.html`, `effect-startup.html`, `effect-autosave.html` and `effect-pwa.html`: Vite-only fault controls for Codex built-in browser verification.
 - `tests/e2e/`: repeatable production and development browser checks.
 
-See [architecture](docs/architecture.md) and [project plan](PROJECT_PLAN.md).
+See [architecture](docs/architecture.md), [Effect usage and adoption plan](docs/effect-usage.md), and [project plan](PROJECT_PLAN.md).
 
 Effect owns side effects and resource lifetimes. Frame calculations and gameplay
 rules are ordinary TypeScript functions without renderer objects or Effect
-runtime values. Dependencies are pinned because Effect v4 is still beta.
+runtime values. Dependencies are pinned for reproducible installs.
 
 Share services as real reuse appears. Each mission owns its state machine;
 there is no generic mission DSL. Further rescue interactions can be implemented
@@ -559,33 +574,47 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The eight missions have 256 domain tests, covering fixed arm lengths,
+The eight missions have 263 domain tests, plus 82 lifecycle/resource tests covering
+partial initialization across all missions, cleanup failures, typed errors,
+interruption, shared geometry, fire audio shutdown and partial-initialization retry, broken cleanup logging,
+and frame/HUD failures and optional audio unlock in every mission.
+Another 68 storage/persistence tests cover synchronous storage failures, JSON encoding/decoding,
+memory fallback and deletion masking, current-version Schema recovery and rejection of old/missing fields across all eight missions,
+pagehide saves, last-round precedence and throwing injected reporters. Another 74 E07/E08 tests cover isolated service injection,
+audio Layer lifetime, startup failures, parallel-load spans, cancellation and diagnostic sink/clock failures.
+Another 48 E09 tests cover scheduled autosave in all eight missions, real formal/development sessions,
+navigation Fibers and bounded PWA retries (535 tests in total).
+The E01–E09 audit was verified in Codex’s built-in browser: fire water-audio retry,
+all eight missions with simultaneous audio-close/logger failure, frozen-frame autosave,
+synchronous pagehide saves, stopped workers after exit, and navigation in the current production build.
+See the [Effect verification record](docs/effect-usage.md) for the exact cases and limits.
+The domain tests cover fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
-ordered loading and hauling, cancelled/partial haul movement, legacy cargo migration,
+ordered loading and hauling, cancelled/partial haul movement, rejection of obsolete cargo formats,
 exit clearance and waiting for the loaded cleanup truck to fully leave. House tests also cover
 all concrete pouring orders, partial delivery, cancelled placement, hook pickup and roof installation,
-legacy snapshot migration, assembly target geometry, continuous placement dwell,
+current snapshot recovery and rejection of old formats, assembly target geometry, continuous placement dwell,
 load clearance, garage construction between vehicle departures/arrivals, whole-car turning clearance and the family walking
 route. Arrival checks cover automatic completion, mid-animation reload and completed saves.
 Fire tests cover both rescue orders, continuous extinguishing, interruption,
 one passenger per trip, transport, and rejection of contradictory snapshots.
 Traffic tests cover both car orders, rig assignments and arrival sides, automatic dispatch,
-uncommitted hook choice, version-1/2 recovery, actual-model cone/vehicle clearance and shared passing speed,
+uncommitted hook choice, version-1/2 rejection, actual-model cone/vehicle clearance and shared passing speed,
 wheel-lift ground contact, nonrepeating colours, one load per trip,
 interrupted cleaning, equipment recovery, stage entry and contradictory snapshots.
 Police rules cover all four configurations and both motorcycle orders, interrupted
 driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
 entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
 along all routes against the four buildings.
-Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1/2 crane migration, empty hook pickup, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
+Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1/2 rejection, empty hook pickup, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
 Mountain rules cover all four configurations and all six rock orders, fixed arm reach, actual vehicle footprints, partial driving/cleaning, cancelled dwell, automatic clocks, malformed saves and nonrepeating distributions. Browser checks follow all four configurations on mouse and portrait-phone touch, retain carried and truck-loaded rocks across reload, isolate held pointers, reopen the road, award badges and restart. Development checks cover carried rocks across reload/HMR and stage/configuration resets.
 The port browser suite follows both directions and layouts using visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried and suspended cargo across HMR/reload, direction switching and stage reset.
 The police browser suite exercises all four configurations on mouse and phone touch,
 including cancellation, reload, boarding, badges, replay and development HMR.
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
-and migration of development snapshots from before the gate sequence existed.
+and rejection of development snapshots missing the current gate fields.
 
 The checked-in Playwright browser suite covers both complete mouse and emulated-touch flows,
 empty-space input, cancellation, partial roller movement, completion and

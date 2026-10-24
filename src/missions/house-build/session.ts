@@ -1,17 +1,20 @@
+import { Effect } from 'effect';
+import { housePersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import type { createAudio } from '../../runtime/audio.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
 import { icons as roadIcons } from '../road-repair/ui.ts';
-import { createHouse, resumeHouse, grab, release, dragGravel, moveChute, drive, moveLoad, advance, progress, stages, PARTS, partFor, isCrane, isDelivery } from './domain/house.ts';
+import { createHouse, grab, release, dragGravel, moveChute, drive, moveLoad, advance, progress, stages, PARTS, partFor, isCrane, isDelivery } from './domain/house.ts';
 import { advanceCraneSettle, CRANE_SETTLE_SECONDS } from './domain/crane-target.ts';
 import { chooseRound, validRound, DEFAULT_ROUND, ROOF_TYPES, ROOF_NAMES, HOUSE_PALETTES } from './domain/round.ts';
-import type { HouseRound } from './domain/round.ts';
 import { arrivalTime, arrivalStep, garageBuild } from './domain/arrival.ts';
 import { housePlan } from './round-card.ts';
 import type { ScreenPoint } from './domain/crane-target.ts';
 import type { HouseState, Stage, Point } from './domain/house.ts';
-import type { createHouseScene } from './scene.ts';
+import type { HouseScene } from './scene.ts';
 
 export const houseSounds = { grab: [330], pour: [247, 330], delivered: [330, 440], placed: [392, 494, 587], floor: [392, 494, 587, 784], complete: [392, 494, 587, 784, 988] } as const;
 const icons = {
@@ -24,36 +27,24 @@ const names: Record<Stage, string> = { gravel: '砂石車 · 鋪好基底', conc
 const instructions: Record<Stage, string> = { gravel: '按住車斗前端，往上拉', concrete: '把出料口拖到任一光圈，三區都填滿', 'delivery-one': '按住車子，往右拖到停車位', 'crane-one': '把材料拖到房子上，吊車幫你放好', 'delivery-two': '按住車子，往右拖到停車位', 'crane-two': '把材料拖到房子上，吊車幫你放好', 'roof-color': '吊車正在吊起屋頂', decorate: '歡迎入住！', complete: '歡迎搬進新家！' };
 function iconFor(phase: Stage) { return phase === 'gravel' ? icons.gravel : phase === 'concrete' ? icons.concrete : phase.startsWith('delivery') ? icons.flatbed : icons.crane; }
 
-const roundKey = 'town-crew:house:last-round:v1';
-let previousRound: HouseRound | undefined;
-function rememberRound(round: HouseRound) {
-  previousRound = { ...round };
-  try { sessionStorage.setItem(roundKey, JSON.stringify(round)); } catch { /* Optional storage. */ }
-}
-function newRound(previous?: HouseRound) {
-  try { const saved: unknown = JSON.parse(sessionStorage.getItem(roundKey) ?? 'null'); if (validRound(saved)) previousRound = saved; } catch { /* Optional storage. */ }
-  const round = chooseRound(previous ?? previousRound); rememberRound(round); return round;
-}
-
-export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = housePersistence) {
   const params = new URLSearchParams(location.search), query = params.get('stage');
   const stage: Stage = dev && !fresh && stages.includes(query as Stage) ? query as Stage : 'gravel';
   const devKey = `town-crew:house:dev:v1:${location.search}`;
-  let restored: HouseState | undefined;
-  try { if (!fresh) restored = resumeHouse(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('house-build')); } catch { /* Optional storage. */ }
+  const restored = fresh ? undefined : persistence.load(dev, devKey);
   const configured = { ...DEFAULT_ROUND, roof: params.get('roof') ?? DEFAULT_ROUND.roof, layout: Number(params.get('layout') ?? 0), palette: Number(params.get('palette') ?? 0), family: Number(params.get('family') ?? 0), pet: params.get('pet') ?? 'none' };
-  let state = restored ?? createHouse(stage, dev ? validRound(configured) ? configured : DEFAULT_ROUND : newRound());
-  if (!dev) rememberRound(state.round);
-  function save() {
-    if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } }
-    else saveProgress('house-build', state);
-  }
+  let state = restored ?? createHouse(stage, dev ? validRound(configured) ? configured : DEFAULT_ROUND : persistence.newRound());
+  if (!dev) persistence.rememberRound(state.round);
+  function save() { persistence.save(dev, devKey, state); }
   app.innerHTML = `<main class="world house-world" aria-label="小小城市隊蓋房子任務"><div class="canvas-host"></div><svg class="crane-footprint" aria-hidden="true" hidden><polygon/></svg><div class="crane-target" role="img" aria-label="吊車放置位置" data-ready="false" hidden><svg class="crane-target-progress" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1"/></svg><svg class="crane-target-arrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5v21M7 17l9 9 9-9"/></svg><svg class="crane-target-check" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16l7 7L27 8"/></svg><span class="crane-drop-label" role="status">拖到房子上</span></div><header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header><div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始蓋房子任務">↻</button></div><div class="house-plan" role="img" aria-label="這次要蓋的兩層小樓"></div><div class="house-caption"><span class="house-instruction"></span><span class="house-detail"></span></div><div class="mission-badge"><span class="badge-icon">${icons.gravel}</span><div><span class="eyebrow">一起蓋兩層小樓</span><strong id="vehicle-name"></strong></div></div><div class="mission-steps house-steps" aria-label="蓋房子四種工程車">${Object.entries(icons).map(([id, icon]) => `<span data-step="${id}">${icon}</span>`).join('')}</div><div class="progress" role="progressbar" aria-label="蓋房子進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div><div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div><div class="loading" role="status">工程車準備出發…</div></main>${dev ? `<aside class="dev-panel"><div class="dev-heading">開發工具 · 蓋房子</div><h1>一起，蓋兩層小樓。</h1><p class="dev-intro">鋪基底 → 澆灌 → 兩次送貨 → 六次吊裝</p><label class="field">直達階段<select id="stage">${stages.filter(id => id !== 'roof-color').map(id => `<option value="${id}">${names[id]}</option>`).join('')}</select></label><button class="reset-stage">重設目前階段</button><label class="field">屋型<select id="house-roof">${ROOF_TYPES.map(roof => `<option value="${roof}">${ROOF_NAMES[roof]}</option>`).join('')}</select></label><label class="field">工地配置<select id="house-layout"><option value="0">房子在右，材料在左</option><option value="1">房子在左，材料在右</option></select></label><label class="field">房屋配色<select id="house-palette">${HOUSE_PALETTES.map((_, i) => `<option value="${i}">${['奶油', '青草', '天空', '珊瑚'][i]}</option>`).join('')}</select></label><label class="field">入住家庭<select id="house-family"><option value="0">兩位大人、一位小孩</option><option value="1">一位大人、兩位小孩</option><option value="2">兩位大人、兩位小孩</option></select></label><label class="field">寵物<select id="house-pet"><option value="none">沒有寵物</option><option value="cat">小貓</option><option value="dog">小狗</option></select></label><dl class="telemetry"><div><dt>目前階段</dt><dd id="phase"></dd></div><div><dt>動作</dt><dd id="action"></dd></div><div><dt>吊裝完成</dt><dd id="placed"></dd></div></dl><p class="dev-note">重載和 HMR 保留進度；拖曳取消後可接著玩。</p></aside>` : ''}`;
-  function connect(scene: ReturnType<typeof createHouseScene>, audio: ReturnType<typeof createAudio<keyof typeof houseSounds>>) {
-    const events = new AbortController(), options = { signal: events.signal };
-    const dragHint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(); audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Audio is optional. */ } }
+  const connect = (scene: HouseScene, audio: ReturnType<typeof createAudio<keyof typeof houseSounds>>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const dragHint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('house-build', audio, events.signal, dev);
     function update(next: HouseState) {
       if (next.placed > state.placed) audio.play(next.placed === 3 ? 'floor' : 'placed');
       if (next.pours.filter(v => v === 1).length > state.pours.filter(v => v === 1).length) audio.play('pour');
@@ -62,7 +53,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         || next.attached !== state.attached
         || (next.action !== state.action && (next.action === 'finishing' || state.action === 'finishing'));
       const completed = next.phase === 'complete' && state.phase !== 'complete';
-      if (completed) { audio.play('complete'); if (!dev) markCompleted('house-build'); }
+      if (completed) { audio.play('complete'); if (!dev) persistence.markCompleted(); }
       state = next;
       if (checkpoint) save();
     }
@@ -91,12 +82,13 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         update(release(state, cancelled, targetReached)); save();
       },
     }, events.signal);
-    const restart = () => { unlock(); pointer.cancel(); state = createHouse('gravel', dev ? chooseRound(state.round) : newRound(state.round)); save(); };
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
+    const restart = () => { unlock(); pointer.cancel(); state = createHouse('gravel', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     const syncSound = () => { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); };
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
     const fields = ['roof', 'layout', 'palette', 'family', 'pet'] as const;
     const resetStage = () => {
@@ -189,11 +181,8 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         displayed = state.phase;
       }
       if (dev) { fields.forEach(key => { app.querySelector<HTMLSelectElement>(`#house-${key}`)!.value = String(state.round[key]); }); label('#phase', names[state.phase]); label('#action', state.action); label('#placed', `${state.placed} / 6`); }
-      if (now - saved > 800) { save(); saved = now; }
-      frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); events.abort(); dragHint.dispose(); };
-  }
+    return withAutosave('house-build', runFrameLoop('house-build', animate), save, 800);
+  });
   return { connect, save };
 }

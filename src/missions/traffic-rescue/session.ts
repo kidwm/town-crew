@@ -1,40 +1,40 @@
+import { Effect } from 'effect';
+import { trafficPersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import { createAudio } from '../../runtime/audio.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
-import { createTraffic, resumeTraffic, chooseColors, stages, grab, drive, moveHandle, accept, release, advance, progress, isDriving, PALETTE, SETTLE_SECONDS, DEBRIS, towDirection, towType, REOPEN_PASS_START } from './domain/traffic.ts';
+import { createTraffic, chooseColors, stages, grab, drive, moveHandle, accept, release, advance, progress, isDriving, PALETTE, SETTLE_SECONDS, DEBRIS, towDirection, towType, REOPEN_PASS_START } from './domain/traffic.ts';
 import type { Stage, Point, Goal, TrafficState } from './domain/traffic.ts';
-import type { createTrafficScene } from './scene.ts';
+import type { TrafficScene } from './scene.ts';
 import { mountTrafficUI, names, instruction, icons, liftIcon, goalNames } from './ui.ts';
 export const trafficSounds = { connected: [440, 660], arrival: [440, 554, 440], sweep: [260, 330], depart: [392, 523], complete: [523, 659, 784, 1047], bump: [150, 110] } as const;
 export const createTrafficAudio = () => createAudio(trafficSounds);
-const colorKey = 'town-crew:traffic:last-colors:v1';
-let lastColors: [number, number] | undefined;
-function newColors() {
-  try { const colors: unknown = JSON.parse(sessionStorage.getItem(colorKey) ?? 'null'); if (Array.isArray(colors) && colors.length === 2 && colors.every(c => Number.isInteger(c) && c >= 0 && c < PALETTE.length)) lastColors = colors as [number, number]; } catch { /* Optional storage. */ }
-  lastColors = chooseColors(lastColors);
-  try { sessionStorage.setItem(colorKey, JSON.stringify(lastColors)); } catch { /* Optional storage. */ }
-  return lastColors;
-}
-export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = trafficPersistence) {
   const query = new URLSearchParams(location.search).get('stage'), stage: Stage = dev && !fresh && stages.includes(query as Stage) ? query as Stage : 'collision';
   const devKey = `town-crew:traffic:dev:v1:${location.search}`;
-  let restored: TrafficState | undefined;
-  try { if (!fresh) restored = resumeTraffic(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('traffic-rescue')); } catch { /* Optional storage. */ }
-  let state = restored ?? createTraffic(stage, dev ? [0, 2] : newColors());
-  function save() { if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } } else saveProgress('traffic-rescue', state); }
+  const restored = fresh ? undefined : persistence.load(dev, devKey);
+  let state = restored ?? createTraffic(stage, dev ? [0, 2] : persistence.newColors());
+  if (!dev && restored) persistence.rememberColors(state.colors);
+  function save() { persistence.save(dev, devKey, state); }
   mountTrafficUI(app, dev);
-  function connect(scene: ReturnType<typeof createTrafficScene>, audio: ReturnType<typeof createTrafficAudio>) {
-    const events = new AbortController(), options = { signal: events.signal }, hint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(); audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Optional audio. */ } }
+  const connect = (scene: TrafficScene, audio: ReturnType<typeof createTrafficAudio>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('traffic-rescue', audio, events.signal, dev);
     function update(next: TrafficState) {
       if (next === state) return;
       if (next.phase === 'collision' && state.elapsed < 1.45 && next.elapsed >= 1.45) audio.play('bump');
       if (next.phase === 'reopen' && state.elapsed < REOPEN_PASS_START && next.elapsed >= REOPEN_PASS_START) audio.play('depart');
       if (next.phase !== state.phase) {
         audio.play(next.phase === 'complete' ? 'complete' : next.phase === 'tow-exit' ? 'connected' : 'arrival');
-        if (next.phase === 'complete' && !dev) markCompleted('traffic-rescue');
+        if (next.phase === 'complete' && !dev) persistence.markCompleted();
       } else if (next.cleaned > state.cleaned) audio.play('sweep');
       else if (next.action === 'working' && state.action === 'dragging') audio.play('connected');
       state = next;
@@ -60,12 +60,13 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
         if (held.phase !== state.phase) return;
         const goal = scene.targets(state, held.screen, held.origin).find(t => t.accepted)?.id; update(release(state, cancelled, goal)); save(); },
     }, events.signal);
-    const restart = () => { unlock(); pointer.cancel(); update(createTraffic('collision', dev ? chooseColors(state.colors) : newColors())); save(); };
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
+    const restart = () => { unlock(); pointer.cancel(); update(createTraffic('collision', dev ? chooseColors(state.colors) : persistence.newColors())); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
     const resetStage = () => { pointer.cancel(); state = createTraffic(select!.value as Stage, state.colors, state.towTypes, state.firstTow); save(); };
     select?.addEventListener('change', resetStage, options); app.querySelector('.reset-stage')?.addEventListener('click', resetStage, options);
@@ -104,10 +105,8 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
         if (select) select.value = state.phase; displayed = state.phase;
       }
       if (dev) { label('#phase', names[state.phase]); label('#action', state.action); }
-      if (now - saved > 800) { save(); saved = now; } frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); events.abort(); hint.dispose(); };
-  }
+    return withAutosave('traffic-rescue', runFrameLoop('traffic-rescue', animate), save, 800);
+  });
   return { connect, save };
 }

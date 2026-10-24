@@ -1,19 +1,19 @@
-import { Effect } from 'effect';
+import { Effect, Exit } from 'effect';
+import { createStartupDiagnostics } from './runtime/mission-startup.ts';
+import { loadMissionModule, missionFailureMessage } from './runtime/mission-lifecycle.ts';
 import { createAudio } from './runtime/audio.ts';
 import { mountMenu } from './app/menu.ts';
 import type { MissionId } from './app/progress.ts';
 import { clearProgress } from './app/progress.ts';
 import { registerPwa } from './app/pwa.ts';
+import { createNavigation } from './app/navigation.ts';
 import './style.css';
 
-registerPwa();
+const stopPwa = registerPwa();
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const params = new URLSearchParams(location.search);
 const dev = import.meta.env.DEV && params.get('dev') === '1';
-let lifetime: AbortController | undefined;
-let running: Promise<unknown> = import.meta.hot?.data.cleanup ?? Promise.resolve();
-let revision = 0;
-let disposeMenu: (() => void) | undefined;
+const navigation = createNavigation(import.meta.hot?.data.cleanup);
 let fromMenu = false;
 const events = new AbortController();
 function route(): MissionId | undefined {
@@ -34,115 +34,142 @@ function route(): MissionId | undefined {
   if (dev) return params.get('mission') === 'fire-rescue' ? 'fire-rescue' : params.get('mission') === 'house-build' ? 'house-build' : 'road-repair';
 }
 function home() { location.hash = 'menu'; }
-async function show() {
-  const current = ++revision;
-  lifetime?.abort(); disposeMenu?.(); disposeMenu = undefined;
-  await running;
-  if (current !== revision) return;
-  for (const key of Object.keys(app.dataset)) delete app.dataset[key];
-  const mission = route();
-  document.body.dataset.dev = String(dev && !!mission);
-  if (!mission) {
-    fromMenu = true;
-    app.dataset.screen = 'menu';
-    disposeMenu = mountMenu(app, id => { location.hash = id; });
-    return;
-  }
-  const fresh = fromMenu; fromMenu = false;
-  // The old scope has finished saving before a selection starts a new round.
-  if (fresh) clearProgress(mission);
-  app.dataset.screen = 'mission'; app.dataset.mission = mission;
-  app.innerHTML = '<div class="loading" role="status">小小城市隊準備出發…</div>';
-  lifetime = new AbortController();
-  const signal = lifetime.signal;
-  const program = Effect.scoped(Effect.gen(function* () {
-    if (mission === 'road-repair') {
-      const [{ createScene }, { createRoadSession }, { roadSounds }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/road-repair/scene.ts'), import('./missions/road-repair/session.ts'), import('./missions/road-repair/sounds.ts'),
-      ]));
-      const session = createRoadSession(app, dev, import.meta.hot, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(roadSounds)), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'house-build') {
-      const { createHouseScene } = yield* Effect.promise(() => import('./missions/house-build/scene.ts'));
-      const { createHouseSession, houseSounds } = yield* Effect.promise(() => import('./missions/house-build/session.ts'));
-      const session = createHouseSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createHouseScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(() => createAudio(houseSounds)), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'port-cargo') {
-      const [{ createPortScene }, { createPortSession, createPortAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/port-cargo/scene.ts'), import('./missions/port-cargo/session.ts'),
-      ]));
-      const session = createPortSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createPortScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createPortAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'passenger-transfer') {
-      const [{ createTransferScene }, { createTransferSession, createTransferAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/passenger-transfer/scene.ts'), import('./missions/passenger-transfer/session.ts'),
-      ]));
-      const session = createTransferSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createTransferScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createTransferAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'mountain-clearance') {
-      const [{ createMountainScene }, { createMountainSession, createMountainAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/mountain-clearance/scene.ts'), import('./missions/mountain-clearance/session.ts'),
-      ]));
-      const session = createMountainSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createMountainScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createMountainAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'police-patrol') {
-      const [{ createPoliceScene }, { createPoliceSession, createPoliceAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/police-patrol/scene.ts'), import('./missions/police-patrol/session.ts'),
-      ]));
-      const session = createPoliceSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createPoliceScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createPoliceAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else if (mission === 'traffic-rescue') {
-      const [{ createTrafficScene }, { createTrafficSession, createTrafficAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/traffic-rescue/scene.ts'), import('./missions/traffic-rescue/session.ts'),
-      ]));
-      const session = createTrafficSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createTrafficScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createTrafficAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
-    } else {
-      const [{ createFireScene }, { createFireSession }, { createFireAudio }] = yield* Effect.promise(() => Promise.all([
-        import('./missions/fire-rescue/scene.ts'), import('./missions/fire-rescue/session.ts'), import('./missions/fire-rescue/sounds.ts'),
-      ]));
-      const session = createFireSession(app, dev, home, fresh);
-      if (fresh) session.save();
-      const scene = yield* Effect.acquireRelease(Effect.sync(() => createFireScene(app.querySelector('.canvas-host')!)), value => Effect.sync(() => value.dispose()));
-      const audio = yield* Effect.acquireRelease(Effect.sync(createFireAudio), value => Effect.promise(() => value.dispose()));
-      yield* Effect.acquireRelease(Effect.sync(() => session.connect(scene, audio)), dispose => Effect.sync(dispose));
+function show() {
+  return navigation.show(isCurrent => Effect.gen(function* () {
+    for (const key of Object.keys(app.dataset)) delete app.dataset[key];
+    const mission = route();
+    document.body.dataset.dev = String(dev && !!mission);
+    if (!mission) {
+      fromMenu = true;
+      app.dataset.screen = 'menu';
+      yield* Effect.acquireRelease(Effect.sync(() => mountMenu(app, id => { location.hash = id; })), dispose => Effect.sync(dispose));
+      return yield* Effect.never;
     }
-    yield* Effect.never;
+    const fresh = fromMenu; fromMenu = false;
+    // The old scope has finished saving before a selection starts a new round.
+    if (fresh) clearProgress(mission);
+    app.dataset.screen = 'mission'; app.dataset.mission = mission;
+    app.innerHTML = '<div class="loading" role="status">小小城市隊準備出發…</div>';
+    const diagnostics = createStartupDiagnostics(mission, dev);
+    const program = Effect.scoped(Effect.gen(function* () {
+      if (mission === 'road-repair') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createScene }, { prepareRoadMission, RoadPersistenceLive }, { roadSounds }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/road-repair/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/road-repair/startup.ts'))),
+            trace.stage('module.sounds', loadMissionModule(mission, 'sounds', () => import('./missions/road-repair/sounds.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareRoadMission({ app, dev, hot: import.meta.hot, home, fresh }, createScene, () => createAudio(roadSounds), trace).pipe(
+            Effect.provide(RoadPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'house-build') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createHouseScene }, { prepareHouseMission, HousePersistenceLive, houseSounds }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/house-build/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/house-build/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareHouseMission({ app, dev, home, fresh }, createHouseScene, () => createAudio(houseSounds), trace).pipe(
+            Effect.provide(HousePersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'traffic-rescue') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createTrafficScene }, { prepareTrafficMission, TrafficPersistenceLive, createTrafficAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/traffic-rescue/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/traffic-rescue/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareTrafficMission({ app, dev, home, fresh }, createTrafficScene, createTrafficAudio, trace).pipe(
+            Effect.provide(TrafficPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'police-patrol') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createPoliceScene }, { preparePoliceMission, PolicePersistenceLive, createPoliceAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/police-patrol/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/police-patrol/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* preparePoliceMission({ app, dev, home, fresh }, createPoliceScene, createPoliceAudio, trace).pipe(
+            Effect.provide(PolicePersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'port-cargo') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createPortScene }, { preparePortMission, PortPersistenceLive, createPortAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/port-cargo/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/port-cargo/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* preparePortMission({ app, dev, home, fresh }, createPortScene, createPortAudio, trace).pipe(
+            Effect.provide(PortPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'mountain-clearance') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createMountainScene }, { prepareMountainMission, MountainPersistenceLive, createMountainAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/mountain-clearance/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/mountain-clearance/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareMountainMission({ app, dev, home, fresh }, createMountainScene, createMountainAudio, trace).pipe(
+            Effect.provide(MountainPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'passenger-transfer') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createTransferScene }, { prepareTransferMission, TransferPersistenceLive, createTransferAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/passenger-transfer/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/passenger-transfer/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareTransferMission({ app, dev, home, fresh }, createTransferScene, createTransferAudio, trace).pipe(
+            Effect.provide(TransferPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createFireScene }, { prepareFireMission, FirePersistenceLive }, { createFireAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/fire-rescue/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/fire-rescue/startup.ts'))),
+            trace.stage('module.sounds', loadMissionModule(mission, 'sounds', () => import('./missions/fire-rescue/sounds.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareFireMission({ app, dev, home, fresh }, createFireScene, createFireAudio, trace).pipe(
+            Effect.provide(FirePersistenceLive),
+          );
+        }));
+        yield* run;
+      }
+    }));
+    yield* program.pipe(Effect.onExit(exit => Effect.gen(function* () {
+      if (Exit.isSuccess(exit)) return;
+      const message = missionFailureMessage(exit.cause);
+      if (message === undefined) return;
+      yield* diagnostics.failure(exit.cause);
+      // Cleanup failures must be logged, but an obsolete mission must not replace the UI.
+      if (!isCurrent()) return;
+      app.innerHTML = `<div class="loading" role="alert">${message}<p><button class="error-home">回到選關</button></p></div>`;
+      app.querySelector('.error-home')?.addEventListener('click', home, { signal: events.signal });
+    })), Effect.catchCause(() => Effect.void));
   }));
-  running = Effect.runPromise(program, { signal }).catch((error: unknown) => {
-    if (signal.aborted) return;
-    console.error(error);
-    app.innerHTML = '<div class="loading" role="alert">畫面暫時無法啟動，請重新整理或使用支援 WebGL2 的瀏覽器。<p><button class="error-home">回到選關</button></p></div>';
-    app.querySelector('.error-home')?.addEventListener('click', home, { signal: events.signal });
-  });
 }
 window.addEventListener('hashchange', () => { void show(); }, { signal: events.signal });
 void show();
 if (import.meta.hot) {
   import.meta.hot.accept();
   import.meta.hot.dispose(() => {
-    revision++; events.abort(); disposeMenu?.(); lifetime?.abort();
-    import.meta.hot!.data.cleanup = running;
+    events.abort();
+    import.meta.hot!.data.cleanup = Promise.all([navigation.dispose(), stopPwa()]);
   });
 }

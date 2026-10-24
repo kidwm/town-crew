@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import { createBoulder } from '../../runtime/rocks.ts';
@@ -17,16 +19,21 @@ import type { MountainState, Point } from './domain/mountain.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
 interface Screen { x: number; y: number }
 
-export function createMountainScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#d4e7e3');
+export const createMountainScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#d4e7e3');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '山路搶通：推土機集中土石、鏟裝機鏟土裝車、挖土機裝大石頭、砂石車清運、清掃車刷乾淨'); host.append(canvas);
-  const scene = new THREE.Scene(), site = new THREE.Group(); scene.add(site);
+  const scene = yield* acquireScene();
+  const site = new THREE.Group(); scene.add(site);
   const camera = new THREE.OrthographicCamera(-14, 14, 9, -9, 0.1, 200); camera.position.set(8, 19, 30); camera.lookAt(0, 0.4, -0.8);
   scene.add(new THREE.HemisphereLight('#fff9e8', '#90a787', 2.4));
-  const sun = new THREE.DirectionalLight('#fff1d7', 2.7); sun.position.set(-8, 17, 10); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
+  const sun = new THREE.DirectionalLight('#fff1d7', 2.7);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-8, 17, 10); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
   Object.assign(sun.shadow.camera, { left: -25, right: 25, top: 24, bottom: -24, far: 60 }); scene.add(sun);
-  const shapes = createShapes(), { box, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, material } = shapes;
   box(site, [150, 0.5, 150], [0, -0.42, 0], '#b6cc9b');
   const outline = new THREE.Shape();
   const vertices = [[-40, -4], [-12, -4], [-8, -2.7], [8, -2.7], [12, -4], [40, -4], [40, 1.7], [12, 1.7], [8, 6.8], [-8, 6.8], [-12, 1.7], [-40, 1.7]];
@@ -71,12 +78,13 @@ export function createMountainScene(host: HTMLElement) {
     grain.castShadow = true; site.add(grain); return grain;
   });
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.13, 0.13, 0.05], [0, 0, 0], ['#edba63', '#8bb6a1', '#df9b81'][i % 3]));
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
     const aspect = r.width / r.height, height = Math.max(18, 22 / aspect);
     camera.left = -height * aspect / 2; camera.right = height * aspect / 2; camera.top = height / 2; camera.bottom = -height / 2;
     camera.updateProjectionMatrix(); renderer.setSize(r.width, r.height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   let roundSide = 1;
   const exit = () => Math.max(19, camera.right + 8);
   function screen(p: Point): Screen {
@@ -212,10 +220,7 @@ export function createMountainScene(host: HTMLElement) {
       confetti.forEach((c, i) => { c.visible = s.phase === 'complete'; const u = (time * 0.25 + i / 28) % 1; c.position.set(Math.sin(i * 5) * 7, 7 - u * 6, Math.cos(i * 7) * 4); c.rotation.set(time, i, time + i); c.scale.setScalar(Math.sin(u * Math.PI)); });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type MountainScene = Effect.Success<ReturnType<typeof createMountainScene>>;

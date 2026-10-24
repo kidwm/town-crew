@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createTownTree, createTownHouse, createTownBench } from '../../runtime/town-scenery.ts';
 import { createTrafficCone } from '../../runtime/traffic-cone.ts';
@@ -10,16 +12,21 @@ import { towingPose, towedCarPose, CAR_AXLE, CAR_WHEEL } from './domain/towing.t
 import type { TrafficState, Point } from './domain/traffic.ts';
 const vector = (p: Point) => new THREE.Vector3(p.x, p.y, p.z);
 interface ScreenPoint { x: number; y: number }
-export function createTrafficScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce9e0');
+export const createTrafficScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer); renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#dce9e0');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '交通救援現場：警車管制、拖吊兩台小客車、清掃道路、救護車接送'); host.append(canvas);
-  const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-15, 15, 9, -9, 0.1, 300);
+  const scene = yield* acquireScene();
+  const camera = new THREE.OrthographicCamera(-15, 15, 9, -9, 0.1, 300);
   camera.position.set(22, 32, 60); camera.lookAt(0, 0, 0);
   scene.add(new THREE.HemisphereLight('#fff7e0', '#a3b59c', 2.4));
-  const sun = new THREE.DirectionalLight('#fff1da', 2.5); sun.position.set(-10, 18, 8); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
+  const sun = new THREE.DirectionalLight('#fff1da', 2.5);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-10, 18, 8); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
   Object.assign(sun.shadow.camera, { left: -23, right: 23, top: 19, bottom: -19, far: 55 }); scene.add(sun);
-  const shapes = createShapes(), { box, cylinder, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, cylinder, material } = shapes;
   box(scene, [300, 0.4, 300], [0, -0.3, 0], '#b9cea7');
   box(scene, [100, 0.1, 11.6], [0, -0.05, 0], '#a9ab9b');
   for (const z of [-5.7, 5.7]) box(scene, [100, 0.025, 0.13], [0, 0.02, z], '#f8edcd');
@@ -62,12 +69,13 @@ export function createTrafficScene(host: HTMLElement) {
   for (const x of [-3.3, 3.3]) box(parking, [0.08, 0.035, 2.2], [x, 0, 0], '#fff2c6');
   const confetti = Array.from({ length: 30 }, (_, i) => box(scene, [0.13, 0.13, 0.05], [0, 0, 0], ['#e5bc6b', '#89b8a7', '#db9a85'][i % 3]));
   const ray = new THREE.Raycaster();
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
     const aspect = width / height, view = Math.max(19, 31 / aspect);
     camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function screen(p: Point): ScreenPoint { camera.updateMatrixWorld(true); const r = canvas.getBoundingClientRect(), v = vector(p).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 }; }
   const drivingZ = (s: TrafficState) => s.phase === 'police' || s.phase === 'ambulance' ? AMBULANCE_LANE : s.phase === 'tow-exit' ? TOW_LANE : 0;
   function anchor(s: TrafficState): Point { return isDriving(s) ? { x: s.truckX, y: 1, z: drivingZ(s) } : s.handle; }
@@ -157,10 +165,7 @@ export function createTrafficScene(host: HTMLElement) {
       confetti.forEach((p, i) => { p.visible = s.phase === 'complete'; const u = (time * 0.25 + i / confetti.length) % 1; p.position.set(Math.sin(i * 5) * 8, 8 - u * 7, Math.cos(i * 7) * 4); p.rotation.set(time, i, time + i); p.scale.setScalar(Math.sin(u * Math.PI)); });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(o => { if (o instanceof THREE.Mesh) { geometries.add(o.geometry); (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m)); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type TrafficScene = Effect.Success<ReturnType<typeof createTrafficScene>>;

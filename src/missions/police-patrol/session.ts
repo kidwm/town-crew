@@ -1,37 +1,38 @@
+import { Effect } from 'effect';
+import { policePersistence } from './services.ts';
+import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
+import { runFrameLoop } from '../../runtime/frame-loop.ts';
+import { withAutosave } from '../../runtime/autosave.ts';
 import { bindPrimaryDrag } from '../../runtime/pointer.ts';
 import { createDragHint } from '../../runtime/drag-hint.ts';
 import { createAudio } from '../../runtime/audio.ts';
-import { loadProgress, saveProgress, markCompleted, isMuted, setMuted } from '../../app/progress.ts';
-import { createPolice, chooseRound, validRound, resumePolice, stages, available, grab, drive, release, advance, progress } from './domain/police.ts';
-import type { Round, Stage, Vehicle, PoliceState } from './domain/police.ts';
-import type { createPoliceScene } from './scene.ts';
+import { createPolice, chooseRound, stages, available, grab, drive, release, advance, progress } from './domain/police.ts';
+import type { Stage, Vehicle, PoliceState } from './domain/police.ts';
+import type { PoliceScene } from './scene.ts';
 import { mountPoliceUI, names, instruction } from './ui.ts';
 import { patrolIcon, bikeIcon, vanIcon } from '../../app/police-art.ts';
 export const createPoliceAudio = () => createAudio({ arrival: [440, 554, 440], parked: [440, 660], depart: [392, 523], complete: [523, 659, 784, 1047] });
-const roundKey = 'town-crew:police:last-round:v1'; let previousRound: Round | undefined;
-function newRound(previous?: Round) {
-  try { const saved: unknown = JSON.parse(sessionStorage.getItem(roundKey) ?? 'null'); if (validRound(saved)) previousRound = saved; } catch { /* Optional storage. */ }
-  previousRound = chooseRound(previous ?? previousRound);
-  try { sessionStorage.setItem(roundKey, JSON.stringify(previousRound)); } catch { /* Optional storage. */ }
-  return previousRound;
-}
-export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false) {
+export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = policePersistence) {
   const params = new URLSearchParams(location.search), query = params.get('stage'), phase: Stage = dev && !fresh && stages.includes(query as Stage) ? query as Stage : 'intro';
   const devKey = `town-crew:police:dev:v1:${location.search}`;
-  let restored: PoliceState | undefined;
-  try { if (!fresh) restored = resumePolice(dev ? JSON.parse(sessionStorage.getItem(devKey) ?? 'null') : loadProgress('police-patrol')); } catch { /* Optional storage. */ }
+  const restored = fresh ? undefined : persistence.load(dev, devKey);
   const configured = Number(params.get('layout') ?? 0);
-  let state = restored ?? createPolice(phase, dev ? { layout: Number.isInteger(configured) && configured >= 0 && configured < 4 ? configured : 0, color: 0, body: 'car', bag: 0 } : newRound());
-  function save() { if (dev) { try { sessionStorage.setItem(devKey, JSON.stringify(state)); } catch { /* Optional storage. */ } } else saveProgress('police-patrol', state); }
+  let state = restored ?? createPolice(phase, dev ? { layout: Number.isInteger(configured) && configured >= 0 && configured < 4 ? configured : 0, color: 0, body: 'car', bag: 0 } : persistence.newRound());
+  if (!dev && restored) persistence.rememberRound(state.round);
+  function save() { persistence.save(dev, devKey, state); }
   mountPoliceUI(app, dev);
-  function connect(scene: ReturnType<typeof createPoliceScene>, audio: ReturnType<typeof createPoliceAudio>) {
-    const events = new AbortController(), options = { signal: events.signal }, hint = createDragHint(app.querySelector<HTMLElement>('.world')!);
-    let frame = 0, previous = performance.now(), time = 0, saved = 0, muted = isMuted(), preferred: Vehicle = 'bike0'; audio.setMuted(muted);
-    function unlock() { try { void audio.unlock().catch(() => {}); } catch { /* Audio is optional. */ } }
+  const connect = (scene: PoliceScene, audio: ReturnType<typeof createPoliceAudio>) => Effect.gen(function* () {
+    const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
+    const options = { signal: events.signal };
+    const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
+    let previous = performance.now(), time = 0, muted = persistence.isMuted(), preferred: Vehicle = 'bike0';
+    yield* Effect.addFinalizer(() => Effect.sync(save));
+    audio.setMuted(muted);
+    const unlock = createAudioUnlocker('police-patrol', audio, events.signal, dev);
     function update(next: PoliceState) {
       if (next === state) return;
       if (next.phase !== state.phase || next.order.length > state.order.length) audio.play(next.phase === 'complete' ? 'complete' : next.phase === 'transport' ? 'depart' : 'parked');
-      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) markCompleted('police-patrol');
+      if (next.phase === 'complete' && state.phase !== 'complete' && !dev) persistence.markCompleted();
       state = next;
     }
     const pointer = bindPrimaryDrag<{ phase: Stage; vehicle: Vehicle; value: number; origin: { x: number; y: number }; offset: { x: number; y: number } }>(scene.canvas, {
@@ -48,13 +49,14 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
       },
       end(held, cancelled) { if (state.phase === held.phase && state.active === held.vehicle) update(release(state, cancelled)); save(); },
     }, events.signal);
-    const restart = () => { unlock(); pointer.cancel(); state = createPolice('intro', dev ? chooseRound(state.round) : newRound(state.round)); preferred = 'bike0'; save(); };
+    yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
+    const restart = () => { unlock(); pointer.cancel(); state = createPolice('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); preferred = 'bike0'; save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     app.querySelectorAll<HTMLButtonElement>('[data-bike]').forEach(b => b.addEventListener('click', () => { preferred = b.dataset.bike as Vehicle; unlock(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout');
     const reset = () => { pointer.cancel(); state = createPolice(select!.value as Stage, { ...state.round, layout: Number(layout!.value) }); save(); };
     select?.addEventListener('change', reset, options); layout?.addEventListener('change', reset, options); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
@@ -91,10 +93,8 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
         if (select) select.value = state.phase; displayed = state.phase;
       }
       if (dev) { label('#phase', names[state.phase]); label('#action', state.action); layout!.value = String(state.round.layout); }
-      if (now - saved > 700) { save(); saved = now; } frame = requestAnimationFrame(animate);
     }
-    frame = requestAnimationFrame(animate);
-    return () => { pointer.cancel(); save(); cancelAnimationFrame(frame); events.abort(); hint.dispose(); };
-  }
+    return withAutosave('police-patrol', runFrameLoop('police-patrol', animate), save, 700);
+  });
   return { connect, save };
 }

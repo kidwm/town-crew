@@ -1,3 +1,5 @@
+import { Effect } from 'effect';
+import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
 import { createShapes } from '../../runtime/geometry.ts';
 import type { DragHint } from '../../runtime/drag-hint.ts';
@@ -8,21 +10,26 @@ import type { FireState, Point, Goal } from './domain/fire.ts';
 interface ScreenPoint { x: number; y: number }
 const vector = (p: Point) => new THREE.Vector3(p.x, p.y, p.z);
 const raised = (p: Point, y: number): Point => ({ ...p, y: p.y + y });
-export function createFireScene(host: HTMLElement) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+export const createFireScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
+  const renderer = yield* acquireRenderer(makeRenderer);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor('#d7e9e5');
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement; host.append(canvas);
   canvas.setAttribute('aria-label', '消防隊救火現場：接水、噴水、雲梯救居民與小貓、救護車接送');
-  const scene = new THREE.Scene(), camera = new THREE.OrthographicCamera(-12.5, 12.5, 7.5, -7.5, 0.1, 300);
+  const scene = yield* acquireScene();
+  const camera = new THREE.OrthographicCamera(-12.5, 12.5, 7.5, -7.5, 0.1, 300);
   // Same orthographic angle and framing, farther back along the view axis so
   // the near plane cannot cut through the ground on tall portrait screens.
   camera.position.set(32, 34, 70.5); camera.lookAt(0, 2, 0.5);
   scene.add(new THREE.HemisphereLight('#fff6df', '#98b39e', 2.4));
-  const sun = new THREE.DirectionalLight('#fff1d6', 2.5); sun.position.set(-7, 14, 7); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight('#fff1d6', 2.5);
+  yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
+  sun.position.set(-7, 14, 7); sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024); sun.shadow.normalBias = 0.035;
   Object.assign(sun.shadow.camera, { left: -17, right: 17, top: 15, bottom: -15, far: 45 }); scene.add(sun);
-  const shapes = createShapes(), { box, cylinder, material } = shapes;
+  const shapes = createShapes();
+  yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
+  const { box, cylinder, material } = shapes;
   box(scene, [300, 0.5, 300], [0, -0.4, 0], '#b8cea3');
   const streetWidth = 3.5, forecourtBack = -4.55, forecourtFront = STREET_Z - streetWidth / 2;
   // Meet the road edge exactly: overlapping surfaces at y = 0 obscure the
@@ -110,12 +117,13 @@ export function createFireScene(host: HTMLElement) {
   for (const x of [-3.1, 3.1]) box(parking, [0.09, 0.025, 2.6], [x, 0, 0], '#fff2c8');
   const confetti = Array.from({ length: 24 }, (_, i) => box(scene, [0.12, 0.13, 0.055], [0, 0, 0], ['#e6b66b', '#85b8ad', '#df9a80'][i % 3]));
   const ray = new THREE.Raycaster();
-  const resize = new ResizeObserver(() => {
+  const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
     const aspect = width / height, view = Math.max(15, 25 / aspect);
     camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
-  }); resize.observe(host);
+  })), value => Effect.sync(() => value.disconnect()));
+  resize.observe(host);
   function screen(p: Point): ScreenPoint {
     camera.updateMatrixWorld(true); const bounds = canvas.getBoundingClientRect(), v = vector(p).project(camera);
     return { x: (v.x + 1) * bounds.width / 2, y: (1 - v.y) * bounds.height / 2 };
@@ -265,10 +273,7 @@ export function createFireScene(host: HTMLElement) {
       confetti.forEach((piece, i) => { piece.visible = celebration; const u = (time * 0.22 + i / confetti.length) % 1; piece.position.set(3 + Math.sin(i * 5) * 3.4, 7 - u * 6, 1 + Math.cos(i * 7) * 2); piece.rotation.set(time + i, time, i); piece.scale.setScalar(Math.sin(u * Math.PI)); });
       renderer.render(scene, camera);
     },
-    dispose() {
-      resize.disconnect(); const geometries = new Set<THREE.BufferGeometry>(), materials = new Set<THREE.Material>();
-      scene.traverse(object => { if (object instanceof THREE.Mesh) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
-      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); shapes.disposeMaterials(); sun.shadow.dispose(); renderer.dispose(); renderer.forceContextLoss(); canvas.remove();
-    },
   };
-}
+});
+
+export type FireScene = Effect.Success<ReturnType<typeof createFireScene>>;

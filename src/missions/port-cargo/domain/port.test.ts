@@ -51,18 +51,15 @@ test('empty hook chooses either remaining box and only a settled or valid releas
   }
 });
 
-test('previous crane saves keep suspended cargo and finish partial lifting without repeating pickup', () => {
+test('current crane saves retain suspended cargo; obsolete versions cannot synthesize attachment', () => {
   for (const direction of ['unload', 'load'] as const) {
     const base = createPort(direction === 'load' ? 'load-ship' : 'unload', { layout: 0, palette: 2, direction });
-    const carried = cranePickup(base, 1), { craneAttached: _, ...legacy } = carried;
-    assert.deepEqual(resumePort({ ...legacy, version: 2 }), carried);
-    const partial = resumePort({ ...legacy, version: 2, action: 'dragging', lift: 0.35 })!;
-    assert.equal(partial.action, 'hoisting'); assert.equal(partial.craneAttached, true);
-    assert.equal(wait(partial, n => n.action === 'ready').selected, 1);
+    const carried = cranePickup(base, 1), { craneAttached: _, ...incomplete } = carried;
+    assert.deepEqual(resumePort(carried), carried);
+    for (const version of [1, 2]) assert.equal(resumePort({ ...incomplete, version }), undefined);
+    assert.equal(resumePort(incomplete), undefined);
     assert.equal(resumePort({ ...base, craneAttached: true }), undefined);
     assert.equal(resumePort({ ...carried, craneAttached: false }), undefined);
-    assert.equal(resumePort({ ...legacy, version: 2, lift: 0.3, elapsed: NaN }), undefined);
-    assert.equal(resumePort({ ...base, version: 2, load: undefined }), undefined);
   }
 });
 
@@ -349,10 +346,11 @@ test('outgoing steering remains continuous through truck approach, loaded travel
   }
 });
 
-test('legacy snapshots retain incoming cargo progress; outgoing snapshots reject wrong phases and contradictory cargo ownership', () => {
+test('current snapshots retain incoming cargo; missing direction and contradictory outgoing cargo are rejected', () => {
   const base = createPort('forklift'); base.selected = 1; base.carrying = true; base.forkTravel = 0.3;
   const { direction: _, ...oldRound } = base.round;
-  assert.deepEqual(resumePort({ ...base, version: 1, round: oldRound }), base);
+  assert.deepEqual(resumePort(base), base);
+  assert.equal(resumePort({ ...base, version: 1, round: oldRound }), undefined);
   const outgoing = createPort('forklift', { layout: 1, palette: 2, direction: 'load' });
   for (const patch of [{ round: oldRound }, { phase: 'unload' }, { unloaded: [0], selected: 0, carrying: true }, { unloaded: [0, 1], action: 'ready' }, { loaded: [0] }, { version: 1 }]) assert.equal(resumePort({ ...outgoing, ...patch }), undefined);
   const crane = createPort('load-ship', outgoing.round);

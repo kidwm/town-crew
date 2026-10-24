@@ -10,11 +10,12 @@ export function createDragHint(host: HTMLElement) {
   svg.setAttribute('role', 'img');
   svg.style.display = 'none';
   svg.innerHTML = `<path class="drag-hint-line"/><path class="drag-hint-arrow"/><circle class="drag-hint-origin" r="9"/><g class="drag-hint-hand"><circle class="drag-hint-touch" r="16"/><path d="M-5 22V5C-5-2 5-2 5 5v14-5c0-6 9-6 9 0v6-3c0-6 9-6 9 0v5-2c0-6 9-6 9 0v14c0 11-6 17-16 17H9c-6 0-10-3-13-8l-11-16c-4-6 3-11 7-6l6 7"/></g>`;
-  host.append(svg);
   const line = svg.querySelector('.drag-hint-line')!, arrow = svg.querySelector('.drag-hint-arrow')!;
   const origin = svg.querySelector('.drag-hint-origin')!, hand = svg.querySelector('.drag-hint-hand')!;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let started = 0, previousKey = '';
+  // Finish potentially failing setup before publishing the owned element.
+  host.append(svg);
   return {
     update(hint: DragHint | undefined, time: number) {
       svg.style.display = hint ? '' : 'none';

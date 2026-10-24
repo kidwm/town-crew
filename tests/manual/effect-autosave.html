@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>八關 E09 排程驗證</title>
+<style>
+  body { margin: 0; font: 13px system-ui; background: #f6f4eb; color: #23453e; }
+  #autosave-controls { height: 190px; box-sizing: border-box; padding: 10px; overflow: auto; }
+  #autosave-controls select, #autosave-controls button { display: inline-block; width: auto; margin: 0 6px 6px 0; padding: 4px; font: inherit; }
+  #activity { font: 11px monospace; white-space: pre-wrap; max-height: 44px; overflow: auto; }
+  body #app { position: relative; height: calc(100% - 190px); }
+</style>
+<header id="autosave-controls">
+  <strong>E09 八關 · 排程與清理</strong>
+  <select id="mission" aria-label="任務"><option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option><option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option><option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option></select>
+  <select id="mode" aria-label="存檔模式"><option value="1">開發存檔</option><option value="0">正式存檔</option></select>
+  <button id="apply">載入案例</button>
+  <button id="pause" aria-pressed="false">暫停動畫幀</button>
+  <button id="hidden" aria-pressed="false">模擬隱藏頁面</button>
+  <button id="quota" aria-pressed="false">拒絕磁碟寫入</button>
+  <button id="rapid">快速切關並回本關</button>
+  <button id="sample">觀察 2.6 秒</button>
+  <button id="pagehide">同步 pagehide</button>
+  <button id="clone-fail">下次快照複製失敗</button>
+  <button id="frame-fail">下次動畫排程失敗</button>
+  <div id="status">準備中</div><div id="sample-result"></div><div id="flush-result"></div><div id="startup"></div><div id="activity"></div><div id="snapshot" style="white-space: nowrap; overflow: auto"></div>
+</header>
+<div id="app"></div>
+<script type="module">
+  // Faults and counters are confined to this manual entry, never the production app.
+  const { snapshotFixtures } = await import('../helpers/snapshots.ts');
+  const params = new URLSearchParams(location.search);
+  if (!params.has('run')) location.replace(`${location.pathname}?dev=1&stage=roller-return&run=${Date.now()}#road-repair`);
+  else {
+    const mission = document.querySelector('#mission'); mission.value = location.hash.slice(1);
+    const id = mission.value, selected = snapshotFixtures.find(item => item.id === id);
+    const mode = document.querySelector('#mode'); mode.value = params.get('dev');
+    document.querySelector('#apply').onclick = () => {
+      const fixture = snapshotFixtures.find(item => item.id === mission.value);
+      location.href = `${location.pathname}?dev=${mode.value}&stage=${fixture?.stage ?? 'roller-return'}&run=${Date.now()}#${mission.value}`;
+    };
+    const native = { sessionStorage: window.sessionStorage, localStorage: window.localStorage };
+    const prefix = `manual:effect-autosave:${params.get('run')}:`;
+    const key = mode.value === '1' ? selected ? `town-crew:${selected.prefix}:dev:v1:${location.search}` : `town-crew:road:v2:${location.search}` : `town-crew:play:v1:${id}`;
+    if (!native.sessionStorage.getItem(prefix + 'seeded')) {
+      if (selected) native.sessionStorage.setItem(prefix + key, JSON.stringify(selected.valid()));
+      else {
+      const { createRoad } = await import('/src/missions/road-repair/domain/road.ts');
+      const { defaultTuning } = await import('/src/missions/road-repair/domain/dump-truck.ts');
+      native.sessionStorage.setItem(prefix + key, JSON.stringify({ key: params.get('dev') === '1' ? key : 'play', state: createRoad('roller-return'), tuning: { ...defaultTuning, dragThreshold: 90 }, targetStage: 'roller-return' }));
+      }
+      native.sessionStorage.setItem(prefix + 'seeded', 'true');
+    }
+    const start = performance.now(), activity = [], reports = [];
+    // Make navigation wait observably for an acquired audio resource.
+    const originalClose = AudioContext.prototype.close;
+    AudioContext.prototype.close = async function() {
+      closes++; await Promise.all([originalClose.call(this), new Promise(resolve => setTimeout(resolve, 600))]);
+    };
+    let attempts = 0, writes = 0, frames = 0, failures = 0, errors = 0, warnings = 0, closes = 0, maxCanvases = 0;
+    let paused = false, hidden = false, denied = false, cloneFault = false, frameFault = false;
+    const frameQueue = new Map(); let frameId = 0;
+    const originalRequest = window.requestAnimationFrame.bind(window), originalCancel = window.cancelAnimationFrame.bind(window);
+    function schedule(id, item) {
+      item.actual = originalRequest(now => { frameQueue.delete(id); frames++; item.callback(now); });
+    }
+    window.requestAnimationFrame = callback => {
+      if (frameFault) { frameFault = false; throw new Error('Manual frame scheduling failed'); }
+      const id = ++frameId, item = { callback }; frameQueue.set(id, item);
+      if (!paused) schedule(id, item); return id;
+    };
+    window.cancelAnimationFrame = id => { const item = frameQueue.get(id); if (item?.actual !== undefined) originalCancel(item.actual); frameQueue.delete(id); };
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    const originalClone = window.structuredClone.bind(window);
+    window.structuredClone = (...args) => {
+      if (cloneFault) { cloneFault = false; throw new Error('Manual snapshot clone failed'); }
+      return originalClone(...args);
+    };
+    function render() {
+      maxCanvases = Math.max(maxCanvases, document.querySelectorAll('canvas').length);
+      const saved = JSON.parse(native.sessionStorage.getItem(prefix + key));
+      const state = selected ? saved : saved?.state;
+      document.querySelector('#snapshot').textContent = `磁碟快照：${JSON.stringify(state)}`;
+      document.querySelector('#snapshot').dataset.snapshot = JSON.stringify(state);
+      document.querySelector('#status').textContent = `存檔嘗試 ${attempts}／成功 ${writes}；動畫回呼 ${frames}／待執行 ${frameQueue.size}；磁碟 ${state?.phase ?? '無'}${selected ? '' : `（${state?.roller.passes} 趟）`}；audio 關閉 ${closes}／最大畫布 ${maxCanvases}；Mission failed ${failures}；warning ${warnings}；未處理錯誤 ${errors}`;
+      document.querySelector('#activity').textContent = activity.slice(-4).map(item => `${item.at} ms · ${item.result} · ${item.phase}`).join('\n');
+      document.querySelector('#startup').textContent = reports.map(report => `#${report.startupId} ${report.mission} ${report.outcome}`).join(' → ');
+    }
+    for (const area of ['sessionStorage', 'localStorage']) Object.defineProperty(window, area, { configurable: true, get() {
+      const mapped = key => key.startsWith('town-crew:') ? prefix + key : key;
+      return {
+        getItem: name => native[area].getItem(mapped(name)), removeItem: name => native[area].removeItem(mapped(name)),
+        setItem(name, value) {
+          if (name === key) {
+            attempts++; if (!denied) writes++;
+            const snapshot = JSON.parse(value), state = selected ? snapshot : snapshot.state;
+            activity.push({ at: Math.round(performance.now() - start), result: denied ? '拒絕' : '寫入', phase: state.phase });
+            if (activity.length > 16) activity.shift();
+          }
+          if (denied) throw new Error('Manual storage write denied');
+          native[area].setItem(mapped(name), value);
+        },
+      };
+    } });
+    for (const level of ['debug', 'log', 'error', 'warn']) {
+      const original = console[level].bind(console);
+      console[level] = (...args) => {
+        if (level === 'debug' && args[0] === 'Mission startup') reports.push(args[1]);
+        if (args.some(arg => typeof arg === 'string' && arg.includes('Mission failed'))) failures++;
+        if (level === 'warn') warnings++;
+        original(...args); render();
+      };
+    }
+    window.addEventListener('error', () => { errors++; render(); });
+    window.addEventListener('unhandledrejection', () => { errors++; render(); });
+    document.querySelector('#pause').onclick = event => {
+      paused = !paused;
+      for (const [id, item] of frameQueue) {
+        if (paused) { if (item.actual !== undefined) originalCancel(item.actual); delete item.actual; }
+        else schedule(id, item);
+      }
+      event.target.setAttribute('aria-pressed', String(paused)); event.target.textContent = paused ? '恢復動畫幀' : '暫停動畫幀'; render();
+    };
+    document.querySelector('#hidden').onclick = event => {
+      hidden = !hidden; event.target.setAttribute('aria-pressed', String(hidden)); event.target.textContent = hidden ? '恢復可見頁面' : '模擬隱藏頁面';
+      const before = writes; document.dispatchEvent(new Event('visibilitychange'));
+      document.querySelector('#flush-result').textContent = `visibilitychange 同步寫入 ${writes - before} 次`; render();
+    };
+    document.querySelector('#quota').onclick = event => {
+      denied = !denied; event.target.setAttribute('aria-pressed', String(denied)); event.target.textContent = denied ? '恢復磁碟寫入' : '拒絕磁碟寫入';
+    };
+    document.querySelector('#sample').onclick = event => {
+      const before = { attempts, writes, frames }, button = event.target; button.disabled = true;
+      document.querySelector('#sample-result').textContent = '觀察中…';
+      setTimeout(() => {
+        document.querySelector('#sample-result').textContent = `觀察完成：2.6 秒內嘗試 ${attempts - before.attempts}／寫入 ${writes - before.writes}／動畫 ${frames - before.frames}；待執行 ${frameQueue.size}`;
+        button.disabled = false; render();
+      }, 2600);
+    };
+    document.querySelector('#rapid').onclick = () => {
+      const others = ['road-repair', ...snapshotFixtures.map(item => item.id)].filter(other => other !== id);
+      location.hash = others[0];
+      setTimeout(() => { location.hash = others[1]; }, 10);
+      setTimeout(() => { location.hash = id; }, 20);
+    };
+    document.querySelector('#pagehide').onclick = () => {
+      const before = writes; window.dispatchEvent(new Event('pagehide'));
+      document.querySelector('#flush-result').textContent = `pagehide 同步寫入 ${writes - before} 次`; render();
+    };
+    document.querySelector('#clone-fail').onclick = () => { cloneFault = true; };
+    document.querySelector('#frame-fail').onclick = () => { frameFault = true; };
+    setInterval(render, 150); render(); await import('/src/main.ts');
+  }
+</script>
+</html>

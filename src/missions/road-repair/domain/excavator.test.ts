@@ -97,13 +97,8 @@ test('reload retains loaded position, cancels pointer ownership and does not aut
   assert.equal(tick(resumeExcavator(unloading), 2).cleared, 1, 'an already committed delivery finishes once');
 });
 
-test('pre-manual-loading saves retain completed work and reset an unfinished automatic scoop', () => {
+test('pre-manual-loading saves are rejected instead of inferring missing cargo', () => {
   const { control: _control, delivered: _delivered, carried: _carried, aimed: _aimed, ...legacy } = { ...pickup(), action: 'unloading' as const, cleared: 1 };
-  const { version: _version, round: _round, ...road } = createRoad();
-  const snapshot = { key: 'play', state: { ...road, access: 'working', excavator: legacy }, tuning: defaultTuning, targetStage: 'excavator' };
-  const restored = restoreRoadSnapshot(snapshot, 'play')!.state.excavator;
-  assert.equal(restored.cleared, 1);
-  assert.deepEqual(restored.delivered, [0]);
-  assert.equal(restored.action, 'ready');
-  assert.deepEqual(restored.bucket, HOME);
+  const snapshot = { key: 'play', state: { ...createRoad(), access: 'working', excavator: legacy }, tuning: defaultTuning, targetStage: 'excavator' };
+  assert.equal(restoreRoadSnapshot(snapshot, 'play'), undefined);
 });

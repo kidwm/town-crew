@@ -168,23 +168,16 @@ test('parking ends the driving gesture and waits for a separate upward lift, pre
   assert.equal(loaderPose(s).lift, 1); assert.equal(soilInTruck(s), 0);
   s = until(restored(s), s => s.motion === 'loader-return'); assert.deepEqual(s.soilLoaded, [1]);
 });
-test('version-2 saves retain their original order and material while gaining the separate lift step', () => {
-  for (const stage of stages) {
-    const { loaderDocked, workOrder, ...old } = createMountain(stage, { layout: 1, pattern: 'spread' }, 'soil-first');
-    const s = resumeMountain({ ...old, version: 2 }); assert.ok(s); assert.equal(s.workOrder, 'soil-first'); assert.equal(s.phase, stage);
-    assert.deepEqual(s.delivered, old.delivered); assert.deepEqual(s.soilLoaded, old.soilLoaded);
-  }
-  const { loaderDocked, workOrder, ...old } = createMountain('load-soil', { layout: 0, pattern: 'cluster' }, 'soil-first');
-  const full = resumeMountain({ ...old, version: 2, loaderSelected: 1, loaderCarrying: true, loaderTravel: 0.45 });
-  assert.ok(full); assert.equal(full.loaderCarrying, true); assert.equal(full.loaderDocked, false); assert.equal(full.loaderTravel, 0.45);
-  let continuing = resumeMountain({ ...old, version: 2, soilLoaded: [0], loaderSelected: 1, loaderCarrying: true, loaderTravel: 0.45 }); assert.ok(continuing);
-  continuing = until(release(moveLoader(grab(continuing), 1, 1)), s => s.loaderDocked && s.action === 'ready');
-  continuing = until(release(moveLoader(grab(continuing), 1, 1)), s => s.phase === 'excavate');
-  assert.deepEqual(continuing.soilLoaded, [0, 1]); assert.deepEqual(continuing.delivered, []);
-  const pouring = resumeMountain({ ...old, version: 2, action: 'auto', motion: 'loader-tip', loaderSelected: 0, loaderCarrying: true, loaderTravel: 1, elapsed: 2.7 });
-  assert.ok(pouring); assert.equal(pouring.loaderDocked, true); assert.ok(Math.abs(pouring.elapsed - 1.7) < 0.001);
+test('current loader progress retains docking and elapsed time; version 2 is rejected', () => {
+  const state = createMountain('load-soil', { layout: 0, pattern: 'cluster' }, 'soil-first');
+  const full = { ...state, soilLoaded: [0], loaderSelected: 1 as const, loaderCarrying: true, loaderTravel: 0.45 };
+  assert.deepEqual(resumeMountain(full), full);
+  const pouring = { ...state, action: 'auto' as const, motion: 'loader-tip' as const, loaderSelected: 0 as const, loaderCarrying: true, loaderDocked: true, loaderTravel: 1, elapsed: 1.7 };
+  assert.deepEqual(resumeMountain(pouring), pouring);
   assert.deepEqual(until(pouring, s => s.motion === 'loader-return').soilLoaded, [0]);
+  for (const value of [state, full, pouring]) assert.equal(resumeMountain({ ...value, version: 2 }), undefined);
 });
+
 test('brief loader endpoint passes and cancellation never silently finish work after reload', () => {
   let s = tick(moveLoader(grab(createMountain('load-soil')), 0, 1), 0.18);
   assert.equal(s.loaderTravel, 0); assert.equal(s.motion, 'none');
@@ -199,17 +192,15 @@ test('passing the nearer pile does not commit it before choosing the farther pil
   s = tick(s, 0.45); assert.equal(s.motion, 'loader-finish'); assert.equal(s.loaderSelected, 1);
   s = until(s, s => s.loaderCarrying && s.action === 'ready'); assert.equal(s.loaderSelected, 1); assert.equal(soilRemaining(s, 0), 1);
 });
-test('legacy version-1 rounds retain their work, carrying rock and completion while earlier rounds gain the loader phase', () => {
+test('obsolete mountain versions and missing work order are rejected without migration', () => {
   for (const phase of ['push', 'truck-arrival', 'excavate', 'haul', 'complete'] as const) {
-    const current = createMountain(phase), { soilLoaded, loaderSelected, loaderTravel, loaderCarrying, ...legacy } = current;
-    const old = { ...legacy, version: 1 }; const resumed = resumeMountain(old); assert.ok(resumed);
-    assert.equal(resumed.version, 3); assert.equal(resumed.workOrder, 'soil-first'); assert.equal(resumed.phase, phase);
-    assert.deepEqual(resumed.soilLoaded, ['excavate', 'haul', 'complete'].includes(phase) ? [0, 1] : []);
-    assert.deepEqual(resumed.delivered, current.delivered);
+    const state = createMountain(phase);
+    for (const version of [1, 2]) assert.equal(resumeMountain({ ...state, version }), undefined);
+    const { workOrder, ...incomplete } = state;
+    assert.equal(resumeMountain(incomplete), undefined);
   }
-  const old = { ...createMountain('excavate'), version: 1, carried: 2, bucket: { x: -2, y: 4.2, z: -3 } };
-  const resumed = resumeMountain(old); assert.ok(resumed); assert.equal(resumed.carried, 2); assert.deepEqual(resumed.bucket, old.bucket);
 });
+
 test('contradictory loader saves cannot duplicate soil, skip loads or carry soil outside the loader phase', () => {
   const ready = createMountain('load-soil');
   for (const invalid of [

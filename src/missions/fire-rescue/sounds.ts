@@ -1,23 +1,35 @@
+import { releaseAll } from '../../runtime/cleanup.ts';
+
 const cues = { depart: [392, 523, 392, 523], connected: [330, 440, 523], out: [523, 659], resident: [392, 494, 587], cat: [880, 660], arrived: [440, 554, 659], complete: [392, 494, 587, 784, 988] } as const;
 export type FireCue = keyof typeof cues;
 
 // One context owns the short cues and the low, continuous water sound.
 export function createFireAudio() {
-  let context: AudioContext | undefined, noise: AudioBufferSourceNode | undefined, water: GainNode | undefined;
+  let context: AudioContext | undefined, noise: AudioBufferSourceNode | undefined, filter: BiquadFilterNode | undefined, water: GainNode | undefined;
+  let noiseStarted = false;
   let muted = false, spraying = false;
   function sync() {
     if (context && water) water.gain.setTargetAtTime(spraying && !muted ? 0.025 : 0, context.currentTime, 0.08);
   }
+  function releaseWater() {
+    const source = noise, lowpass = filter, gain = water, started = noiseStarted;
+    noise = undefined; filter = undefined; water = undefined; noiseStarted = false;
+    releaseAll([() => { if (started) source?.stop(); }, () => source?.disconnect(), () => lowpass?.disconnect(), () => gain?.disconnect()]);
+  }
   return {
     unlock() {
-      if (!context) {
-        context = new AudioContext();
+      context ??= new AudioContext();
+      if (!noise) try {
         const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate), data = buffer.getChannelData(0);
         for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
         noise = context.createBufferSource(); noise.buffer = buffer; noise.loop = true;
-        const filter = context.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1600;
+        filter = context.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1600;
         water = context.createGain(); water.gain.value = 0;
-        noise.connect(filter).connect(water).connect(context.destination); noise.start(); sync();
+        noise.connect(filter).connect(water).connect(context.destination); noise.start(); noiseStarted = true; sync();
+      } catch (cause) {
+        // Keep the owned context, but roll back partial nodes so the next gesture can rebuild them.
+        try { releaseWater(); } catch (cleanup) { throw new AggregateError([cause, cleanup], 'Fire audio initialization failed'); }
+        throw cause;
       }
       return context.state === 'suspended' ? context.resume() : Promise.resolve();
     },
@@ -34,6 +46,14 @@ export function createFireAudio() {
         tone.onended = () => { tone.disconnect(); gain.disconnect(); };
       });
     },
-    async dispose() { noise?.stop(); noise?.disconnect(); water?.disconnect(); if (context && context.state !== 'closed') await context.close(); },
+    async dispose() {
+      const errors: unknown[] = [];
+      try { releaseWater(); }
+      catch (error) { errors.push(error); }
+      // A failed node release must not prevent the context from closing.
+      try { if (context && context.state !== 'closed') await context.close(); }
+      catch (error) { errors.push(error); }
+      if (errors.length) throw new AggregateError(errors, 'Fire audio cleanup failed');
+    },
   };
 }

@@ -82,15 +82,10 @@ for (const pattern of DAMAGE_PATTERNS) for (const layout of [0, 1] as const) {
   });
 }
 
-test('old manual-carry saves retain their load and migrate to the original worksite', () => {
+test('old manual-carry saves are rejected without guessing the worksite or cargo', () => {
   const { version: _version, round: _round, ...old } = createRoad();
   const { delivered: _delivered, carried: _carried, aimed: _aimed, ...excavator } = old.excavator;
-  const state = restore({ ...old, access: 'working', excavator: { ...excavator, action: 'carrying-drag', control: 'pointer', cleared: 1, bucket: UNLOAD, target: UNLOAD } })!;
-  assert.deepEqual(state.round, DEFAULT_ROUND);
-  assert.deepEqual(state.excavator.delivered, [0]);
-  assert.equal(state.excavator.carried, 1);
-  assert.equal(state.excavator.action, 'carrying');
-  assert.equal(advanceRoad(state, 5).excavator.cleared, 1);
+  assert.equal(restore({ ...old, access: 'working', excavator: { ...excavator, action: 'carrying-drag', control: 'pointer', cleared: 1, bucket: UNLOAD, target: UNLOAD } }), undefined);
 });
 
 test('dragging across nearer pieces waits for the chosen destination; release accepts that piece', () => {

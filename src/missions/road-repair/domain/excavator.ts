@@ -108,11 +108,5 @@ export function advanceExcavator(state: ExcavatorState, delta: number, chunks: r
 }
 
 export function resumeExcavator(state: ExcavatorState): ExcavatorState {
-  if (state.control === undefined) {
-    // Old automatic pickup animations restart that unfinished piece only.
-    const interrupted = ['dragging', 'scooping', 'unloading', 'returning'].includes(state.action);
-    state = { ...state, control: 'none', ...(interrupted ? { action: state.cleared === 3 ? 'complete' as const : 'ready' as const, elapsed: 0, bucket: { ...HOME }, target: { ...HOME }, from: { ...HOME } } : {}) };
-  }
-  if (!state.delivered) state = { ...state, delivered: Array.from({ length: state.cleared }, (_, i) => i), carried: hasBucketLoad(state) ? state.cleared : null, aimed: null };
   return { ...releaseBucket(state, true), control: 'none' };
 }

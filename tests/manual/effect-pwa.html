@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E09 PWA 重試驗證</title>
+<style>body{font:16px system-ui;background:#f6f4eb;color:#23453e;margin:32px;max-width:900px}button,select{font:inherit;padding:8px;margin:5px}pre{padding:18px;background:#fff;border-radius:12px;white-space:pre-wrap}#result{margin:18px 0}</style>
+<h1>E09 PWA 重試與取消</h1>
+<p>呼叫正式程式的註冊控制器，使用可控的 register 替身；不註冊測試 Service Worker。</p>
+<label>案例 <select id="case"><option value="recover">前兩次網路失敗，第三次成功</option><option value="exhaust">持續網路失敗</option><option value="security">SecurityError</option><option value="late">等待中的註冊</option></select></label>
+<label>時機 <select id="ready"><option value="loaded">文件已載入</option><option value="waiting">等待 load</option></select></label>
+<div><button id="start">開始案例</button><button id="load">觸發 load</button><button id="hide">觸發 pagehide</button><button id="reject">讓等待中的註冊拒絕</button><button id="observe">觀察 3.6 秒</button></div>
+<div id="status">尚未開始</div><div id="result"></div><pre id="log"></pre>
+<script type="module">
+  import { startPwaRegistration } from '/src/app/pwa.ts';
+  let events, stop, reject, attempts = 0, warnings = 0, errors = 0, log = [], started = 0;
+  function render() {
+    document.querySelector('#status').textContent = `註冊嘗試 ${attempts} 次；最終 warning ${warnings}；未處理拒絕 ${errors}`;
+    document.querySelector('#log').textContent = log.join('\n');
+  }
+  window.addEventListener('unhandledrejection', () => { errors++; render(); });
+  document.querySelector('#start').onclick = async () => {
+    await stop?.(); events = new EventTarget(); attempts = 0; warnings = 0; errors = 0; log = []; reject = undefined; started = performance.now();
+    const kind = document.querySelector('#case').value, loaded = document.querySelector('#ready').value === 'loaded';
+    stop = startPwaRegistration(() => {
+      attempts++; log.push(`${Math.round(performance.now() - started)} ms：第 ${attempts} 次 register`); render();
+      if (kind === 'late') return new Promise((resolve, fail) => { reject = fail; });
+      if (kind === 'security') return Promise.reject(new DOMException('blocked', 'SecurityError'));
+      if (kind === 'exhaust' || attempts < 3) return Promise.reject(new TypeError('network fetch failed'));
+      log.push('註冊成功'); render(); return Promise.resolve();
+    }, events, () => loaded, error => { warnings++; log.push(`終止重試：${error.cause.name}`); render(); });
+    document.querySelector('#result').textContent = ''; render();
+  };
+  document.querySelector('#load').onclick = () => events?.dispatchEvent(new Event('load'));
+  document.querySelector('#hide').onclick = async () => { events?.dispatchEvent(new Event('pagehide')); await stop?.(); log.push('pagehide：取消完成'); render(); };
+  document.querySelector('#reject').onclick = () => { reject?.(new TypeError('late network failure')); reject = undefined; log.push('晚到的 Promise 拒絕'); render(); };
+  document.querySelector('#observe').onclick = event => {
+    const button = event.target; button.disabled = true; document.querySelector('#result').textContent = '觀察中…';
+    setTimeout(() => { document.querySelector('#result').textContent = '觀察完成'; button.disabled = false; render(); }, 3600);
+  };
+  window.addEventListener('pagehide', () => { void stop?.(); });
+</script>
+</html>
