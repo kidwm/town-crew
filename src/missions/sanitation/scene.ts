@@ -11,7 +11,7 @@ import { createGarbageTruck, createRecyclingTruck, createFoodTruck, createBin, c
 import { createSanitationCamera, resizeSanitationCamera } from './view.ts';
 import { available, currentVehicle, driving, lifting, index, phaseDuration, items, isRecyclable } from './domain/sanitation.ts';
 import type { SanitationState, Item, Recyclable } from './domain/sanitation.ts';
-import { APPROACH, EXIT, SWEEP_END, ROAD_Z, ROAD, BAY_Z, SWEEP_Z, SIDEWALK_Z, bayOutline, parked, shift, home, destination, vehiclePoint, binPose, cargoLocal, mix, smooth, clamp } from './domain/site.ts';
+import { APPROACH, EXIT, SWEEP_END, ROAD_Z, ROAD, BAY_Z, SWEEP_Z, SIDEWALK_Z, sweepDebris, sweeperHandoff, bayOutline, parked, shift, home, destination, vehiclePoint, binPose, cargoLocal, mix, smooth, clamp } from './domain/site.ts';
 import type { Point } from './domain/site.ts';
 interface Screen { x: number; y: number }
 export const createSanitationScene = (host: HTMLElement, makeRenderer = () => new THREE.WebGLRenderer({ antialias: true })) => Effect.gen(function* () {
@@ -59,7 +59,7 @@ export const createSanitationScene = (host: HTMLElement, makeRenderer = () => ne
   const residents = [createResident(shapes), createResident(shapes, 1)]; residents.forEach((p, i) => { p.root.position.set(-2 + i * 0.85, 0.1, 7.55); site.add(p.root); });
   const scraps = Array.from({ length: 28 }, (_, i) => {
     const leaf = new THREE.Mesh(new THREE.CircleGeometry(0.13 + i % 3 * 0.04, 5), material(['#c4af7c', '#e2c99e', '#9bb58a'][i % 3]));
-    leaf.rotation.x = -Math.PI / 2; leaf.rotation.z = i * 1.9; leaf.scale.y = 0.6; leaf.position.set(-5.5 + i % 14 * 0.86, 0.025, 1.8 + Math.floor(i / 14) * 2.4); site.add(leaf); return leaf;
+    leaf.rotation.x = -Math.PI / 2; leaf.rotation.z = i * 1.9; leaf.scale.y = 0.6; leaf.position.set(sweepDebris[i].x, sweepDebris[i].y, sweepDebris[i].z); site.add(leaf); return leaf;
   });
   const stream = Array.from({ length: 14 }, (_, i) => { const bit = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), material(i % 2 ? '#afba99' : '#dfbb85')); site.add(bit); return bit; });
   const confetti = Array.from({ length: 32 }, (_, i) => box(site, [0.14, 0.12, 0.04], [0, 0, 0], ['#e9b965', '#93b5a0', '#dc9d80'][i % 3]));
@@ -73,8 +73,9 @@ export const createSanitationScene = (host: HTMLElement, makeRenderer = () => ne
   }
   const exit = () => Math.max(35, camera.right * 1.6 + 15);
   function truckPoint(s: SanitationState) {
-    if (s.phase === 'intro' || s.phase.endsWith('-entrance')) return { x: mix(-exit(), APPROACH, smooth(s.elapsed / phaseDuration(s.phase))), y: 0, z: s.phase === 'sweeper-entrance' ? SWEEP_Z : ROAD_Z, heading: 0 };
-    if (s.phase.endsWith('-departure')) return { x: mix(s.phase === 'sweeper-departure' ? SWEEP_END : EXIT, exit(), smooth(s.elapsed / phaseDuration(s.phase))), y: 0, z: s.phase === 'sweeper-departure' ? SWEEP_Z : ROAD_Z, heading: 0 };
+    if (s.phase === 'sweeper-entrance' || s.phase === 'sweeper-departure') return sweeperHandoff(s.elapsed / phaseDuration(s.phase), exit(), s.phase === 'sweeper-departure');
+    if (s.phase === 'intro' || s.phase.endsWith('-entrance')) return { x: mix(-exit(), APPROACH, smooth(s.elapsed / phaseDuration(s.phase))), y: 0, z: ROAD_Z, heading: 0 };
+    if (s.phase.endsWith('-departure')) return { x: mix(EXIT, exit(), smooth(s.elapsed / phaseDuration(s.phase))), y: 0, z: ROAD_Z, heading: 0 };
     return vehiclePoint(s.round, s.phase, s.travel);
   }
   function itemPoint(s: SanitationState, id: Item): Point {
@@ -154,6 +155,7 @@ export const createSanitationScene = (host: HTMLElement, makeRenderer = () => ne
     garbage.pose(raise, s.phase === 'compact' ? s.elapsed / phaseDuration('compact') : 0);
     recycle.pose(phase >= index('recycling', s.round) && phase < index('recycle-stow', s.round) ? 1 : s.phase === 'recycle-stow' ? 1 - smooth(s.elapsed / 0.9) : 0);
     food.pose(foodRaise, phase >= index('food-lock', s.round) && phase <= index('food-tip', s.round) ? s.phase === 'food-tip' ? 1 - smooth((s.elapsed - 2.7) / 0.6) : 1 : 0, !['food-dock', 'food-lock', 'food-lift', 'food-tip'].includes(s.phase));
+    sweeper.stow(s.phase === 'sweeper-entrance' || s.phase === 'sweeper-departure' ? sweeperHandoff(s.elapsed / phaseDuration(s.phase), exit(), s.phase === 'sweeper-departure').stowed : s.phase === 'sweep' ? 0 : 1);
     sweeper.brush(time, s.phase === 'sweep' && s.action === 'dragging');
     for (const id of items) {
       const object = objects[id]; object.rotation.set(0, 0, 0); object.scale.setScalar(1);

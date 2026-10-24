@@ -186,7 +186,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 物件 | 分類與來源 | 保留或新增內容 |
 | --- | --- | --- |
-| 道路清掃車 | 沿用：[sweeper.ts](../src/runtime/sweeper.ts) · `createSweeper` | 原車身、配色、雙圓刷、吸入口與抓取範圍保持；第九關只控制進出、逐段清掃與輪刷轉動。 |
+| 道路清掃車 | 沿用：[sweeper.ts](../src/runtime/sweeper.ts) · `createSweeper` | 原車身、配色、雙圓刷、吸入口與抓取範圍保持；第九關控制逐段清掃、輪刷轉動及收刷後匯出；新增可選 `stow`，預設展刷外觀與其它關卡保持原樣。 |
 | 資源回收車 | 既有變體：[sanitation/vehicles.ts](../src/missions/sanitation/vehicles.ts) · `createRecyclingTruck` | 原 `createFlatbed(shapes, false)` 六輪整車與空平板，新增低護欄、回收標誌與可放下的近側板；四種配色。紙箱與瓶籃直接放在真實車斗內，保留原平板尺寸。 |
 | 垃圾車 | 新上裝、沿用底盤：同檔 · `createGarbageTruck` | 共用 `chassis` 駕駛室／底盤／四輪，黃色密閉車廂、真正開口的車尾料斗、可動壓縮板、後升桶架與連桿；垃圾袋進口後才收起。 |
 | 廚餘車 | 新上裝、沿用底盤：同檔 · `createFoodTruck` | 相同底盤搭配較短密閉收集車廂、食物標誌、分段屋頂真實開口、活動頂蓋與側升桶架；不以回收平板換色代替車體。 |

@@ -4,9 +4,10 @@ import { Result } from 'effect';
 import * as THREE from 'three';
 import { createSanitation, chooseRound, stages, grab, drive, moveItem, release, advance, resumeSanitation, available, driving, lifting, progress, cargoPairs, defaultRound, vehicleOrder, stageOrder } from './sanitation.ts';
 import type { SanitationState, Stage, Item, Round, Bag, Recyclable } from './sanitation.ts';
-import { destination, binPose, home, vehiclePoint, cargoLocal, parked, restingBin, ROAD, SIDEWALK_Z, SWEEP_Z, onPavement } from './site.ts';
+import { destination, binPose, home, vehiclePoint, cargoLocal, parked, restingBin, ROAD, SIDEWALK_Z, SWEEP_Z, APPROACH, SWEEP_END, sweepDebris, sweeperHandoff, onPavement } from './site.ts';
 import { decodeSanitationSnapshot } from '../persistence.ts';
 import { createSanitationCamera, resizeSanitationCamera } from '../view.ts';
+import { createSweeper } from '../../../runtime/sweeper.ts';
 import { createShapes } from '../../../runtime/geometry.ts';
 import { createGarbageTruck, createRecyclingTruck, createFoodTruck, createBin, createCollectible } from '../vehicles.ts';
 function auto(s: SanitationState) { for (let i = 0; i < 100 && s.action === 'auto'; i++) { s = advance(s, 0.1); assert.ok(resumeSanitation(s), s.phase); } return s; }
@@ -169,4 +170,33 @@ test('all six content pairs are selectable, unselected props cannot be loaded, a
   const complete = createSanitation('complete');
   for (const round of [{ ...defaultRound, cargo: ['cans', 'cans'] }, { ...defaultRound, cargo: ['cans'] }, { ...defaultRound, service: 'unknown' }]) assert.ok(Result.isFailure(decodeSanitationSnapshot({ ...complete, round }, 'bad-round')));
   assert.ok(Result.isFailure(decodeSanitationSnapshot({ ...complete, version: 1 }, 'old')));
+});
+
+test('the tighter frame retains brush contact with every debris patch', () => {
+  for (const point of sweepDebris) {
+    const fraction = (point.x - 0.9 - APPROACH) / (SWEEP_END - APPROACH);
+    assert.ok(fraction >= 0 && fraction <= 1);
+    const p = vehiclePoint(defaultRound, 'sweep', fraction);
+    assert.ok(Math.abs(p.x + 0.9 - point.x) < 0.001);
+    assert.ok(Math.min(Math.abs(point.z - (SWEEP_Z - 1.35)), Math.abs(point.z - (SWEEP_Z + 1.35))) < 0.72);
+  }
+});
+
+test('sweeper folds into the travelling footprint and keeps the original working appearance', () => {
+  const shapes = createShapes(), v = createSweeper(shapes), original = new THREE.Box3().setFromObject(v.root);
+  v.stow(1); const compact = new THREE.Box3().setFromObject(v.root); assert.ok(compact.max.z <= 1.4 && compact.min.z >= -1.4);
+  v.stow(0); assert.deepEqual(new THREE.Box3().setFromObject(v.root), original);
+  v.root.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); shapes.disposeMaterials();
+});
+test('sweeper automatic handoffs avoid the pullout curb and opposite lane in both layouts', () => {
+  const shapes = createShapes(), v = createSweeper(shapes);
+  for (const layout of [0, 1] as const) for (const departing of [false, true]) for (let i = 0; i <= 200; i++) {
+    const p = sweeperHandoff(i / 200, 35, departing); v.stow(p.stowed); const b = new THREE.Box3().setFromObject(v.root), c = Math.cos(p.heading), sn = Math.sin(p.heading);
+    for (const x of [b.min.x, b.max.x]) for (const z of [b.min.z, b.max.z]) {
+      const wx = p.x + c * x + sn * z, wz = p.z - sn * x + c * z;
+      assert.ok(onPavement({ ...defaultRound, layout }, wx, wz), `${layout} ${departing} ${i}: (${wx},${wz})`);
+      assert.ok(wz > ROAD.center, 'does not enter the opposing lane');
+    }
+  }
+  v.root.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); shapes.disposeMaterials();
 });

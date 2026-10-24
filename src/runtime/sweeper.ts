@@ -18,6 +18,10 @@ export function createSweeper(shapes: Shapes) {
     for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; const bristle = box(root, [0.38, 0.13, 0.09], [Math.cos(a) * 0.66, -0.06, Math.sin(a) * 0.66], '#d8bc7c'); bristle.rotation.y = -a; }
     return root;
   });
-  box(vehicle.root, [0.6, 0.2, 3.4], [0.9, 0.16, 0], '#6d8b7e');
-  return { ...vehicle, brush(time: number, active: boolean) { brushes.forEach((b, i) => { b.rotation.y = active ? time * (i ? -8 : 8) : 0; }); } };
+  const intake = box(vehicle.root, [0.6, 0.2, 3.4], [0.9, 0.16, 0], '#6d8b7e');
+  return { ...vehicle, stow(amount = 0) {
+    const p = Math.max(0, Math.min(1, amount));
+    brushes.forEach((b, i) => { b.position.z = (i ? 1 : -1) * (1.35 - p * 0.8); });
+    intake.scale.z = 1 - p * 0.35;
+  }, brush(time: number, active: boolean) { brushes.forEach((b, i) => { b.rotation.y = active ? time * (i ? -8 : 8) : 0; }); } };
 }

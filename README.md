@@ -92,12 +92,15 @@ Restart clears only the current mission's progress, while its earned badge remai
    then start another upward drag. The roof hatch opens and the bin tips into the
    actual opening. The empty bin returns and the side lift folds before departure.
 5. The original sweeper clears the collection apron after both trucks fully leave.
-   Cleaned patches survive reversing, cancellation and reload. The whole sweeper
+   Cleaned patches survive reversing, cancellation and reload. Brushes fold before the sweeper merges back into the through lane. The whole sweeper
    leaves before residents wave, confetti and replay/selection.
 
 The main road has a divider centred between its two edges. The lighter collection
 bay sits entirely outside the through lane, with diagonal approaches and merges.
 The same fixed rear three-quarter camera exposes tools and cargo in both layouts.
+A tighter, slightly right-centred frame trims unused road on the left and makes
+vehicles about 24% larger. Shorter visible approach/exit stretches and a matching
+sweep strip retain whole-vehicle and target visibility without changing the camera mid-round.
 Each round keeps two rubbish bags, two bin lifts, two recycling packages and one sweep.
 New rounds switch layout/palette and avoid the previous unordered recycling pair;
 the middle-truck order is an independent random choice and may repeat. Children
@@ -631,13 +634,14 @@ pagehide saves, last-round precedence and throwing injected reporters. Another 7
 audio Layer lifetime, startup failures, parallel-load spans, cancellation and diagnostic sink/clock failures.
 Another 48 E09 tests cover scheduled autosave in all eight missions, real formal/development sessions,
 navigation Fibers and bounded PWA retries (535 tests in total).
-The ninth sanitation mission adds 110 collection/geometry checks and 26 lifecycle,
-persistence, service-injection and autosave regressions, for **671 tests in total**.
+The ninth sanitation mission adds 113 collection/geometry checks and 26 lifecycle,
+persistence, service-injection and autosave regressions, for **674 tests in total**.
 The sanitation browser suite passed both layouts on desktop mouse and portrait-phone
 emulated touch, including cancelled dwell, partial lift/drive/sweep reloads, mid-tip
 recovery, independent loading orders, all four departures, badges and replay.
 Together with the nine-mission PWA checks, 14 production browser cases passed;
-one development case also passed both lifts, reload/HMR, stage and layout resets.
+two development cases also passed both lifts, reload/HMR, stage/content/order resets
+and the sweeper’s automatic approach, folding brushes and merge in both layouts.
 The E01–E09 audit was verified in Codex’s built-in browser: fire water-audio retry,
 all eight missions with simultaneous audio-close/logger failure, frozen-frame autosave,
 synchronous pagehide saves, stopped workers after exit, and navigation in the current production build.

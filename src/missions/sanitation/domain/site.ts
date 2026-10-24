@@ -7,7 +7,8 @@ export const smooth = (t: number) => { const v = clamp(t); return v * v * (3 - 2
 export const shift = (round: Pick<Round, 'layout'>) => round.layout ? 1.4 : -1.4;
 export const ROAD = { far: -7.6, near: 0, center: -3.8, lane: -1.9 } as const;
 export const ROAD_Z = ROAD.lane, BAY_Z = 1.5, SWEEP_Z = 3, SIDEWALK_Z = 5.8;
-export const APPROACH = -6.6, EXIT = 8, SWEEP_END = 7.2;
+export const APPROACH = -3.8, EXIT = 6.6, SWEEP_END = 4.4;
+export const sweepDebris = Array.from({ length: 28 }, (_, i) => ({ x: APPROACH + 1.1 + i % 14 * 0.6, y: 0.025, z: 1.8 + Math.floor(i / 14) * 2.4 }));
 export const parked = (round: Round): Point => ({ x: shift(round) + 1.3, y: 0, z: BAY_Z });
 export const bayOutline = (round: Pick<Round, 'layout'>) => [[-12, 0], [-8, SIDEWALK_Z], [8.3, SIDEWALK_Z], [13, 0]].map(([x, z]) => ({ x: x + shift(round), z }));
 export function onPavement(round: Round, x: number, z: number) {
@@ -56,3 +57,14 @@ export function binPose(s: SanitationState, food: boolean): Point & { tilt: numb
 }
 export const cargoLocal = (round: Round, item: Recyclable): Point => ({ x: round.cargo.indexOf(item) === 0 ? -0.8 : 0.6, y: { cardboard: 1.55, bottles: 1.61, cans: 1.61, paper: 1.505 }[item], z: 0 });
 export const vehicleWidth: Record<Vehicle, number> = { garbage: 2.6, recycle: 2.3, food: 2.7, sweeper: 3.5 };
+
+/** Fold brushes before merging; automatic approach/departure shares this geometry. */
+export function sweeperHandoff(progress: number, exitX: number, departing: boolean): Pose & { stowed: number } {
+  const t = clamp(progress);
+  if (departing) {
+    const u = clamp((t - 0.15) / 0.85), merge = clamp(u * 3);
+    return { x: mix(SWEEP_END, exitX, u * u), y: 0, z: mix(SWEEP_Z, ROAD_Z, smooth(merge)), heading: 0.47 * Math.sin(Math.PI * merge), stowed: clamp(t / 0.15) };
+  }
+  const u = clamp((t - 0.35) / 0.65), merge = smooth(u);
+  return { x: t < 0.35 ? mix(-exitX, -9.5, smooth(t / 0.35)) : mix(-9.5, APPROACH, u), y: 0, z: mix(ROAD_Z, SWEEP_Z, merge), heading: -0.47 * Math.sin(Math.PI * merge), stowed: 1 - smooth((u - 0.8) / 0.2) };
+}

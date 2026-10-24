@@ -450,3 +450,20 @@ test('sanitation development retains both partial bin lifts through reload/HMR a
   await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '垃圾車清潔隊', exact: true }).click(); await wait('garbage-arrival');
   await expect(app).toHaveAttribute('data-bags', ''); await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
 });
+
+test('sanitation sweeper automatically enters and merges out of the tighter bay view', async ({ page }, info) => {
+  const { gesture } = await import('./gesture.mjs');
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.clock.install();
+  const { down, move, up, wait } = await fireControls(page);
+  for (const layout of [0, 1]) {
+    await page.goto(`/?dev=1&mission=sanitation&stage=sweeper-entrance&layout=${layout}&cargo=5&service=food-first`);
+    await wait('sweep'); await page.screenshot({ path: info.outputPath(`sweeper-arrived-${layout}.png`) });
+    const h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+    await down(h.from); await move(h.to); await wait('sweeper-departure', 'auto'); await up();
+    await expect.poll(async () => Number(await page.locator('#app').getAttribute('data-elapsed'))).toBeGreaterThan(0.65);
+    await page.screenshot({ path: info.outputPath(`sweeper-merge-${layout}.png`) }); await wait('complete');
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+  }
+  expect(errors).toEqual([]);
+});
