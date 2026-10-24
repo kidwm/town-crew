@@ -25,7 +25,9 @@ function route(): MissionId | undefined {
   if (location.hash === '#fire-rescue') return 'fire-rescue';
   if (location.hash === '#port-cargo') return 'port-cargo';
   if (location.hash === '#mountain-clearance') return 'mountain-clearance';
+  if (location.hash === '#sanitation') return 'sanitation';
   if (location.hash === '#passenger-transfer') return 'passenger-transfer';
+  if (dev && params.get('mission') === 'sanitation') return 'sanitation';
   if (dev && params.get('mission') === 'passenger-transfer') return 'passenger-transfer';
   if (dev && params.get('mission') === 'mountain-clearance') return 'mountain-clearance';
   if (dev && params.get('mission') === 'port-cargo') return 'port-cargo';
@@ -134,6 +136,18 @@ function show() {
           ], { concurrency: 'unbounded' });
           return yield* prepareTransferMission({ app, dev, home, fresh }, createTransferScene, createTransferAudio, trace).pipe(
             Effect.provide(TransferPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'sanitation') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createSanitationScene }, { prepareSanitationMission, SanitationPersistenceLive, createSanitationAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/sanitation/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/sanitation/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareSanitationMission({ app, dev, home, fresh }, createSanitationScene, createSanitationAudio, trace).pipe(
+            Effect.provide(SanitationPersistenceLive),
           );
         }));
         yield* run;

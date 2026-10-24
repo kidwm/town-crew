@@ -1,3 +1,5 @@
+import { createSanitationScene, type SanitationScene } from './sanitation/scene.ts';
+import { createSanitationSession } from './sanitation/session.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Cause, Effect, Exit, type Scope } from 'effect';
@@ -31,6 +33,7 @@ type MissionCase = {
   connect: (app: HTMLDivElement, scene: { canvas: HTMLCanvasElement }, audio: ReturnType<typeof audioFake>) => Effect.Effect<Effect.Effect<never, FrameLoopError | AutosaveError>, never, Scope.Scope>;
 };
 const missions: MissionCase[] = [
+  { id: 'sanitation', scene: createSanitationScene, connect: (app, scene, audio) => createSanitationSession(app, false, () => {}, true).connect(scene as SanitationScene, audio) },
   { id: 'house-build', scene: createHouseScene, connect: (app, scene, audio) => createHouseSession(app, false, () => {}, true).connect(scene as HouseScene, audio) },
   { id: 'fire-rescue', scene: createFireScene, connect: (app, scene, audio) => createFireSession(app, false, () => {}, true).connect(scene as FireScene, audio) },
   { id: 'traffic-rescue', scene: createTrafficScene, connect: (app, scene, audio) => createTrafficSession(app, false, () => {}, true).connect(scene as TrafficScene, audio) },

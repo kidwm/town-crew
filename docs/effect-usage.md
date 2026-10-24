@@ -1,42 +1,42 @@
 # Effect 使用盤點與採用計畫
 
-盤點日期：2026-10-22。依據目前工作目錄與固定依賴 **Effect 4.0.5**。
-本文件記錄現況、候選改造與驗證條件；**E01～E09 已推廣至全部八個任務，並完成跨任務檢查**，包含各關自動存檔排程，以及全站導航 Fiber 與 PWA 重試。最新修正與驗證見第十一批。
+盤點日期：2026-10-24。依據目前工作目錄與固定依賴 **Effect 4.0.5**。
+本文件記錄現況、候選改造與驗證條件；**E01～E09 已推廣至全部九個任務，並完成跨任務檢查**，包含各關自動存檔排程，以及全站導航 Fiber 與 PWA 重試。原八關完整稽核見第十一批；第九關沿用與驗證另列於後方紀錄。
 架構邊界見 [architecture.md](architecture.md)，官方入口為 [Effect v4 API](https://effect.website/docs/v4/api/effect)。
 `Effect`、`Schema` 的官方頁面過大，這次也直接核對已安裝套件的 `src/Effect.ts`、`src/Schema.ts` 與相關實作，避免套用 v3 寫法。
 
 目前最有價值的方向是把 Effect 延伸到**資源取得、失敗處理與瀏覽器服務邊界**。
-八個任務已統一初始化失敗清理、啟動錯誤分類、動畫錯誤通道、音效解鎖、同步儲存邊界、Schema 驗證、存檔／音效服務注入與啟動追蹤。
+九個任務已統一初始化失敗清理、啟動錯誤分類、動畫錯誤通道、音效解鎖、同步儲存邊界、Schema 驗證、存檔／音效服務注入與啟動追蹤。
 存檔政策為**保留目前版本續玩，移除舊版相容**：版本不符、缺少必要欄位或狀態矛盾時開新局。
 遊戲狀態、幾何、拖曳計算和逐幀渲染維持普通 TypeScript，保留目前可直接測試的純函式。
 
 ## 已使用的地方
 
-`src/` 正式程式目前有 52 個檔案直接匯入 `effect`：入口、兩個 app helper、八個 runtime helper、八個任務各自的 scene／session／persistence／services／startup，以及修路的 devtools。使用 `Effect`、`Exit`、`Cause`、`Data`、`Schema`、`Result`、`Context`、`Layer`、`Fiber`、`Schedule`；測試另使用 `TestClock`。
+`src/` 正式程式目前有 57 個檔案直接匯入 `effect`：入口、兩個 app helper、八個 runtime helper、九個任務各自的 scene／session／persistence／services／startup，以及修路的 devtools。使用 `Effect`、`Exit`、`Cause`、`Data`、`Schema`、`Result`、`Context`、`Layer`、`Fiber`、`Schedule`；測試另使用 `TestClock`。
 尚未使用 `Stream` 或 `KeyValueStore`。
 
 | 位置與符號 | 使用的 API | 現在負責的行為 |
 | --- | --- | --- |
 | [main.ts](../src/main.ts)：`show`／`program` | `scoped`、`gen` | 每次進入任務建立獨立 scope，依序載入模組、建立資源並連接控制器。 |
-| 同上：八個任務的模組載入 | `all`，透過 `loadMissionModule` 使用 `tryPromise` | 明確以 `concurrency: 'unbounded'` 載入靜態 import 路徑；錯誤含任務、模組與原始原因。 |
+| 同上：九個任務的模組載入 | `all`，透過 `loadMissionModule` 使用 `tryPromise` | 明確以 `concurrency: 'unbounded'` 載入靜態 import 路徑；錯誤含任務、模組與原始原因。 |
 | 各任務 startup.ts：session prepare／scene／connect | `initializeSession`、`initializeScene` | 分類初始化拋錯；scene 與 connect 直接加入任務 scope。 |
-| 各任務 services.ts：audio 取得 | `Layer.effect`、`acquireRelease`、`sync`、`closeMissionAudio` | 全八關由 Layer 取得；離開時等待 dispose，失敗仍清理。AudioContext 延後到手勢解鎖時建立。 |
+| 各任務 services.ts：audio 取得 | `Layer.effect`、`acquireRelease`、`sync`、`closeMissionAudio` | 全九關由 Layer 取得；離開時等待 dispose，失敗仍清理。AudioContext 延後到手勢解鎖時建立。 |
 | [scene-lifecycle.ts](../src/runtime/scene-lifecycle.ts)：`acquireRenderer`／`acquireScene` | `acquireRelease`、`sync` | 共用 renderer 與場景所有權；釋放 Mesh／Line／Points 的 geometry 與 material，包括碼頭 LineSegments。 |
-| 八個任務的 scene 工廠（下表） | `gen`、`acquireRelease`、`addFinalizer`、`sync` | 分別管理 renderer、scene graph、陰影、材質快取及 ResizeObserver；回傳普通 render／hit 方法，清理由 scope 負責。 |
-| 八個任務的 `session.connect`（下表） | `gen`、`acquireRelease`、`addFinalizer`、`sync` | 分開登記事件群組、提示、最後存檔與取消拖曳；全部回傳等待中的 frame-loop Effect，由共用 adapter 排程／清理 rAF；救火另登記停止持續水聲。 |
+| 九個任務的 scene 工廠（下表） | `gen`、`acquireRelease`、`addFinalizer`、`sync` | 分別管理 renderer、scene graph、陰影、材質快取及 ResizeObserver；回傳普通 render／hit 方法，清理由 scope 負責。 |
+| 九個任務的 `session.connect`（下表） | `gen`、`acquireRelease`、`addFinalizer`、`sync` | 分開登記事件群組、提示、最後存檔與取消拖曳；全部回傳等待中的 frame-loop Effect，由共用 adapter 排程／清理 rAF；救火另登記停止持續水聲。 |
 | [mission-lifecycle.ts](../src/runtime/mission-lifecycle.ts) | `Data.TaggedError`、`tryPromise`、`catchDefect`、`catchTag`、`Cause.hasInterruptsOnly` | 全任務的模組／場景／session／音效關閉錯誤分類；區分正常中斷與需要診斷的失敗。 |
 | [main.ts](../src/main.ts)：`program` 結尾 | `onExit`、`Exit.isSuccess`、`catchCause` | 任務直接等待 loop；scope 清理後記錄失敗，過期任務不覆蓋畫面，純取消保持安靜。 |
 | [navigation.ts](../src/app/navigation.ts)：`createNavigation` | `runFork`、`scoped`、`Fiber.interrupt`／`await` | 全站選單／任務由 Fiber 管理；保留最新導航判斷、跨次取消的清理等待與 HMR 交接。 |
-| [autosave.ts](../src/runtime/autosave.ts)：`withAutosave` | `Schedule.spaced`、`schedule`、`forkScoped`、`Fiber.join`、`raceFirst` | 八關按原有 700／800 ms 間隔保存；與 frame loop 共同監督，任一失敗都停止兩者，再清理 connection。 |
+| [autosave.ts](../src/runtime/autosave.ts)：`withAutosave` | `Schedule.spaced`、`schedule`、`forkScoped`、`Fiber.join`、`raceFirst` | 九關按原有 700／800 ms 間隔保存；與 frame loop 共同監督，任一失敗都停止兩者，再清理 connection。 |
 | [pwa.ts](../src/app/pwa.ts)：`registerWithRetry`／`startPwaRegistration` | `tryPromise`、`retry`、`Schedule.exponential`、`runFork`、`callback` | 正式建置註冊最多三次；load gate、pagehide／HMR 取消、最終失敗可選降級。 |
-| [frame-loop.ts](../src/runtime/frame-loop.ts)：`runFrameLoop` | `suspend`、`callback`、`ensuring`、`Data.TaggedError` | 八個任務的 rAF 排程／回呼錯誤轉為 FrameLoopError，正常取消與失敗都停用 loop，交由入口關閉 scope。 |
-| [audio-unlock.ts](../src/runtime/audio-unlock.ts)：`createAudioUnlocker` | `promise`、`flatten`、`catchTag`、`runPromiseExit`、`Data.TaggedError` | 八個任務手勢內同步啟動 unlock，立即觀察拒絕；AudioUnlockError 降級、開發診斷與 connection signal 綁定。 |
+| [frame-loop.ts](../src/runtime/frame-loop.ts)：`runFrameLoop` | `suspend`、`callback`、`ensuring`、`Data.TaggedError` | 九個任務的 rAF 排程／回呼錯誤轉為 FrameLoopError，正常取消與失敗都停用 loop，交由入口關閉 scope。 |
+| [audio-unlock.ts](../src/runtime/audio-unlock.ts)：`createAudioUnlocker` | `promise`、`flatten`、`catchTag`、`runPromiseExit`、`Data.TaggedError` | 九個任務手勢內同步啟動 unlock，立即觀察拒絕；AudioUnlockError 降級、開發診斷與 connection signal 綁定。 |
 | [storage.ts](../src/runtime/storage.ts)：`createStorageBoundary`／`createStorageReporter` | `try`、`flatMap`、`catch`、`runSync`、`Data.TaggedError` | 同步包裝 storage getter／讀寫刪除、JSON 編解碼；分類失敗、開發環境去重診斷，回傳可降級結果。 |
-| 八任務的 `persistence.ts`（下方版本表） | `Schema.Struct`／`Union`／`Literals`／`check`、`decodeUnknownResult`、`Result` | 驗證目前版本的型別、範圍與必要欄位；domain 檢查遊戲不變量並取消失效輸入。 |
-| [snapshot.ts](../src/runtime/snapshot.ts)：`createSnapshotDecoder`／`restoreSnapshot` | `Schema.decodeUnknownResult`、`Result` | 七關共用結構驗證、domain 恢復、恢復後驗證與失敗診斷；修路保留自己的快照外層與調校參數。 |
-| 八個任務的 services.ts（如下方 E07 表）：`*Persistence`／`*Audio` | `Context.Service`、`Layer.succeed`、`Layer.effect` | 注入模組生命週期的同步存檔 facade、每次任務 scope 的音效資源。 |
-| 八個任務的 startup.ts（如下方 E07 表）：`prepare*Mission` | `gen`、`Layer.build`、`Context.get` | 準備 session、場景、audio 與 connection，回傳未開始的 loop；scope 所有權留給入口。 |
-| [mission-startup.ts](../src/runtime/mission-startup.ts)：`createStartupDiagnostics` | `withSpan`、`onExit`、`logError`、`annotateLogs` | 八關啟動根 span／六或七個階段、開發摘要、scope 清理後的關聯錯誤紀錄。 |
+| 九任務的 `persistence.ts`（下方版本表） | `Schema.Struct`／`Union`／`Literals`／`check`、`decodeUnknownResult`、`Result` | 驗證目前版本的型別、範圍與必要欄位；domain 檢查遊戲不變量並取消失效輸入。 |
+| [snapshot.ts](../src/runtime/snapshot.ts)：`createSnapshotDecoder`／`restoreSnapshot` | `Schema.decodeUnknownResult`、`Result` | 八關共用結構驗證、domain 恢復、恢復後驗證與失敗診斷；修路保留自己的快照外層與調校參數。 |
+| 九個任務的 services.ts（如下方 E07 表）：`*Persistence`／`*Audio` | `Context.Service`、`Layer.succeed`、`Layer.effect` | 注入模組生命週期的同步存檔 facade、每次任務 scope 的音效資源。 |
+| 九個任務的 startup.ts（如下方 E07 表）：`prepare*Mission` | `gen`、`Layer.build`、`Context.get` | 準備 session、場景、audio 與 connection，回傳未開始的 loop；scope 所有權留給入口。 |
+| [mission-startup.ts](../src/runtime/mission-startup.ts)：`createStartupDiagnostics` | `withSpan`、`onExit`、`logError`、`annotateLogs` | 九關啟動根 span／六或七個階段、開發摘要、scope 清理後的關聯錯誤紀錄。 |
 | [修路 devtools.ts](../src/missions/road-repair/devtools.ts)：`restoreRoadSnapshot`／開發存取 | `Result.isSuccess` | 保留同步 facade，驗證失敗降級；開發快照以 HMR → 記憶體 → storage 的優先順序恢復。 |
 
 全部任務的 scene、connection 都直接加入入口 scope，無須另呼叫 scene.dispose 或 connection disposer。
@@ -53,6 +53,7 @@ connect 的成功值為等待中的 `Effect<never, FrameLoopError | AutosaveErro
 | 碼頭 | [createPortScene](../src/missions/port-cargo/scene.ts) | `createPortAudio` | [createPortSession](../src/missions/port-cargo/session.ts) |
 | 山路 | [createMountainScene](../src/missions/mountain-clearance/scene.ts) | `createMountainAudio` | [createMountainSession](../src/missions/mountain-clearance/session.ts) |
 | 轉運站 | [createTransferScene](../src/missions/passenger-transfer/scene.ts) | `createTransferAudio` | [createTransferSession](../src/missions/passenger-transfer/session.ts) |
+| 清潔隊 | [createSanitationScene](../src/missions/sanitation/scene.ts) | `createSanitationAudio` | [createSanitationSession](../src/missions/sanitation/session.ts) |
 
 ### 現有生命週期
 
@@ -79,10 +80,10 @@ flowchart TD
 ### 目前包裝沒有涵蓋的範圍
 
 - 全部任務的 scene 工廠／`session.connect()` 已逐項登記 scope 清理；各 `create*Session()` 的準備仍是同步程式，由 prepare wrapper 分類失敗。
-- 八個任務的 rAF 排程及 `animate` 內更新／render／HUD 拋錯，皆經 adapter 進入 `program` 失敗通道。八關定期存檔皆由 autosave worker 監督；rAF 仍可能觸發既有的階段轉換即時保存。pointer／click、ResizeObserver 回呼仍有各自的邊界；任務 Fiber 不是整個遊戲的全域錯誤處理。
+- 九個任務的 rAF 排程及 `animate` 內更新／render／HUD 拋錯，皆經 adapter 進入 `program` 失敗通道。九關定期存檔皆由 autosave worker 監督；rAF 仍可能觸發既有的階段轉換即時保存。pointer／click、ResizeObserver 回呼仍有各自的邊界；任務 Fiber 不是整個遊戲的全域錯誤處理。
 - [pointer.ts](../src/runtime/pointer.ts)、[audio.ts](../src/runtime/audio.ts)、各任務的 `dispose()` 雖受 scope 間接管理，內部沒有匯入 Effect。
 - 全部任務的正式／開發存檔、上一回合記錄與共用徽章／靜音均使用同步 storage adapter；正式與開發存檔都經 Schema 驗證。PWA 註冊納入 Effect，但原生 `serviceWorker.register()` 無法被 Fiber 中斷實際取消；Workbox 快取仍由瀏覽器管理。
-- 八個任務的音效解鎖觀察工作皆接入 connection signal，但無法取消瀏覽器的 `AudioContext.resume()`。
+- 九個任務的音效解鎖觀察工作皆接入 connection signal，但無法取消瀏覽器的 `AudioContext.resume()`。
 
 ## 候選改造與優先順序
 
@@ -90,17 +91,17 @@ flowchart TD
 
 | ID | 優先級／狀態 | 建議範圍 | Effect 對應能力 | 預期收益與主要成本 |
 | --- | --- | --- | --- | --- |
-| E01 | 八任務已實作 | 初始化與清理的部分失敗 | `acquireRelease`、`addFinalizer` | 逐項登記資源；逐任務故障注入確認中途失敗與清理拋錯仍回收。 |
-| E02 | 八任務已實作 | 載入、場景、session、音效關閉的錯誤分類 | `tryPromise`、`Data.TaggedError`、`catchDefect`、`catchTag`、`onExit` | 保留原始原因；區分正常取消，並記錄取消期間的清理失敗。 |
-| E03 | 八任務已實作 | 動畫迴圈的失敗回報 | `callback`、`ensuring`、父程式直接等待 | 任務渲染、更新或排程失敗會停止 loop、清理任務並顯示錯誤提示。 |
-| E04 | 八任務已實作 | 音效解鎖策略 | `promise`、`flatten`、`catchTag`、signal | 同步拋錯／非同步拒絕皆降級；保留手勢內同步啟動、合併 pending 呼叫、開發診斷與取消處理。 |
-| E05 | 八任務已實作 | 正式／開發存檔、偏好、上一回合 | `try`、`catch`、`runSync` | 同步降級、記憶體優先、刪除遮蔽與去重診斷。 |
-| E06 | 八任務已實作 | 正式／開發存檔驗證 | `Schema.decodeUnknownResult`、`Result` | 僅接受完整目前版本；保留部分工作、遊戲不變量與輸入取消，移除舊版遷移。 |
-| E07 | 八任務已實作 | 同步存檔 facade 與 scoped 音效注入 | `Context.Service`、`Layer.effect`／`Layer.succeed` | 實際接入瀏覽器實作與隔離測試替身；保留存檔 memory／HMR 壽命、各關上一回合與偏好。 |
-| E08 | 八任務已實作 | 啟動各階段、取消與錯誤診斷 | `all`、`withSpan`、`logError`、`annotateLogs` | 各關記錄分階段結果／時間與 startupId；保留並行載入、正常取消與清理後錯誤紀錄。 |
-| E09 | 八任務與全站共用部分已實作 | 各關 700／800 ms autosave、PWA 最多三次註冊、導航 Fiber | `Schedule`、`forkScoped`、`Fiber`、`retry` | 定期存檔脫離 rAF、互相監督失敗；有界重試；最新導航仍等待舊清理。 |
+| E01 | 九任務已實作 | 初始化與清理的部分失敗 | `acquireRelease`、`addFinalizer` | 逐項登記資源；逐任務故障注入確認中途失敗與清理拋錯仍回收。 |
+| E02 | 九任務已實作 | 載入、場景、session、音效關閉的錯誤分類 | `tryPromise`、`Data.TaggedError`、`catchDefect`、`catchTag`、`onExit` | 保留原始原因；區分正常取消，並記錄取消期間的清理失敗。 |
+| E03 | 九任務已實作 | 動畫迴圈的失敗回報 | `callback`、`ensuring`、父程式直接等待 | 任務渲染、更新或排程失敗會停止 loop、清理任務並顯示錯誤提示。 |
+| E04 | 九任務已實作 | 音效解鎖策略 | `promise`、`flatten`、`catchTag`、signal | 同步拋錯／非同步拒絕皆降級；保留手勢內同步啟動、合併 pending 呼叫、開發診斷與取消處理。 |
+| E05 | 九任務已實作 | 正式／開發存檔、偏好、上一回合 | `try`、`catch`、`runSync` | 同步降級、記憶體優先、刪除遮蔽與去重診斷。 |
+| E06 | 九任務已實作 | 正式／開發存檔驗證 | `Schema.decodeUnknownResult`、`Result` | 僅接受完整目前版本；保留部分工作、遊戲不變量與輸入取消，移除舊版遷移。 |
+| E07 | 九任務已實作 | 同步存檔 facade 與 scoped 音效注入 | `Context.Service`、`Layer.effect`／`Layer.succeed` | 實際接入瀏覽器實作與隔離測試替身；保留存檔 memory／HMR 壽命、各關上一回合與偏好。 |
+| E08 | 九任務已實作 | 啟動各階段、取消與錯誤診斷 | `all`、`withSpan`、`logError`、`annotateLogs` | 各關記錄分階段結果／時間與 startupId；保留並行載入、正常取消與清理後錯誤紀錄。 |
+| E09 | 九任務與全站共用部分已實作 | 各關 700／800 ms autosave、PWA 最多三次註冊、導航 Fiber | `Schedule`、`forkScoped`、`Fiber`、`retry` | 定期存檔脫離 rAF、互相監督失敗；有界重試；最新導航仍等待舊清理。 |
 
-### E01：八個任務已實作部分初始化與獨立清理
+### E01：九個任務已實作部分初始化與獨立清理
 
 八個場景工廠都回傳需要 scope 的 Effect，保留普通 `render()`／hit 方法。
 取得 renderer 後立即登記 release，再設定 renderer、掛載 canvas、建構場景。
@@ -108,7 +109,7 @@ scene graph、陰影、材質快取各有 finalizer；ResizeObserver 在 `observ
 因此後續掛載、模型建立或 observer 設定失敗時，已取得且登記的資源仍會釋放。
 第三方 constructor 在回傳資源之前的內部失敗，不是外部 scope 能自動回滾的範圍。
 
-八個任務的 connect 同樣改為 scoped Effect。
+九個任務的 connect 同樣改為 scoped Effect。
 AbortController 與拖曳提示取得後立即登記清理；取消拖曳、最後存檔各自登記 finalizer。
 全部任務加入 E03 後，結束順序為「停止 frame loop → 取消拖曳 → 最後存檔 → 移除提示 → 解除監聽 → 關閉音效 → 釋放場景」。
 全部任務加入 E09 後，還會先停止 autosave worker，再進入上述 connection 清理。
@@ -129,7 +130,7 @@ renderer 的 `dispose()`、`forceContextLoss()`、canvas 移除，以及 scene g
 水聲的 source／filter／gain 分別追蹤；部分初始化失敗立即斷開已取得的節點，下一次手勢沿用同一個 context 重建。只有已啟動的 source 才呼叫 stop；回滾本身失敗時保留初始化與清理兩種原因。
 參考 [acquireRelease／addFinalizer](https://effect.website/docs/v4/api/effect/Effect)。
 
-### E02、E08：八個任務已分類錯誤並整理載入組合
+### E02、E08：九個任務已分類錯誤並整理載入組合
 
 [mission-lifecycle.ts](../src/runtime/mission-lifecycle.ts) 定義四個保留任務 ID 與原始 `cause` 的 tagged error：
 
@@ -152,13 +153,13 @@ renderer 的 `dispose()`、`forceContextLoss()`、canvas 移除，以及 scene g
 瀏覽器的動態 `import()` 不接受 AbortSignal，中斷 Effect 不會取消已開始的下載／模組求值；
 測試確認中斷後，即使 Promise 稍後完成，也不執行後續掛載。導航的最新版本檢查仍保留。
 目前沒有自動重試，也沒有宣稱載入效能提升。
-八個任務均已採用 E08 的 `withSpan`／`logError`，保留任務、模組與原始原因，細節見下方。
+九個任務均已採用 E08 的 `withSpan`／`logError`，保留任務、模組與原始原因，細節見下方。
 參考 [Effect](https://effect.website/docs/v4/api/effect/Effect)、[Data](https://effect.website/docs/v4/api/effect/Data)。
 
-### E03：八個任務已接住動畫回呼的失敗，保留 rAF 驅動
+### E03：九個任務已接住動畫回呼的失敗，保留 rAF 驅動
 
 [frame-loop.ts](../src/runtime/frame-loop.ts) 的 `runFrameLoop` 以一個等待中的 Effect 持有整個動畫迴圈。
-八個任務的 `animate` 保留既有普通 `advance`、`render`、HUD 更新與階段轉換的即時保存；E09 已將各關定期保存移到 worker。
+九個任務的 `animate` 保留既有普通 `advance`、`render`、HUD 更新與階段轉換的即時保存；E09 已將各關定期保存移到 worker。
 adapter 捕捉回呼內的拋錯，以及第一次／後續 `requestAnimationFrame` 排程失敗，回報含任務、
 `stage: 'frame' | 'schedule'` 與原始 `cause` 的 `FrameLoopError`，並停止排下一幀。
 
@@ -169,14 +170,14 @@ scope 清理完成後，入口顯示「關卡執行暫時發生問題，請回�
 `Effect.callback` 的 `resume` 只用於一次性失敗；每幀仍為普通同步呼叫。
 adapter 用 `ensuring` 統一取消與失敗清理，在取消 rAF 前先停用 loop，即使取消本身拋錯，舊回呼也不再執行。
 `suspend` 讓每次執行擁有獨立狀態；不建立逐幀 Effect 或逐幀 Promise。
-八個任務已使用相同契約；main 不再以尾端 `Effect.never` 維持 scope。pointer／click 與 ResizeObserver 回呼的例外不在這個 adapter 的範圍。
+九個任務已使用相同契約；main 不再以尾端 `Effect.never` 維持 scope。pointer／click 與 ResizeObserver 回呼的例外不在這個 adapter 的範圍。
 參考 [callback／ensuring](https://effect.website/docs/v4/api/effect/Effect) 與
 [4.0.5 callback 實作](https://github.com/Effect-TS/effect/blob/effect%404.0.5/packages/effect/src/internal/effect.ts)：callback 回傳的 cleanup 只處理 interruption，因此這裡明確使用 ensuring。
 
-### E04：八個任務已使用共用音效解鎖與可選功能恢復策略
+### E04：九個任務已使用共用音效解鎖與可選功能恢復策略
 
 [audio.ts](../src/runtime/audio.ts) 的 `unlock` 會延後建立 AudioContext；救火另有 [createFireAudio](../src/missions/fire-rescue/sounds.ts) 的連續水聲。
-八個任務皆使用 [createAudioUnlocker](../src/runtime/audio-unlock.ts)，各自傳入任務 ID、音效物件、connection signal 與開發模式旗標。
+九個任務皆使用 [createAudioUnlocker](../src/runtime/audio-unlock.ts)，各自傳入任務 ID、音效物件、connection signal 與開發模式旗標。
 helper 將同步例外與 Promise rejection 統一為保留任務和原始原因的 `AudioUnlockError`，以 `catchTag` 恢復。
 正式模式安靜降級，開發模式每個 connection 最多記錄一次 warning；音效失敗不顯示任務錯誤畫面。
 同一個 unlock 尚未完成時合併重複手勢；完成或失敗後，後續手勢可再次嘗試，不設背景自動重試。
@@ -189,7 +190,7 @@ helper 立即掛上 rejection handler，將結果轉成一個只會 resolve 的 
 這不會取消瀏覽器的 `AudioContext.resume()`；AudioContext 關閉仍由既有任務 scope 負責。
 音符排程、`setSpraying`、音效 close 與 domain 規則維持既有邊界。
 
-### E05：八個任務已採用同步儲存邊界
+### E05：九個任務已採用同步儲存邊界
 
 [storage.ts](../src/runtime/storage.ts) 的 `createStorageBoundary` 以參數注入 storage 取得函式與診斷器。
 `Effect.try` 同時包住 getter 與 get／set／remove；因此瀏覽器在取得 sessionStorage／localStorage 時拒絕存取，也會正常降級。
@@ -205,7 +206,7 @@ JSON parse／stringify 另有錯誤分類。所有操作以已恢復錯誤的同
 除了預設去重 reporter，boundary 也隔離直接注入的 reporter 拋錯，避免測試替身或自訂診斷改變同步 fallback。
 記憶體政策留在呼叫端，沒有把不同生命週期混成同一個儲存空間：
 
-- [progress.ts](../src/app/progress.ts) 保留既有記憶體 Map、複製快照與 `clearProgress` 的 null tombstone。正式進度、徽章、靜音的鍵值完全不變；刪除失敗時仍遮蔽舊存檔，新回合不清除徽章或偏好。所有八關使用此 facade，讀出的快照交給各任務目前版本的 decoder。
+- [progress.ts](../src/app/progress.ts) 保留既有記憶體 Map、複製快照與 `clearProgress` 的 null tombstone。正式進度、徽章、靜音的鍵值完全不變；刪除失敗時仍遮蔽舊存檔，新回合不清除徽章或偏好。所有九關使用此 facade，讀出的快照交給各任務目前版本的 decoder。
 - [修路 devtools.ts](../src/missions/road-repair/devtools.ts) 同步保存複製後的快照到記憶體及 HMR data，再嘗試寫入 storage；恢復順序為 HMR、同 key 記憶體、storage。開發 key `town-crew:road:v2:${location.search}` 與正式進度 key `town-crew:play:v1:road-repair` 仍分開。
 - 其餘七關的開發快照共用 [development.ts](../src/app/development.ts)：先複製到依 key 分隔的記憶體，再同步嘗試寫入；讀取先用記憶體。保留 `town-crew:{house,fire,traffic,police,port,mountain,transfer}:dev:v1:${location.search}`。
 - 有上一回合／配色摘要的七關（救火沒有）都經同一 storage adapter。只在記憶體尚無摘要時讀 storage，並把恢復的配置記為最新摘要；寫入失敗後不讓磁碟上的舊資料覆蓋新回合。各關獨立 key 不變。
@@ -214,11 +215,11 @@ JSON parse／stringify 另有錯誤分類。所有操作以已恢復錯誤的同
 記憶體可支援同頁導航與 main.ts HMR；若持久寫入遭拒，整頁重載仍可能失去最新進度，不能將記憶體當成跨重載保存。
 快照 `structuredClone` 失敗等程式缺陷仍會拋錯；這類錯誤保留既有 E01／E03 清理與回報路徑，不混入可選 storage 失敗。
 
-儲存邊界本身保持小型同步 adapter；八個任務另由 E07 的 `Context.Service`／`Layer` 注入呼叫端 facade。官方 `effect/persistence/KeyValueStore` 的
+儲存邊界本身保持小型同步 adapter；九個任務另由 E07 的 `Context.Service`／`Layer` 注入呼叫端 facade。官方 `effect/persistence/KeyValueStore` 的
 `layerStorage`、`layerMemory`、`toSchemaStore` 在 4.0.5 仍標示 unstable，且不能直接取代現有記憶體優先與刪除遮蔽政策。
 參考 [KeyValueStore](https://effect.website/docs/v4/api/effect/persistence/KeyValueStore)。
 
-### E06：八個任務只接受目前版本，保留遊戲規則
+### E06：九個任務只接受目前版本，保留遊戲規則
 
 依本次決策，正式與開發存檔都只接受下表完整的目前格式。舊版本、缺少 version／必要欄位、
 錯誤型別、非有限數字或矛盾狀態，一律診斷後開新局；不補造缺少的遊戲狀態，也不遷移舊格式。
@@ -234,8 +235,9 @@ JSON parse／stringify 另有錯誤分類。所有操作以已恢復錯誤的同
 | [碼頭](../src/missions/port-cargo/persistence.ts) | 3 | direction、craneAttached 與操作欄位；保留兩種方向、懸吊／叉上貨物、部分行駛。 |
 | [山路](../src/missions/mountain-clearance/persistence.ts) | 3 | workOrder、loaderDocked 與完整鏟裝欄位；保留載料／交付順序、停妥與部分抬升。 |
 | [轉運站](../src/missions/passenger-transfer/persistence.ts) | 4 | round.companion；保留隨機同行車、車門、行駛、行李與自動時鐘。 |
+| [清潔隊](../src/missions/sanitation/persistence.ts) | 1 | round、兩種貨物順序、物品位置、空桶、部分升桶／清掃及自動時鐘。 |
 
-七關共用 [snapshot.ts](../src/runtime/snapshot.ts) 的「目前 Schema → domain resume → 目前 Schema」流程。
+八關共用 [snapshot.ts](../src/runtime/snapshot.ts) 的「目前 Schema → domain resume → 目前 Schema」流程。
 第一次結構檢查通過後，仍將原始輸入交給 domain，避免 Schema 先剝除未知鍵而掩蓋警察 work 的精確鍵集合不變量。
 恢復完成後再驗證輸出並移除未知 metadata。SchemaError 保留欄位路徑；domain 拒絕標記 invariant，恢復拋錯或輸出不合法標記 resume。
 修路保留 [decodeRoadSnapshot](../src/missions/road-repair/persistence.ts) 的快照外層、原始貨物檢查與跨欄位驗證。
@@ -246,7 +248,7 @@ Schema 位於 persistence adapter，domain 仍是普通 TypeScript，保留目�
 碼頭建構函式的方向簡寫、蓋房子的 roof-color 開發入口仍可使用；從 storage 恢復必須符合目前完整格式。
 參考 [Schema](https://effect.website/docs/v4/api/effect/Schema) 與 [Schema 原始碼（4.0.5）](https://github.com/Effect-TS/effect/blob/effect%404.0.5/packages/effect/src/Schema.ts)。
 
-### E07：八任務存檔與音效服務
+### E07：九任務存檔與音效服務
 
 每關的 `services.ts` 定義 `*Persistence` 與 `*Audio` 兩個 Context.Service；`startup.ts` 在啟動時解析存檔服務，把普通同步物件傳給原有 session。
 
@@ -260,9 +262,10 @@ Schema 位於 persistence adapter，domain 仍是普通 TypeScript，保留目�
 | 碼頭 | [PortPersistence／PortAudio](../src/missions/port-cargo/services.ts) | [preparePortMission](../src/missions/port-cargo/startup.ts) | 上一回合方向／布局／配色 |
 | 山路 | [MountainPersistence／MountainAudio](../src/missions/mountain-clearance/services.ts) | [prepareMountainMission](../src/missions/mountain-clearance/startup.ts) | 上一回合落石／施工方向 |
 | 轉運站 | [TransferPersistence／TransferAudio](../src/missions/passenger-transfer/services.ts) | [prepareTransferMission](../src/missions/passenger-transfer/startup.ts) | 上一回合布局／車種／乘客 |
+| 清潔隊 | [SanitationPersistence／SanitationAudio](../src/missions/sanitation/services.ts) | [prepareSanitationMission](../src/missions/sanitation/startup.ts) | 上一回合收運區／回收車配色／居民 |
 
 Live persistence layer 以 `Layer.succeed` 提供模組生命週期的物件，沿用共用 progress singleton、開發 memory 與既有 keys；導航與 main.ts HMR 不會清空上一回合或快照。
-七關的 [createMissionPersistence](../src/app/mission-persistence.ts) 只共用 load／save、現有 decoder、徽章與靜音委派；round／color 選擇仍由各關 domain 與服務處理。
+八關的 [createMissionPersistence](../src/app/mission-persistence.ts) 只共用 load／save、現有 decoder、徽章與靜音委派；round／color 選擇仍由各關 domain 與服務處理。
 [createDevelopmentStore](../src/app/development.ts) 可建立隔離記憶體，預設匯出 facade 維持原 API。修路另保留自己的快照外層與 hot.data 優先序。
 `createProgressStore`、`create*Persistence` 讓測試注入 storage 與偏好，毋須修改全域 storage；預設 session 參數保持直接呼叫相容。
 
@@ -271,11 +274,11 @@ Live persistence layer 以 `Layer.succeed` 提供模組生命週期的物件，�
 DOM handler 與每幀不查詢 Context，不建立新的 Effect runtime。`pagehide` 仍同步保存，所有存檔只接受完整目前版本。
 參考 [Context](https://effect.website/docs/v4/api/effect/Context)、[Layer](https://effect.website/docs/v4/api/effect/Layer)，API 已對照安裝的 4.0.5 原始碼。
 
-### E08：八任務分階段啟動追蹤與錯誤紀錄
+### E08：九任務分階段啟動追蹤與錯誤紀錄
 
 [main.ts](../src/main.ts) 為每次任務啟動建立 `createStartupDiagnostics`。修路與救火的 `mission.startup` 根 span 包住七個子 span：
 `module.scene`、`module.session`、`module.sounds`、`prepare`、`scene`、`audio`、`connect`。
-其餘六關的音效原本與 session 同模組，保留兩個載入子 span，合計六個階段，沒有虛構 `module.sounds` 計時。
+其餘七關的音效原本與 session 同模組，保留兩個載入子 span，合計六個階段，沒有虛構 `module.sounds` 計時。
 兩／三個靜態路徑的動態 import 仍由 `Effect.all` unbounded 並行；session 入口為 lazy `startup.ts`，後續資源依序取得。
 根 span 在 connection 回傳 frame-loop Effect 後結束，入口才等待 loop；遊玩時間及首次可操作時間不算進啟動時間。
 開發工具原有首次可操作計時使用執行當下的 performance.now，避免 rAF 時戳早於準備時間時顯示負值。
@@ -292,18 +295,18 @@ Span 與錯誤紀錄都帶 `mission`、`startupId`、`mode`。本地 startupId �
 注入的計時器拋錯或回傳非有限數字時，該次無法量測的 durationMs 為 0，階段結果與原始 Exit 不變。
 參考 [Effect](https://effect.website/docs/v4/api/effect/Effect)；頁面過大時直接核對 4.0.5 的 `Effect.ts`／`Tracer.ts`／`Logger.ts`。
 
-### E09：八任務存檔排程，以及全站導航與 PWA
+### E09：九任務存檔排程，以及全站導航與 PWA
 
-**自動存檔已從修路推廣到全部八關，導航及 PWA 維持全站共用。**本批僅接入七關既有 session，不改動上一批的導航與 PWA 策略。
+**自動存檔已從修路推廣到全部九關，導航及 PWA 維持全站共用。**原八關維持既有間隔，第九關清潔隊採 700 ms；導航與 PWA 策略保持原樣。
 
-八關 `session.connect` 都回傳由 [withAutosave](../src/runtime/autosave.ts) 包住的 frame-loop Effect。初始化與 startup span 結束後，入口才啟動這個 Effect；內部 scope 以 `forkScoped` 取得存檔 worker，`Fiber.join` 與 frame loop 透過 `raceFirst` 互相監督。worker 非預期拋錯轉為帶 mission／原始 cause 的 `AutosaveError`；任一方失敗或導航取消，都先停止另一方，再執行 connection 的最後同步存檔、audio close 與 scene release。單獨 fork 後不等待，無法達成此失敗傳播。
+九關 `session.connect` 都回傳由 [withAutosave](../src/runtime/autosave.ts) 包住的 frame-loop Effect。初始化與 startup span 結束後，入口才啟動這個 Effect；內部 scope 以 `forkScoped` 取得存檔 worker，`Fiber.join` 與 frame loop 透過 `raceFirst` 互相監督。worker 非預期拋錯轉為帶 mission／原始 cause 的 `AutosaveError`；任一方失敗或導航取消，都先停止另一方，再執行 connection 的最後同步存檔、audio close 與 scene release。單獨 fork 後不等待，無法達成此失敗傳播。
 
 `Effect.schedule(Schedule.spaced(intervalMs))` 首次等待一個間隔，之後每次保存完成再等一個間隔，不追補錯過的次數。這取代各關原本 rAF 內的時間檢查與 `saved` 時戳；首次保存也不再依賴 rAF 的時間戳。頁面隱藏時跳過定期寫入，但 timer 並非完全暫停；`visibilitychange`、`pagehide`、connection finalizer 仍使用原有同步保存，不等待排程或 Promise。瀏覽器可能節流 timer，所以 700／800 ms 不是精準持久化保證。一般 storage／JSON 失敗仍在 E05 邊界降級並保留記憶體；只有未被該邊界處理的失敗（例如快照複製拋錯）才結束任務。手勢結束、重新開始、階段切換／checkpoint 等既有即時保存也保留，並非所有寫入都只由 timer 觸發。
 
 | 任務 | 定期保存間隔 |
 | --- | --- |
 | 修路、蓋房子、救火、交通救援 | 800 ms |
-| 警察、碼頭、山路、轉運站 | 700 ms |
+| 警察、碼頭、山路、轉運站、清潔隊 | 700 ms |
 
 上述間隔直接沿用各關原程式。更正第九批文件的盤點誤差：當時蓋房子、救火、交通救援也是 800 ms，並非七個非修路任務全為 700 ms。消防另外保留最後存檔後停止水聲、再關閉音效與釋放場景的順序。
 
@@ -317,9 +320,9 @@ Span 與錯誤紀錄都帶 `mission`、`startupId`、`mode`。本地 startupId �
 
 | 能力 | 本專案的判斷 |
 | --- | --- |
-| `Context.Service`／`Layer` | 八關已採用存檔與音效服務；同步 facade、跨回合記憶體與各自的音效 scope 保留。新服務應有實際替換需求，不把高頻 domain 狀態逐項包裝。 |
-| `Fiber`／`forkScoped` | 八關 worker 與全站導航／PWA 已採用；新增背景工作必須明確指定取消、監督與清理所有權。 |
-| `Schedule`／`TestClock` | 八關與 PWA 已採用。新增任務時保留明確間隔、同步離頁保存、記憶體優先與 finalizer 順序，並用可控時鐘驗證。 |
+| `Context.Service`／`Layer` | 九關已採用存檔與音效服務；同步 facade、跨回合記憶體與各自的音效 scope 保留。新服務應有實際替換需求，不把高頻 domain 狀態逐項包裝。 |
+| `Fiber`／`forkScoped` | 九關 worker 與全站導航／PWA 已採用；新增背景工作必須明確指定取消、監督與清理所有權。 |
+| `Schedule`／`TestClock` | 九關與 PWA 已採用。新增任務時保留明確間隔、同步離頁保存、記憶體優先與 finalizer 順序，並用可控時鐘驗證。 |
 | `Stream`／`Queue`／`PubSub` | 目前 pointer adapter 的單指 ownership 已集中，沒有多訂閱者或背壓需求。高頻 pointermove／動畫先保持直接函式呼叫。 |
 | `Ref`／`SubscriptionRef`／`Atom` | 不以包裝全部 mission state 為目標；現有純狀態機加局部 session state 可直接測試。未來有多個獨立 UI 訂閱者再評估。 |
 | `retry`／`timeout` | PWA 註冊已有有界重試；目前沒有帳號或雲端同步。任務 chunk 與 AudioContext 不新增自動重試，也不以 timeout 放棄尚未完成的資源清理。 |
@@ -623,7 +626,7 @@ HMR 的完成狀態由開發控制選擇，非手勢通關。storage 被拒時�
 
 驗證集中於保存、失敗監督與資源生命週期，沒有重跑七關完整手勢通關。隱藏狀態由測試控制項模擬，未涵蓋所有背景節流策略；瀏覽器 HMR 本批抽驗消防與碼頭，其餘關的取消／失敗清理由逐關 Node 與上述瀏覽器案例覆蓋。導航與 PWA 實作未變，相關測試納入完整回歸，本批未重做 PWA 故障替身、離線安裝或 BFCache 驗證。寫入拒絕時，尚未持久化的記憶體仍可能在整頁重載後遺失。
 
-### 2026-10-22 E01～E09 八關全面檢查（第十一批，目前狀態）
+### 2026-10-22 E01～E09 八關全面檢查（第十一批，原八關稽核）
 
 檢查全部八關的 scene／session／persistence／services／startup、修路 devtools，以及共用 storage、frame loop、audio unlock、startup diagnostics、autosave、navigation 與 PWA。正式程式直接匯入 Effect 的檔案維持 52 個，未發現漏接某一關的 E01～E09 路徑；故障注入找到並修正以下四項邊界問題。
 
@@ -677,6 +680,21 @@ HMR 的完成狀態由開發控制選擇，非手勢通關。storage 被拒時�
 與第十批相比，precache 維持 **55 項，1114.70 → 1115.05 KiB（+0.35 KiB）**；入口 **99.65 → 99.80 kB**、gzip **34.42 → 34.45 kB**。保留 18 個動態 import、各關 lazy 邊界及原有 geometry 578.24 kB 大 chunk 警告。
 
 本批未重跑八關完整手勢通關、HMR、PWA 瀏覽器故障替身、離線安裝或 BFCache；相關未修改邊界由既有測試及前批紀錄補充。本次瀏覽器排程測試使用正式存檔模式，開發模式由完整逐關 Node 回歸覆蓋。儲存拒絕後的記憶體無法跨整頁重載保證續玩、原生 import／resume／register 無法被 Effect 實際取消，以及 DOM／ResizeObserver 回呼不屬於 frame-loop 邊界等限制仍然保留。
+
+### 2026-10-24 第九關沿用 E01～E09
+
+新增 `sanitation/scene.ts`、`session.ts`、`persistence.ts`、`services.ts`、`startup.ts` 五個 Effect 使用檔案；
+其餘車輛、場地幾何、輸入規則與逐幀計算維持普通 TypeScript。新關使用既有 scene／renderer 所有權、
+分類啟動錯誤、可選音效解鎖、Schema／同步儲存邊界、注入 persistence／scoped audio、六階段 startup span，
+以及 700 ms 的共用 autosave 與 frame-loop 互相監督。全站導航與 PWA 策略沿用，新增 lazy 關卡入口。
+
+清潔隊版本 1 保留部分行車、兩種升桶高度、兩組裝載順序、物品位置、空桶、單向清掃成果與倒料時鐘；
+重載／HMR 清掉舊手指與未提交停留，已完成不重播離場。只接受完整目前格式，不增加遷移分支。
+
+新增 20 個清潔隊檢查及 26 個正式／開發共用整合回歸，`npm run check` 合計 **581 個測試**與正式建置通過。
+共用回歸涵蓋部分初始化與清理失敗、frame／HUD 故障、音效解鎖、Schema／不變量、同步離頁保存、服務注入、
+音效清理順序、啟動失敗及 TestClock 存檔排程。14 個正式 Playwright 案例通過：兩配置的桌面／直向手機模擬觸控全程、部分升桶與倒料重載、徽章／重玩與九關離線載入；另 1 個開發案例通過兩種升桶、HMR 與配置重設。
+Codex 內建瀏覽器亦對照原清掃車外觀、新車尾／側邊桶架與實際向上拖曳；未宣稱實體 iPad／Android 或可聽音訊已驗證。
 
 ## 文件維護方式
 

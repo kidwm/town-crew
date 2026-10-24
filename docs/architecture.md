@@ -62,7 +62,7 @@ Entering from selection clears the selected mission's snapshot after the previou
 scope has finished saving. Reload and HMR inside a mission restore its current
 snapshot; completion badges and mute preferences survive a fresh round.
 
-All eight missions use the E01/E02 lifecycle pattern established by the road pilot.
+All nine missions use the E01/E02 lifecycle pattern established by the road pilot.
 Scene and connection factories return scoped Effects that register renderer,
 observer, input, hint, frame and save finalizers as resources are acquired.
 `runtime/scene-lifecycle.ts` shares renderer and scene graph ownership, including
@@ -77,7 +77,7 @@ cleanup defects without replacing a newer screen. Node lifecycle tests inject
 initialization and release failures in every mission. A throwing audio-close diagnostic sink
 cannot turn normal interruption into a mission failure or prevent scene cleanup.
 
-All eight missions also use E03/E04. Each scoped `connect` returns a waiting frame-loop
+All nine missions also use E03/E04. Each scoped `connect` returns a waiting frame-loop
 Effect that the entry point runs directly after initialization. `runtime/frame-loop.ts`
 bridges rAF callback/scheduling errors into `FrameLoopError`, retaining the original
 cause and stopping the loop before the mission scope releases input, audio and scene.
@@ -92,7 +92,7 @@ and final save. DOM event and ResizeObserver callback exceptions remain outside 
 frame-loop boundary. See the Effect usage document for per-mission fault tests and
 the Vite-only manual fault page used with Codex's built-in browser.
 
-All eight missions use `runtime/storage.ts` for fully synchronous storage/JSON operations.
+All nine missions use `runtime/storage.ts` for fully synchronous storage/JSON operations.
 Browser storage getters and get/set/remove calls run inside `Effect.try`, with typed failures
 recovered before `runSync` returns. Development diagnostics are deduplicated; production stays quiet.
 The boundary also isolates throwing injected reporters, preserving synchronous fallback.
@@ -101,7 +101,7 @@ preferences while retaining copied memory snapshots and null tombstones after fa
 Road development saves retain copied memory/HMR snapshots; the other seven use the per-key
 `app/development.ts` memory facade. All seven last-round/colour records (fire has none) prefer
 newer in-memory data over stale storage after a failed write. Keys and synchronous pagehide/
-finalizer saves remain unchanged; E09 changes periodic scheduling for all eight missions as described below. Memory fallback cannot preserve
+finalizer saves remain unchanged; E09 changes periodic scheduling for all nine missions as described below. Memory fallback cannot preserve
 unwritten changes across a full page reload; snapshot cloning defects still propagate normally.
 
 For E06, each mission owns a current-version Schema in `persistence.ts`. The seven new adapters
@@ -109,23 +109,23 @@ share `runtime/snapshot.ts`: validate the input, call the pure domain resume fun
 keys, then validate/strip the recovered state. Road retains its snapshot envelope and tuning facade.
 Domain invariants and input cancellation remain ordinary TypeScript; legacy migrations have been removed.
 Formal and development saves only resume complete current formats: road 1, house 6, fire 1, traffic 3,
-police 1, port 3, mountain 3 and transfer 4. Old versions, missing required fields and invalid states
+police 1, port 3, mountain 3, transfer 4 and sanitation 1. Old versions, missing required fields and invalid states
 start fresh with a typed development diagnostic. Badges and mute preferences keep their own keys.
 Mission adapters remain lazy-loaded; measured bundle costs are recorded in the Effect adoption document. `tests/manual/effect-storage.html` isolates test keys and
 provides fault controls for Codex built-in browser validation.
 
-All eight missions resolve their `*Persistence` Context service once in `startup.ts` and pass its
+All nine missions resolve their `*Persistence` Context service once in `startup.ts` and pass its
 synchronous facade to the session. `Layer.succeed` uses a module-lived live instance, sharing the app
 progress singleton and existing development cache. Per-mission services own last-round/color memory;
 road also retains hot.data snapshot priority. Factory functions allow isolated stores in tests.
-`createMissionPersistence` shares the seven non-road missions' storage/decoder/preference boundary;
+`createMissionPersistence` shares the eight non-road missions' storage/decoder/preference boundary;
 `createDevelopmentStore` owns copied per-key memory. Gameplay and random-round policy remain in each mission.
 Pagehide still saves synchronously. Each `*Audio` uses `Layer.effect` with scoped acquireRelease;
 `Layer.build` runs after scene acquisition and before connection. Connection cleanup (including fire's
 continuous spray shutdown) precedes asynchronous audio close, which completes before scene release.
 
 Every mission wraps parallel module loading and sequential prepare/scene/audio/connect in a
-`mission.startup` root span. Road/fire have seven stages; the other six retain their existing combined
+`mission.startup` root span. Road/fire have seven stages; the other seven retain their existing combined
 session/audio module and have six. Lazy `startup.ts` composes the session and services. Startup ends
 before the caller awaits the frame loop. Development builds emit one bounded timing/outcome summary
 per startup. After scope cleanup, Effect.logError records a genuine failure with mission, mode,
@@ -134,9 +134,9 @@ from successful startup. Summary/logger failures and an unavailable or non-finit
 cannot replace the original exit; unavailable timing is reported as zero duration. Production emits
 no successful-startup summary; no remote exporter or per-frame logging is installed.
 
-E09 uses `runtime/autosave.ts` for all eight missions. After startup completes, `forkScoped` starts
+E09 uses `runtime/autosave.ts` for all nine missions. After startup completes, `forkScoped` starts
 a worker with `Schedule.spaced(intervalMs)`. Road/house/fire/traffic retain 800 ms intervals;
-police/port/mountain/transfer retain 700 ms. The first periodic save waits one interval, and
+police/port/mountain/transfer/sanitation retain 700 ms. The first periodic save waits one interval, and
 subsequent saves wait one interval after the preceding attempt. `Fiber.join` raced with the frame loop propagates an
 `AutosaveError` or frame failure, stops both workers, then permits connection finalizers.
 Hidden pages skip periodic writes; timers may still wake. Visibilitychange/pagehide and final
@@ -358,6 +358,21 @@ the original house person without changing its default geometry or colours.
 Three new passenger buses have open interiors and real boarding gaps; the coach's
 lower luggage compartment receives the suitcase lying flat. No renderer state
 enters the domain or snapshot.
+
+## Sanitation mission
+
+`src/missions/sanitation/` owns pure collection/drive/lift rules, the validated
+version-1 round, independent garbage/recycling orders and automatic handoff clocks.
+`domain/site.ts` supplies the same parked, prop, intake, cargo and bin-lift poses to
+rendering, hit targets and tests. The rear garbage lift and side food-bin lift need
+fresh upward gestures after locking. Lift height follows the pointer directly;
+driving has bounded speed, while cleaning keeps a monotonic swept fraction.
+The fixed rear three-quarter camera exposes both loading directions in both layouts.
+The scene reuses the original sweeper and six-wheel construction flatbed, plus
+shared people/scenery/chassis. New collection bodies have actual hopper/roof openings.
+The mission follows E01–E09: scoped scene/audio/session ownership, frame/auto-save
+supervision, optional synchronous storage, Schema recovery, injected services and
+startup spans. Lazy entry, menu, badges and PWA precaching include the ninth mission.
 
 ## Further missions
 

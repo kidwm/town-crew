@@ -1,3 +1,4 @@
+import { createSanitation } from '../../src/missions/sanitation/domain/sanitation.ts';
 import type { MissionId } from '../../src/app/progress.ts';
 import { createHouse } from '../../src/missions/house-build/domain/house.ts';
 import { createFire } from '../../src/missions/fire-rescue/domain/fire.ts';
@@ -41,5 +42,9 @@ export const snapshotFixtures = [
     valid: () => { const state = createTransit('bus-door'); return { ...state, action: 'dragging', doors: { ...state.doors, bus: 0.4 } }; },
     legacy: () => { const state = createTransit('transfer-door'); return { ...state, version: 2, round: { layout: 0, palette: 0, cast: 0 }, doors: { ...state.doors, taxi: 0.4 } }; },
     invalid: () => ({ ...createTransit('complete'), order: ['taxi'] }),
+  },
+  { id: 'sanitation', title: '清潔隊', prefix: 'sanitation', initial: 'intro', stage: 'bin-lift',
+    valid: () => ({ ...createSanitation('bin-lift'), action: 'dragging', held: 'bin', travel: 0.4, aim: 0.7 }),
+    invalid: () => ({ ...createSanitation('complete'), foodEmpty: false }),
   },
 ] satisfies Array<{ id: MissionId; title: string; prefix: string; initial: string; stage: string; valid: () => unknown; legacy?: () => unknown; invalid: () => unknown }>;

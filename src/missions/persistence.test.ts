@@ -1,3 +1,7 @@
+import * as sanitation from './sanitation/domain/sanitation.ts';
+import { decodeSanitationSnapshot } from './sanitation/persistence.ts';
+import { createSanitationSession } from './sanitation/session.ts';
+import type { SanitationScene } from './sanitation/scene.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Effect, Result } from 'effect';
@@ -40,6 +44,7 @@ const audio = () => ({ setMuted() {}, setSpraying() {}, unlock: async () => {}, 
 const scene = () => ({ canvas: new Element() });
 const app = () => new Element() as unknown as HTMLDivElement;
 const adapters = {
+  sanitation: { decode: decodeSanitationSnapshot, resume: sanitation.resumeSanitation, states: () => sanitation.stages.flatMap(stage => ([0, 1] as const).map(layout => sanitation.createSanitation(stage, { layout, palette: 2, cast: 1 }))), create: createSanitationSession, connect: (session: ReturnType<typeof createSanitationSession>) => session.connect(scene() as unknown as SanitationScene, audio()) },
   'house-build': { decode: decodeHouseSnapshot, resume: house.resumeHouse, states: () => house.stages.flatMap(stage => (['gable', 'shed', 'flat'] as const).flatMap(roof => ([0, 1] as const).map(layout => house.createHouse(stage, { roof, layout, palette: 2, family: 1, pet: 'dog' })))), create: createHouseSession, connect: (session: ReturnType<typeof createHouseSession>) => session.connect(scene() as unknown as HouseScene, audio()) },
   'fire-rescue': { decode: decodeFireSnapshot, resume: fire.resumeFire, states: () => fire.stages.map(stage => fire.createFire(stage)), create: createFireSession, connect: (session: ReturnType<typeof createFireSession>) => session.connect(scene() as unknown as FireScene, audio()) },
   'traffic-rescue': { decode: decodeTrafficSnapshot, resume: traffic.resumeTraffic, states: () => traffic.stages.flatMap(stage => ([0, 1] as const).map(first => traffic.createTraffic(stage, [1, 3], first ? ['wheel-lift', 'flatbed'] : ['flatbed', 'wheel-lift'], first))), create: createTrafficSession, connect: (session: ReturnType<typeof createTrafficSession>) => session.connect(scene() as unknown as TrafficScene, audio()) },

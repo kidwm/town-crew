@@ -19,7 +19,7 @@ for (const pattern of ['spread', 'cluster']) for (const layout of [0, 1]) {
       Math.random = () => layout ? 0.8 : 0.2;
     }, { pattern, layout });
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(8);
+    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(9);
     await page.getByRole('button', { name: '山路搶通', exact: true }).click();
     const app = page.locator('#app'), { down, move, up, cancel, wait } = await fireControls(page, touch);
     const direct = p => touch ? move(p) : page.mouse.move(p.x, p.y);

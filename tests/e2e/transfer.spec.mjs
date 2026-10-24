@@ -10,7 +10,7 @@ for (const layout of [0, 1]) {
     if (touch) await page.setViewportSize({ width: 390, height: 844 });
     await page.clock.install(); await page.addInitScript(n => { Math.random = () => n; }, layout ? 0.8 : 0.1);
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(8);
+    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(9);
     await page.getByRole('button', { name: '乘客轉運站', exact: true }).click();
     const app = page.locator('#app'), { down, move: touchMove, up, cancel, wait } = await fireControls(page, touch);
     const move = p => touch ? touchMove(p) : page.mouse.move(p.x, p.y);

@@ -1,3 +1,6 @@
+import { createSanitationPersistence, SanitationPersistence } from './sanitation/services.ts';
+import { prepareSanitationMission } from './sanitation/startup.ts';
+import type { createSanitationScene } from './sanitation/scene.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -49,6 +52,10 @@ type Options = { app: HTMLDivElement; dev: boolean; home: () => void; fresh: boo
 type FakeScene = () => Effect.Effect<{ canvas: Element }, never, Scope.Scope>;
 type FakeAudio = () => { unlock: () => Promise<void>; play: () => void; setMuted: () => void; setSpraying: (active: boolean) => void; dispose: () => Promise<void> };
 const adapters = {
+  sanitation: {
+    create: (store: Store) => createSanitationPersistence(store.progress, store.storage, store.development),
+    prepare: (store: Store, options: Options, scene: FakeScene, audio: FakeAudio, trace: StartupDiagnostics) => prepareSanitationMission(options, scene as unknown as typeof createSanitationScene, audio, trace).pipe(Effect.provide(Layer.succeed(SanitationPersistence, createSanitationPersistence(store.progress, store.storage, store.development)))),
+  },
   'house-build': {
     create: (store: Store) => createHousePersistence(store.progress, store.storage, store.development),
     prepare: (store: Store, options: Options, scene: FakeScene, audio: FakeAudio, trace: StartupDiagnostics) =>
@@ -194,7 +201,7 @@ for (const fixture of snapshotFixtures) {
 
 // Exercise each real session/startup with its actual cadence, independent of rAF.
 const saveIntervals = { 'house-build': 800, 'fire-rescue': 800, 'traffic-rescue': 800,
-  'police-patrol': 700, 'port-cargo': 700, 'mountain-clearance': 700, 'passenger-transfer': 700 };
+  'police-patrol': 700, 'port-cargo': 700, 'mountain-clearance': 700, 'passenger-transfer': 700, sanitation: 700 };
 function scheduledMission(t: TestContext, fixture: typeof snapshotFixtures[number], dev: boolean) {
   const env = browser(t), store = isolated(), order: string[] = [], app = new Element(), stage = new Element();
   const key = dev ? `town-crew:${fixture.prefix}:dev:v1:` : `town-crew:play:v1:${fixture.id}`;

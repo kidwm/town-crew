@@ -321,3 +321,26 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .bike-picker { bottom: 141px; right: 14px; }.bike-picker button { width: 64px; height: 57px; }
   .police-world .finish-actions { gap: 8px; padding: 10px; }.police-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
 }
+
+/* Ninth mission: all rings are projections of the same real loading points. */
+.sanitation-targets { position: absolute; inset: 0; pointer-events: none; }
+.sanitation-goal, .sanitation-source { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; border: 2px dashed #fff5d0; background: #fff4bd18; box-shadow: 0 0 0 3px #71857228; }
+.sanitation-goal { width: 48px; height: 48px; }
+.sanitation-source { width: 44px; height: 44px; border-style: solid; }
+.sanitation-goal > span { position: absolute; left: 50%; top: calc(100% + 7px); transform: translateX(-50%); padding: 3px 9px; border-radius: 12px; background: #fff8dfef; white-space: nowrap; color: #587263; font-size: 11px; }
+.sanitation-goal[data-ready='true'] { background: #a8cb8e90; border-color: #f0ffd3; border-style: solid; }
+.sanitation-source[hidden], .sanitation-goal[hidden], .sanitation-finish[hidden] { display: none; }
+.sanitation-world .progress { width: 205px; }
+.sanitation-world .drag-hint { filter: drop-shadow(0 2px 2px #52684e90); }
+.sanitation-finish { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); display: grid; justify-items: center; gap: 10px; white-space: nowrap; color: #5b8067; }
+.sanitation-finish > span { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #fff8df; font-size: 38px; }
+@media (max-width: 650px) {
+  .sanitation-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; }
+  .sanitation-world .mission-badge strong { font-size: 13px; }
+  .sanitation-world .mission-steps { left: 16px; right: auto; bottom: 22px; }
+  .sanitation-world .progress { right: 16px; bottom: 34px; width: 110px; }
+  .sanitation-world .drag-hint-hand > * { transform: scale(.75); }
+  .sanitation-world .finish-actions { gap: 8px; padding: 10px; }
+  .sanitation-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+  .sanitation-source { width: 34px; height: 34px; }
+}

@@ -413,3 +413,25 @@ test('police development reload, HMR and stage resets retain configuration and p
   await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '消防隊救火', exact: true }).click();
   await wait('dispatch'); await expect(app).toHaveAttribute('data-mission', 'fire-rescue'); expect(errors).toEqual([]);
 });
+
+test('sanitation development retains both partial bin lifts through reload/HMR and keeps stage configuration', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/?dev=1&mission=sanitation&stage=bin-lift&layout=1&palette=2');
+  const app = page.locator('#app'), { down, move, cancel, up, wait } = await fireControls(page);
+  await wait('bin-lift'); await expect(app).toHaveAttribute('data-layout', '1');
+  let h = await gesture(page, 'up'); await down(h.from); await move({ x: h.from.x, y: h.from.y + (h.to.y - h.from.y) * 0.4 }); await cancel();
+  const value = await app.getAttribute('data-travel'); expect(Number(value)).toBeGreaterThan(0.3);
+  await page.reload(); await wait('bin-lift'); await expect(app).toHaveAttribute('data-travel', value);
+  const world = await page.locator('.world').elementHandle(), now = new Date();
+  await utimes(new URL('../../src/main.ts', import.meta.url), now, now); await page.waitForFunction(element => !element.isConnected, world);
+  await wait('bin-lift'); await expect(app).toHaveAttribute('data-travel', value); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await expect(app).toHaveAttribute('data-travel', '0');
+  await page.locator('#stage').selectOption('food-lift'); await wait('food-lift'); await expect(app).toHaveAttribute('data-layout', '1'); await expect(app).toHaveAttribute('data-palette', '2');
+  h = await gesture(page, 'up'); await down(h.from); await move({ x: h.from.x, y: h.from.y + (h.to.y - h.from.y) * 0.5 }); await up();
+  const food = await app.getAttribute('data-travel'); await page.reload(); await wait('food-lift'); await expect(app).toHaveAttribute('data-travel', food);
+  await page.locator('#layout').selectOption('0'); await wait('food-lift'); await expect(app).toHaveAttribute('data-travel', '0'); await expect(app).toHaveAttribute('data-layout', '0');
+  await page.locator('#stage').selectOption('recycling'); await wait('recycling'); await expect(page.locator('.sanitation-source:not([hidden])')).toHaveCount(2);
+  await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '垃圾車清潔隊', exact: true }).click(); await wait('garbage-arrival');
+  await expect(app).toHaveAttribute('data-bags', ''); await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
+});

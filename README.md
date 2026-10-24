@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, and help passengers transfer in eight replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, help passengers transfer, and help the sanitation crew in nine replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.5**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -20,6 +20,7 @@ npm run dev
 - Move cargo at the dock: <http://localhost:5173/#port-cargo>
 - Clear a mountain road: <http://localhost:5173/#mountain-clearance>
 - Help passengers transfer: <http://localhost:5173/#passenger-transfer>
+- Help the sanitation crew: <http://localhost:5173/#sanitation>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -41,7 +42,7 @@ The production build is a PWA. Use the browser's install action, or on iPhone/iP
 choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
 icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
 
-On the first online visit, the service worker caches the menu and **all eight missions**,
+On the first online visit, the service worker caches the menu and **all nine missions**,
 including their lazy-loaded JavaScript. After that initial cache completes, reloads
 and switching to previously unopened missions work offline. New builds wait until
 all existing game tabs/windows close before activating, keeping a running mission
@@ -66,12 +67,48 @@ still allow normal text selection, and the menu retains touch scrolling.
 
 ## Choose a mission
 
-The entrance has eight large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has nine large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Help the sanitation crew
+
+1. Drag the yellow garbage truck into the collection bay. Choose either of two
+   tied rubbish bags and drag it into the actual rear hopper. A 0.4-second hold
+   or valid release stows each bag; the plate then compresses them automatically.
+2. Drag the wheeled bin to the rear lift. After it locks, start a **new upward
+   drag** on the bin. Its height follows the finger and stays on release,
+   cancellation or reload. At full height it automatically tips, empties, lowers
+   and returns to the pavement. Drag the garbage truck out.
+3. The recycling truck arrives after the garbage truck fully leaves. Drag it into
+   the bay, then load a cardboard bundle and a crate of bottles in either order.
+   Both remain visibly secured in its real bed through departure. Drag the truck out.
+4. Bring the food-waste truck into the bay. Drag the food-marked lidded bin to its
+   side lift, then start another upward drag. The truck's roof hatch opens, the bin
+   tips into the actual opening, and the empty bin returns before departure.
+5. Drag the original street sweeper across the foreground once. Brushes remove
+   leaves progressively; cleaned sections survive reversing, cancellation and reload.
+   The whole sweeper leaves before residents wave, confetti and replay/selection.
+
+One fixed rear three-quarter orthographic view exposes the rear hopper and side
+loading throughout. Two complete left/right collection-bay layouts keep vehicle
+headings unchanged; new rounds switch layout and recycling palette. Each round
+has two rubbish bags, one rubbish-bin lift, two recycling packages, one food-bin
+lift and one sweep. Bag and recycling orders are independent child choices.
+Complete version-1 snapshots retain layout, cargo, prop positions, partial driving,
+lifting, sweeping and automatic clocks. Reload/HMR releases stale pointers and
+uncommitted dwell; completed saves do not replay the farewell. Production and
+stage-entry development progress are separate; invalid/older saves start fresh.
+There is no timer, penalty or sorting quiz.
+
+The sweeper, original flatbed, residents, uniform workers, houses, trees, bench and
+hint/audio/storage services are reused. New models include the garbage hopper and
+lift, a sealed food-waste collection body with roof hatch and side lift, wheeled
+bins, bags, cardboard and bottle crate. Recycling rails extend the original six-wheel
+flatbed. Multi-stop routes and disposal-site unloading remain deferred.
 
 ## Help passengers transfer
 
@@ -474,6 +511,11 @@ Transfer entries use `?dev=1&mission=passenger-transfer&stage=…`:
 Add `layout=0|1` and `palette=0..3`. Stage/configuration selectors preserve the other
 settings; reset entries create consistent passengers and cargo for that stage.
 
+Sanitation entries use `?dev=1&mission=sanitation&stage=bin-lift&layout=0&palette=0`.
+The stage selector includes collection, locking, independent lifting, tipping,
+vehicle handoffs, food collection and sweeping. Layout and palette selectors retain
+the selected stage; reload/HMR preserves the current round and partial lift.
+
 The old `stage=ready` and `stage=dumping` truck bookmarks still work with `dev=1`.
 Production ignores development stage parameters. The normal entrance shows selection; an explicit mission hash opens that mission with its saved progress or a fresh start.
 The panel can reset a stage and immediately adjust the truck's drag threshold,
@@ -529,6 +571,7 @@ road-repair sequence.
   two motorcycle dispatches, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
+- `src/missions/sanitation/`: four-vehicle collection, rear/side bin lifts, independent cargo orders, fixed-view routes and version-1 recovery.
 - `src/missions/passenger-transfer/`: independent passenger transfers, child-selected taxi/school dispatch, actual door gestures, suitcase stowage, fixed-view terminal routes and versioned recovery.
 - `src/runtime/resident.ts`: the original house resident, with its seated/walking legs and waving arm, shared with the transfer station.
 - `src/runtime/excavator-model.ts`, `excavator-arm.ts`, `road-barrier.ts`, `sweeper.ts`: the original road excavator, pure arm geometry, road barrier and original traffic sweeper shared with mountain clearance.
@@ -542,21 +585,21 @@ road-repair sequence.
 - `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
 - `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
   listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
-- `src/runtime/mission-lifecycle.ts`: typed startup and audio-close errors for all eight missions,
+- `src/runtime/mission-lifecycle.ts`: typed startup and audio-close errors for all nine missions,
   plus interruption-aware failure reporting. All scene and connection resources register cleanup as they are acquired.
 - `src/runtime/scene-lifecycle.ts`: shared scoped ownership of renderers and scene graph resources,
   including geometry and materials for meshes, lines and points.
-- `src/runtime/frame-loop.ts` and `audio-unlock.ts`: shared E03/E04 handling for all eight missions; frame failures end
+- `src/runtime/frame-loop.ts` and `audio-unlock.ts`: shared E03/E04 handling for all nine missions; frame failures end
   the mission scope, while gesture-bound audio failures remain optional and cancellation-aware.
 - `src/runtime/storage.ts`: synchronous optional storage and JSON boundaries; shared formal progress/preferences and
-  all eight missions use typed failures, diagnostic deduplication and caller-owned memory fallback.
-- `src/app/development.ts`: copied, per-key development memory snapshots for seven missions; road retains its HMR data facade.
+  all nine missions use typed failures, diagnostic deduplication and caller-owned memory fallback.
+- `src/app/development.ts`: copied, per-key development memory snapshots for eight missions; road retains its HMR data facade.
 - `src/runtime/snapshot.ts` and each mission’s `persistence.ts`: E06 Schema validation for complete current-version saves,
   domain invariants and input cancellation. Older versions or missing required fields start fresh; no legacy migrations remain.
-- Each mission’s `services.ts` and `startup.ts`: E07 injected synchronous persistence and scoped audio Layers for all eight missions; round memory survives navigation and main.ts HMR.
-- `src/app/mission-persistence.ts`: shared load/save/decoder and preference boundary for seven missions, with mission-specific round policies retained.
-- `src/runtime/mission-startup.ts`: E08 startup spans and stage timings for all eight missions, correlated Effect error logs, and normal-cancellation handling.
-- `src/runtime/autosave.ts`: E09 across all eight missions, scoped Schedule workers supervised with their frame loops (800 ms for road/house/fire/traffic; 700 ms for police/port/mountain/transfer); hidden pages skip periodic writes, while pagehide/finalizer saves remain synchronous.
+- Each mission’s `services.ts` and `startup.ts`: E07 injected synchronous persistence and scoped audio Layers for all nine missions; round memory survives navigation and main.ts HMR.
+- `src/app/mission-persistence.ts`: shared load/save/decoder and preference boundary for eight missions, with mission-specific round policies retained.
+- `src/runtime/mission-startup.ts`: E08 startup spans and stage timings for all nine missions, correlated Effect error logs, and normal-cancellation handling.
+- `src/runtime/autosave.ts`: E09 across all nine missions, scoped Schedule workers supervised with their frame loops (800 ms for road/house/fire/traffic; 700 ms for police/port/mountain/transfer/sanitation); hidden pages skip periodic writes, while pagehide/finalizer saves remain synchronous.
 - `src/app/navigation.ts`: global navigation Fibers; the latest request waits for all earlier cleanup, including through superseded requests and HMR.
 - `src/app/pwa.ts`: optional production registration with at most three attempts, 1/2-second backoff for TypeError/NetworkError, and pagehide/HMR cancellation.
 - `tests/manual/effect-runtime.html`, `effect-storage.html`, `effect-startup.html`, `effect-autosave.html` and `effect-pwa.html`: Vite-only fault controls for Codex built-in browser verification.
@@ -574,7 +617,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The eight missions have 263 domain tests, plus 82 lifecycle/resource tests covering
+The original eight missions have 263 domain tests, plus 82 lifecycle/resource tests covering
 partial initialization across all missions, cleanup failures, typed errors,
 interruption, shared geometry, fire audio shutdown and partial-initialization retry, broken cleanup logging,
 and frame/HUD failures and optional audio unlock in every mission.
@@ -584,6 +627,13 @@ pagehide saves, last-round precedence and throwing injected reporters. Another 7
 audio Layer lifetime, startup failures, parallel-load spans, cancellation and diagnostic sink/clock failures.
 Another 48 E09 tests cover scheduled autosave in all eight missions, real formal/development sessions,
 navigation Fibers and bounded PWA retries (535 tests in total).
+The ninth sanitation mission adds 20 collection/geometry checks and 26 lifecycle,
+persistence, service-injection and autosave regressions, for **581 tests in total**.
+The sanitation browser suite passed both layouts on desktop mouse and portrait-phone
+emulated touch, including cancelled dwell, partial lift/drive/sweep reloads, mid-tip
+recovery, independent loading orders, all four departures, badges and replay.
+Together with the nine-mission PWA checks, 14 production browser cases passed;
+one development case also passed both lifts, reload/HMR, stage and layout resets.
 The E01–E09 audit was verified in Codex’s built-in browser: fire water-audio retry,
 all eight missions with simultaneous audio-close/logger failure, frozen-frame autosave,
 synchronous pagehide saves, stopped workers after exit, and navigation in the current production build.

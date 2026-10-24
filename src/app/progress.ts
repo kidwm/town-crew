@@ -1,6 +1,6 @@
 import { sessionStorageBoundary, localStorageBoundary } from '../runtime/storage.ts';
 import type { StorageBoundary } from '../runtime/storage.ts';
-export type MissionId = 'road-repair' | 'house-build' | 'fire-rescue' | 'traffic-rescue' | 'police-patrol' | 'port-cargo' | 'mountain-clearance' | 'passenger-transfer';
+export type MissionId = 'road-repair' | 'house-build' | 'fire-rescue' | 'traffic-rescue' | 'police-patrol' | 'port-cargo' | 'mountain-clearance' | 'passenger-transfer' | 'sanitation';
 /** Each store owns its memory; the app singleton survives navigation and main.ts HMR. */
 export function createProgressStore(session: StorageBoundary = sessionStorageBoundary, local: StorageBoundary = localStorageBoundary) {
   const memory = new Map<string, unknown>();
