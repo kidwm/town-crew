@@ -154,9 +154,9 @@ test('mirrored road lets the child drag past nearer pieces and retains the chose
   const app = page.locator('#app');
   await expect(app).toHaveAttribute('data-action', 'ready');
   const rect = await page.locator('canvas').boundingBox();
-  const aspect = rect.width / rect.height, height = Math.max(10.5, 16 / aspect);
-  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
-  camera.position.set(6, 8, 16); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
+  const aspect = rect.width / rect.height, height = Math.max(10.25, 16 / aspect);
+  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + 1.2, -height / 2 + 1.2, 0.1, 300);
+  camera.position.set(24, 30.8, 64); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
   const far = new THREE.Vector3(-3.5, 0.11, 0.1).project(camera);
   const grip = await page.locator('.excavator-grip').boundingBox();
   await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2); await page.mouse.down();

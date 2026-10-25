@@ -14,9 +14,9 @@ test('complete road repair, cancellation, partial passes and restart', async ({ 
   const project = async (x, y, z = 0) => {
     const rect = await page.locator('canvas').boundingBox();
     const aspect = rect.width / rect.height;
-    const height = Math.max(10.5, 16 / aspect);
-    const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
-    camera.position.set(6, 8, 16); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
+    const height = Math.max(10.25, 16 / aspect);
+    const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + 1.2, -height / 2 + 1.2, 0.1, 300);
+    camera.position.set(24, 30.8, 64); camera.lookAt(0, 0.4, 0); camera.updateMatrixWorld(true);
     const mirrored = await page.locator('#app').getAttribute('data-layout') === '1';
     const point = new THREE.Vector3(mirrored ? -x : x, y, z).project(camera);
     return { x: rect.x + (point.x + 1) * rect.width / 2, y: rect.y + (1 - point.y) * rect.height / 2 };

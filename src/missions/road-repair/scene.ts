@@ -28,8 +28,9 @@ export const createScene = (host: HTMLElement, makeRenderer = () => new THREE.We
   const scene = yield* acquireScene();
   const site = new THREE.Group(); scene.add(site);
   let currentRound = DEFAULT_ROUND;
-  const camera = new THREE.OrthographicCamera(-10, 10, 6, -6, 0.1, 100);
-  camera.position.set(6, 8, 16);
+  const camera = new THREE.OrthographicCamera(-10, 10, 6, -6, 0.1, 300);
+  // Move back along the same view axis so portrait ground is not near-clipped.
+  camera.position.set(24, 30.8, 64);
   camera.lookAt(0, 0.4, 0);
   scene.add(new THREE.HemisphereLight('#ffffff', '#7c9b7c', 2.5));
   const sun = new THREE.DirectionalLight('#fff4dc', 3);
@@ -44,7 +45,7 @@ export const createScene = (host: HTMLElement, makeRenderer = () => new THREE.We
   yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
   const { box, cylinder, material } = shapes;
 
-  box(site, [70, 0.5, 70], [0, -0.5, 0], '#99c98a');
+  box(site, [300, 0.5, 300], [0, -0.5, 0], '#99c98a');
   const surfaces = Object.fromEntries(DAMAGE_PATTERNS.map(pattern => {
     const surface = createRepairSurface(shapes, DAMAGE[pattern]); site.add(surface.root);
     return [pattern, surface];
@@ -110,11 +111,12 @@ export const createScene = (host: HTMLElement, makeRenderer = () => new THREE.We
     const { width, height } = host.getBoundingClientRect();
     if (!width || !height) return;
     const aspect = width / height;
-    const viewHeight = Math.max(10.5, 16 / aspect);
+    // Keep both mirrored work sites; trim only the unused vertical surround.
+    const viewHeight = Math.max(10.25, 16 / aspect);
     camera.left = -viewHeight * aspect / 2;
     camera.right = viewHeight * aspect / 2;
-    camera.top = viewHeight / 2;
-    camera.bottom = -viewHeight / 2;
+    camera.top = viewHeight / 2 + 1.2;
+    camera.bottom = -viewHeight / 2 + 1.2;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
   })), value => Effect.sync(() => value.disconnect()));
