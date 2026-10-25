@@ -1,3 +1,4 @@
+import { driveWorldX } from './drive-view.ts';
 import { CARS, TOW_LANE, mix, smooth, towDirection, towType } from './traffic.ts';
 import type { TrafficState } from './traffic.ts';
 
@@ -11,7 +12,7 @@ export function towingPose(s: TrafficState) {
   const direction = towDirection(s), working = s.action === 'working', t = s.elapsed;
   const loading = s.phase === 'hook' && working, departing = s.phase === 'tow-exit';
   const x = s.phase === 'tow-arrival' ? direction * (8 + 18 * (1 - smooth(t / 2)))
-    : departing ? s.truckX + (working ? direction * 18 * smooth(t / 1.5) : 0) : direction * 8;
+    : departing ? driveWorldX(s) + (working ? direction * 24 * smooth(t / 1.5) : 0) : direction * 8;
   const raised = departing ? 1 : loading ? smooth((t - 3.6) / 0.9) : 0;
   const lowered = s.phase === 'tow-arrival' ? smooth(t / 2) : s.phase === 'hook' ? 1 - raised : 0;
   return { x, z: TOW_LANE, direction, yaw: direction < 0 ? Math.PI : 0, raised, lowered, loading, departing, type: towType(s) };

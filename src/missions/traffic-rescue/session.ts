@@ -43,14 +43,14 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
       start(event) {
         unlock();
         if (!scene.hit(event.clientX, event.clientY, state)) return;
-        const plane = isDriving(state) ? 1 : 0.7, p = scene.onPlane(event.clientX, event.clientY, plane); if (!p) return;
+        const plane = isDriving(state) ? 1 : 0.7, p = scene.onPlane(event.clientX, event.clientY, plane, state); if (!p) return;
         const anchor = scene.anchor(state), screen = { x: event.clientX, y: event.clientY }; update(grab(state));
         return { phase: state.phase, plane, origin: screen, screen, settle: 0, offset: { x: anchor.x - p.x, y: anchor.y - p.y, z: anchor.z - p.z } };
       },
       move(event, held) {
         if (state.phase !== held.phase || state.action !== 'dragging') return;
         held.screen = { x: event.clientX, y: event.clientY };
-        const p = scene.onPlane(event.clientX, event.clientY, held.plane); if (!p) return;
+        const p = scene.onPlane(event.clientX, event.clientY, held.plane, state); if (!p) return;
         const position = { x: p.x + held.offset.x, y: p.y + held.offset.y, z: p.z + held.offset.z };
         update(isDriving(state) ? drive(state, position.x) : moveHandle(state, position));
         const goal = scene.targets(state, held.screen, held.origin).find(t => t.accepted)?.id;

@@ -1,3 +1,4 @@
+import { driveWorldX, driveStateX } from './domain/drive-view.ts';
 import { Effect } from 'effect';
 import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
@@ -40,6 +41,7 @@ export const createTrafficScene = (host: HTMLElement, makeRenderer = () => new T
   }
   const bench = createTownBench(shapes); bench.position.set(1, 0, -7); scene.add(bench);
   const cars = [createCar(shapes), createCar(shapes)], police = createCar(shapes, true), flatbed = createTowTruck(shapes), wheelLift = createWheelLiftTruck(shapes), sweeper = createSweeper(shapes), ambulance = createAmbulance(shapes), passing = createCar(shapes);
+  cars.forEach((car, i) => { car.root.name = `traffic-car-${i}`; });
   [police, flatbed, wheelLift, sweeper, ambulance, passing, ...cars].forEach(v => scene.add(v.root));
   const cones = CONES.map(() => createTrafficCone(shapes)), looseCone = createTrafficCone(shapes); cones.forEach(c => scene.add(c)); scene.add(looseCone);
   const hook = new THREE.Group();
@@ -71,16 +73,17 @@ export const createTrafficScene = (host: HTMLElement, makeRenderer = () => new T
   const ray = new THREE.Raycaster();
   const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
-    const aspect = width / height, view = Math.max(19, 31 / aspect);
-    camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
+    const aspect = width / height, view = Math.max(17.5, 29.5 / aspect);
+    camera.left = -view * aspect / 2 - 0.8; camera.right = view * aspect / 2 - 0.8; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
   })), value => Effect.sync(() => value.disconnect()));
   resize.observe(host);
   function screen(p: Point): ScreenPoint { camera.updateMatrixWorld(true); const r = canvas.getBoundingClientRect(), v = vector(p).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 }; }
   const drivingZ = (s: TrafficState) => s.phase === 'police' || s.phase === 'ambulance' ? AMBULANCE_LANE : s.phase === 'tow-exit' ? TOW_LANE : 0;
   function anchor(s: TrafficState): Point { return isDriving(s) ? { x: s.truckX, y: 1, z: drivingZ(s) } : s.handle; }
+  const visibleAnchor = (s: TrafficState): Point => ({ ...anchor(s), x: isDriving(s) ? driveWorldX(s) : s.handle.x });
   function targets(s: TrafficState, pointer?: ScreenPoint, origin?: ScreenPoint) {
-    const r = canvas.getBoundingClientRect(), finger = pointer && { x: pointer.x - r.x, y: pointer.y - r.y }, held = screen(anchor(s));
+    const r = canvas.getBoundingClientRect(), finger = pointer && { x: pointer.x - r.x, y: pointer.y - r.y }, held = screen(visibleAnchor(s));
     const moved = pointer && origin && Math.hypot(pointer.x - origin.x, pointer.y - origin.y) >= 18;
     const list = goals(s).map(id => { const p = screen(goalPoint(id)); return { id, ...p, distance: finger ? Math.min(Math.hypot(finger.x - p.x, finger.y - p.y), Math.hypot(held.x - p.x, held.y - p.y)) : Infinity }; });
     // Shrink capture regions if two destinations project close together on a phone.
@@ -92,18 +95,18 @@ export const createTrafficScene = (host: HTMLElement, makeRenderer = () => new T
   function setRay(x: number, y: number) { const r = canvas.getBoundingClientRect(); scene.updateMatrixWorld(true); camera.updateMatrixWorld(true); ray.setFromCamera(new THREE.Vector2((x - r.x) / r.width * 2 - 1, 1 - (y - r.y) / r.height * 2), camera); }
   return {
     canvas, screen, targets, anchor,
-    onPlane(x: number, y: number, height = 0.7) { setRay(x, y); const p = new THREE.Vector3(); return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), p) ? { x: p.x, y: p.y, z: p.z } : undefined; },
+    onPlane(x: number, y: number, height = 0.7, driving?: TrafficState) { setRay(x, y); const p = new THREE.Vector3(); return ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -height), p) ? { x: driving ? driveStateX(driving, p.x) : p.x, y: p.y, z: p.z } : undefined; },
     hit(x: number, y: number, s: TrafficState) {
       if (s.action !== 'ready' || !(isDriving(s) || goals(s).length)) return false;
       setRay(x, y);
       const tow = towType(s) === 'flatbed' ? flatbed : wheelLift;
       const object = s.phase === 'police' ? police.hit : s.phase === 'tow-exit' ? tow.hit : ['sweeper', 'sweep'].includes(s.phase) ? sweeper.hit : s.phase === 'ambulance' ? ambulance.hit : s.phase === 'hook' ? towType(s) === 'flatbed' ? hookHit : yokeHit : s.phase === 'cones' ? looseCone : stretcher.hit;
       if (ray.intersectObject(object, true).length) return true;
-      const r = canvas.getBoundingClientRect(), p = screen(anchor(s)); return Math.hypot(x - r.x - p.x, y - r.y - p.y) < 28;
+      const r = canvas.getBoundingClientRect(), p = screen(visibleAnchor(s)); return Math.hypot(x - r.x - p.x, y - r.y - p.y) < 28;
     },
     dragHint(s: TrafficState): DragHint | undefined {
       if (s.action !== 'ready' || !(isDriving(s) || goals(s).length)) return;
-      const from = screen(anchor(s)), to = screen(isDriving(s) ? { ...anchor(s), x: driveEnd(s) } : goalPoint(goals(s)[0]));
+      const from = screen(visibleAnchor(s)), to = screen(isDriving(s) ? { ...anchor(s), x: driveWorldX(s, driveEnd(s)) } : goalPoint(goals(s)[0]));
       return { from, to, direction: isDriving(s) ? s.phase === 'tow-exit' && towDirection(s) < 0 ? 'left' : 'right' : s.phase === 'boarding' ? 'right' : 'up', label: isDriving(s) ? '按住車子，沿箭頭慢慢拖' : s.phase === 'hook' ? towType(s) === 'flatbed' ? '把掛鉤拖到想救的小客車' : '把托輪架拖到想救的小客車' : s.phase === 'cones' ? '把交通錐拖到輪廓' : '把擔架拖到光圈' };
     },
     render(s: TrafficState, time: number) {
