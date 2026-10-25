@@ -86,7 +86,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 道路坑洞、填料、修補面 | [road-repair/road-surface.ts](../src/missions/road-repair/road-surface.ts) · `createRepairSurface` | 修馬路 | 三種破損配置各自共用坑洞、填料及修補面輪廓；整組隨工地換邊。路面塊沿用 `createAsphaltChunk`，依配置調整比例與角度，車斗保留每塊外觀及裝入順序。 |
 | 事故碎片 | [traffic-rescue/scene.ts](../src/missions/traffic-rescue/scene.ts) · `debris` | 交通救援 | 場景內九組碎片，每組有三片；依清掃進度移除。 |
 | 救援建築、陽台與屋頂平台 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts) · `awning`、`balcony`、`second-floor-rescue-balcony` | 消防救援 | 場景內兩層建築及不同高度的救援位置。 |
-| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 九關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。 |
+| 道路、標線、路緣、人行道 | 各關 `scene.ts`：[修馬路](../src/missions/road-repair/scene.ts)、[蓋房子](../src/missions/house-build/scene.ts)、[消防](../src/missions/fire-rescue/scene.ts)、[交通](../src/missions/traffic-rescue/scene.ts) | 九關 | 分別建模，尺寸與車道安排由關卡需求決定；尚未共用完整場景模組。修路與蓋房子的底層草地延伸至 300 × 300，配合同方向後退的固定相機，避免直向畫布露出地面邊界與近裁切；實際施工路面與動線不變。碼頭同樣延伸遠水與前景陸地，岸線仍為 z=-3.6。 |
 | 樹木與背景建築 | 各關 `scene.ts`，搜尋 `IcosahedronGeometry`、`crown` 或背景房屋的 `box` 區段 | 九關 | 多個場景內實作；已有造型參考，不能當作尚未建模。 |
 | 工地圍欄 | [house-build/scene.ts](../src/missions/house-build/scene.ts) · `Fences stay behind the site` 區段 | 蓋房子 | 場景內模型，位於施工區後方。 |
 | 長椅 | [fire-rescue/scene.ts](../src/missions/fire-rescue/scene.ts)、[town-scenery.ts](../src/runtime/town-scenery.ts) | 消防救援、交通救援、警察隊 | 交通原版已抽為 `createTownBench`，與警察關卡共用；消防版本尺寸不同，仍獨立。 |
