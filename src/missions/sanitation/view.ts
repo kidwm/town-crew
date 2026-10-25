@@ -4,7 +4,8 @@ export function createSanitationCamera() {
   camera.position.set(-14, 22, 34); camera.lookAt(0, 0.7, 0.5); return camera;
 }
 export function resizeSanitationCamera(camera: THREE.OrthographicCamera, aspect: number) {
-  const height = Math.max(14.5, 18.5 / aspect);
+  // Preserve the collection-bay width; reduce background on wider screens.
+  const height = Math.max(13, 18.5 / aspect);
   camera.left = -height * aspect / 2 + 0.4; camera.right = height * aspect / 2 + 0.4; camera.top = height / 2; camera.bottom = -height / 2;
   camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
 }

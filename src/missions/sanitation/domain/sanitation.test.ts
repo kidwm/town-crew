@@ -84,7 +84,7 @@ test('fixed camera exposes all bins, loading points and full parked vehicles on 
   models['garbage-arrival'].pose(0, 0); models['food-arrival'].pose(0, 0, true);
   const bounds = Object.fromEntries(Object.entries(models).map(([id, v]) => [id, new THREE.Box3().setFromObject(v.root)]));
   const camera = createSanitationCamera(), original = camera.position.clone(), q = camera.quaternion.clone();
-  for (const [width, height] of [[1280, 800], [390, 844], [1024, 768]]) for (const layout of [0, 1] as const) {
+  for (const [width, height] of [[1280, 800], [390, 844], [1024, 768], [844, 390]]) for (const layout of [0, 1] as const) {
     resizeSanitationCamera(camera, width / height); const round: Round = { ...defaultRound, layout, palette: 0, cast: 0 };
     for (const phase of ['garbage-arrival', 'recycle-arrival', 'food-arrival', 'sweep'] as Stage[]) for (let t = 0; t <= 1; t += 0.1) {
       const p = vehiclePoint(round, phase, t);
