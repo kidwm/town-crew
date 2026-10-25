@@ -15,8 +15,10 @@ export function soilPoint(index: 0 | 1, pushed = 1): Point {
   const p = pushPoint(index, pushed);
   return { x: p.x + Math.cos(PUSH_HEADING) * 2.9, y: 0.35, z: p.z - Math.sin(PUSH_HEADING) * 2.9 };
 }
-export const HAUL_START = 2.4, HAUL_END = -9;
-export const SWEEP_START = -8, SWEEP_END = 8, SWEEP_Z = 3.4;
+// Hand off before either mirrored vehicle reaches the frame edge. Saved travel
+// is a fraction, so partial work keeps the same progress on the shorter routes.
+export const HAUL_START = 2.4, HAUL_END = -6.6;
+export const SWEEP_START = -6.5, SWEEP_END = 6.5, SWEEP_Z = 3.4;
 export const GUARDRAIL_Z = 7.2;
 export const BARRIER_X = [-8.4, 9.2] as const, CONE_X = [-8.9, 9.5] as const;
 export const DWELL = 0.4;

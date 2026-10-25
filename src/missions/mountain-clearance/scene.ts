@@ -80,7 +80,8 @@ export const createMountainScene = (host: HTMLElement, makeRenderer = () => new 
   const confetti = Array.from({ length: 28 }, (_, i) => box(site, [0.13, 0.13, 0.05], [0, 0, 0], ['#edba63', '#8bb6a1', '#df9b81'][i % 3]));
   const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
-    const aspect = r.width / r.height, height = Math.max(18, 22 / aspect);
+    // The work apron sets the width, not the mountain peaks or road extensions.
+    const aspect = r.width / r.height, height = Math.max(15, 22 / aspect);
     camera.left = -height * aspect / 2; camera.right = height * aspect / 2; camera.top = height / 2; camera.bottom = -height / 2;
     camera.updateProjectionMatrix(); renderer.setSize(r.width, r.height);
   })), value => Effect.sync(() => value.disconnect()));
