@@ -7,7 +7,8 @@ export function createTransferCamera() {
   return camera;
 }
 export function resizeTransferCamera(camera: THREE.OrthographicCamera, aspect: number) {
-  const height = Math.max(20, 29.5 / aspect);
+  // Keep the waiting vehicles in portrait; trim station/grass surround on desktop.
+  const height = Math.max(18.5, 29.5 / aspect);
   camera.left = -height * aspect / 2; camera.right = height * aspect / 2;
   camera.top = height / 2; camera.bottom = -height / 2;
   camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);

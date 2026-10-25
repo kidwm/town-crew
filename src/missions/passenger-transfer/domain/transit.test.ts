@@ -257,7 +257,7 @@ test('the remaining large vehicle enters after the pair leaves and resumes its c
 });
 test('the compact fixed view keeps whole approaches visible and makes the taxi large enough on phones', () => {
   const shapes = createShapes(), models = { taxi: createTaxi(shapes), school: createBus(shapes, 'school'), coach: createBus(shapes, 'coach'), bus: createBus(shapes, 'bus') };
-  for (const [width, height] of [[390, 620], [390, 844], [743, 549], [980, 720], [1280, 720]]) {
+  for (const [width, height] of [[390, 620], [390, 844], [743, 549], [980, 720], [1280, 800], [844, 390]]) {
     const camera = createTransferCamera(); resizeTransferCamera(camera, width / height);
     for (const layout of [0, 1] as const) for (const vehicle of ['taxi', 'school', 'bus', 'coach'] as const) {
       const model = models[vehicle]; model.root.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(model.root);
