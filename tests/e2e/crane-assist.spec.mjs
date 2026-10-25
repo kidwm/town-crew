@@ -16,9 +16,9 @@ test('crane accepts the assembly base without release and consumes only the curr
   const app = page.locator('#app'), cdp = await page.context().newCDPSession(page);
   const ready = () => expect(app).toHaveAttribute('data-action', 'ready');
   await ready();
-  const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(14.5, 24 / aspect);
-  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
-  camera.position.set(8, 10, 18); camera.lookAt(0, 1.8, 0.5); camera.updateMatrixWorld(true);
+  const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(14, 22 / aspect);
+  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + 1.1, -height / 2 + 1.1, 0.1, 300);
+  camera.position.set(32, 34.6, 70.5); camera.lookAt(0, 1.8, 0.5); camera.updateMatrixWorld(true);
   const project = (x, y, z) => {
     const p = new THREE.Vector3(x, y, z).project(camera);
     return { x: rect.x + (p.x + 1) * rect.width / 2, y: rect.y + (1 - p.y) * rect.height / 2 };

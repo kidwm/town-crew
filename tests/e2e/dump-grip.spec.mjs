@@ -30,9 +30,9 @@ test('both dump trucks accept the front rim, nearby fingers and existing centre 
     await expect(app).toHaveAttribute('data-phase', phase);
     await expect(app).toHaveAttribute('data-action', 'ready');
     const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height;
-    const height = house ? Math.max(14.5, 24 / aspect) : Math.max(10.25, 16 / aspect);
-    const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + (house ? 0 : 1.2), -height / 2 + (house ? 0 : 1.2), 0.1, house ? 100 : 300);
-    camera.position.set(...(house ? [8, 10, 18] : [24, 30.8, 64]));
+    const height = house ? Math.max(14, 22 / aspect) : Math.max(10.25, 16 / aspect);
+    const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + (house ? 1.1 : 1.2), -height / 2 + (house ? 1.1 : 1.2), 0.1, 300);
+    camera.position.set(...(house ? [32, 34.6, 70.5] : [24, 30.8, 64]));
     camera.lookAt(...(house ? [0, 1.8, 0.5] : [0, 0.4, 0])); camera.updateMatrixWorld(true);
     const project = (x, y, z) => {
       const p = new THREE.Vector3(x, y, z).project(camera);

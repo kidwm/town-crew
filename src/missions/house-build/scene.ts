@@ -22,8 +22,9 @@ export const createHouseScene = (host: HTMLElement, makeRenderer = () => new THR
   canvas.setAttribute('aria-label', '蓋房子工地：拖車斗倒砂石、移動出料槽、運送材料和吊裝兩層樓');
   host.append(canvas);
   const scene = yield* acquireScene();
-  const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 100);
-  camera.position.set(8, 10, 18); camera.lookAt(0, 1.8, 0.5);
+  const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 300);
+  // Preserve the view axis while clearing the portrait ground from the near plane.
+  camera.position.set(32, 34.6, 70.5); camera.lookAt(0, 1.8, 0.5);
   scene.add(new THREE.HemisphereLight('#fff9ec', '#97ab91', 2.5));
   const sun = new THREE.DirectionalLight('#fff1d3', 2.7);
   yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
@@ -34,7 +35,7 @@ export const createHouseScene = (host: HTMLElement, makeRenderer = () => new THR
   const shapes = createShapes();
   yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
   const { box, cylinder, material } = shapes;
-  box(site, [70, 0.5, 70], [0, -0.5, 0], '#b7cf9e');
+  box(site, [300, 0.5, 300], [0, -0.5, 0], '#b7cf9e');
   box(site, [17.5, 0.12, 8], [0, -0.15, -0.2], '#e2cea7');
   box(site, [70, 0.09, 3.2], [0, -0.13, 5.1], '#c8b393');
   for (let x = -14; x < 16; x += 2) box(site, [0.85, 0.02, 0.08], [x, -0.075, 6.3], '#f9ebc7');
@@ -102,8 +103,9 @@ export const createHouseScene = (host: HTMLElement, makeRenderer = () => new THR
   }
   const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
-    const aspect = width / height, view = Math.max(14.5, 24 / aspect);
-    camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
+    // Roof lifts and the empty hook set the top edge; delivery sets the width.
+    const aspect = width / height, view = Math.max(14, 22 / aspect);
+    camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2 + 1.1; camera.bottom = -view / 2 + 1.1;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
   })), value => Effect.sync(() => value.disconnect()));
   resize.observe(host);

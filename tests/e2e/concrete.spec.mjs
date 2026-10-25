@@ -11,9 +11,9 @@ test('concrete follows the foundation centres and aligns an off-centre grip', as
   await page.goto('/#house-build');
   const app = page.locator('#app'), cdp = await page.context().newCDPSession(page);
   await expect(app).toHaveAttribute('data-action', 'ready');
-  const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(14.5, 24 / aspect);
-  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 100);
-  camera.position.set(8, 10, 18); camera.lookAt(0, 1.8, 0.5); camera.updateMatrixWorld(true);
+  const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(14, 22 / aspect);
+  const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2 + 1.1, -height / 2 + 1.1, 0.1, 300);
+  camera.position.set(32, 34.6, 70.5); camera.lookAt(0, 1.8, 0.5); camera.updateMatrixWorld(true);
   const project = (point, y) => {
     const v = new THREE.Vector3(point.x * (touch ? -1 : 1), y, point.z).project(camera);
     return { x: rect.x + (v.x + 1) * rect.width / 2, y: rect.y + (1 - v.y) * rect.height / 2 };
