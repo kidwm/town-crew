@@ -22,7 +22,9 @@ export interface PortState {
   desired: number | null; aim: Point | null; moved: boolean;
 }
 export const SHIP_Z = -6.2, ROAD_Z = 8.5, LOAD_HEIGHT = 3.25, FORK_OFFSET = 2.3, LOADING_APPROACH = 1.9;
-export const HAUL_END = -8.5, SHIP_HAUL_END = 7.5;
+// Fractional progress keeps current saves valid on the shorter manual routes.
+export const BOAT_START = -5, TRUCK_START = 5.5;
+export const HAUL_END = -4.6, SHIP_HAUL_END = 5;
 export const CRANE_HOME: Point = { x: -1.3, z: -3.2 }, EMPTY_HOOK_HEIGHT = 4;
 export const CRANE_HOIST_SECONDS = CRANE_ATTACH_SECONDS + 0.55;
 // Includes whole vehicle/boat lengths and the fixed camera's lateral perspective.

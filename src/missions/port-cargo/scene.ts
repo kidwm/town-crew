@@ -1,3 +1,4 @@
+import { BOAT_START, TRUCK_START } from './domain/port.ts';
 import { Effect } from 'effect';
 import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
@@ -19,7 +20,8 @@ export const createPortScene = (host: HTMLElement, makeRenderer = () => new THRE
   const canvas = renderer.domElement; canvas.setAttribute('aria-label', '碼頭搬貨：貨船、吊車、堆高機、平板車合作搬貨'); host.append(canvas);
   const scene = yield* acquireScene();
   const site = new THREE.Group(); scene.add(site);
-  const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 100); camera.position.set(7, 13, 20); camera.lookAt(0, 0.5, -1);
+  // Same viewing axis, with enough depth for the tall portrait ground footprint.
+  const camera = new THREE.OrthographicCamera(-12, 12, 8, -8, 0.1, 300); camera.position.set(28, 50.5, 83); camera.lookAt(0, 0.5, -1);
   scene.add(new THREE.HemisphereLight('#fff8e6', '#97af9b', 2.5));
   const sun = new THREE.DirectionalLight('#fff1d3', 2.7);
   yield* Effect.addFinalizer(() => Effect.sync(() => sun.shadow.dispose()));
@@ -28,8 +30,9 @@ export const createPortScene = (host: HTMLElement, makeRenderer = () => new THRE
   const shapes = createShapes();
   yield* Effect.addFinalizer(() => Effect.sync(() => shapes.disposeMaterials()));
   const { box, cylinder, material } = shapes;
-  box(site, [70, 0.4, 28], [0, -0.25, 10.4], '#d9d0b3');
-  box(site, [70, 0.16, 50], [0, -0.55, -28.6], '#9dc8c6');
+  // Keep the shoreline at z=-3.6; only extend distant water and foreground land.
+  box(site, [300, 0.4, 150], [0, -0.25, 71.4], '#d9d0b3');
+  box(site, [300, 0.16, 150], [0, -0.55, -78.6], '#9dc8c6');
   box(site, [70, 0.72, 0.38], [0, -0.26, -3.55], '#c3b89b');
   box(site, [70, 0.09, 3.6], [0, 0, ROAD_Z], '#a8ab99');
   for (let x = -24; x <= 24; x += 2.5) box(site, [1.1, 0.02, 0.075], [x, 0.058, ROAD_Z], '#f5e9ca');
@@ -82,7 +85,7 @@ export const createPortScene = (host: HTMLElement, makeRenderer = () => new THRE
   const routeDots = Array.from({ length: 45 }, () => { const mesh = new THREE.Mesh(new THREE.CircleGeometry(0.09, 8), material('#f8edc9')); mesh.rotation.x = -Math.PI / 2; site.add(mesh); return mesh; });
   const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const r = host.getBoundingClientRect(); if (!r.width || !r.height) return;
-    const aspect = r.width / r.height, height = Math.max(16, 25 / aspect);
+    const aspect = r.width / r.height, height = Math.max(15, 23 / aspect);
     camera.left = -height * aspect / 2; camera.right = height * aspect / 2; camera.top = height / 2; camera.bottom = -height / 2;
     camera.updateProjectionMatrix(); renderer.setSize(r.width, r.height);
   })), value => Effect.sync(() => value.disconnect()));
@@ -91,8 +94,8 @@ export const createPortScene = (host: HTMLElement, makeRenderer = () => new THRE
     const q = mirror(s.round, p), r = canvas.getBoundingClientRect(); camera.updateMatrixWorld(true);
     const v = new THREE.Vector3(q.x, y, q.z).project(camera); return { x: (v.x + 1) * r.width / 2, y: (1 - v.y) * r.height / 2 };
   }
-  const boatX = (s: PortState) => s.phase === 'ship-transport' ? SHIP_HAUL_END * s.haul : s.phase === 'departure' ? (s.round.direction === 'load' ? SHIP_HAUL_END : 0) + (exitDistance(camera.right) - (s.round.direction === 'load' ? SHIP_HAUL_END : 0)) * smooth(s.elapsed / 3.6) : -8.5 * (1 - s.boat);
-  const truckX = (s: PortState) => s.round.direction === 'load' ? s.phase === 'forklift-exit' ? -exitDistance(camera.right) * smooth(s.elapsed / 3.5) : stageIndex(s) > 3 ? -exitDistance(camera.right) : 11.7 * (1 - s.truck) : s.phase === 'transport' ? HAUL_END * s.haul : s.phase === 'departure' ? HAUL_END - (exitDistance(camera.right) + HAUL_END) * smooth(s.elapsed / 3.6) : stageIndex(s) > 7 ? -exitDistance(camera.right) : 11.7 * (1 - s.truck);
+  const boatX = (s: PortState) => s.phase === 'ship-transport' ? SHIP_HAUL_END * s.haul : s.phase === 'departure' ? (s.round.direction === 'load' ? SHIP_HAUL_END : 0) + (exitDistance(camera.right) - (s.round.direction === 'load' ? SHIP_HAUL_END : 0)) * smooth(s.elapsed / 3.6) : BOAT_START * (1 - s.boat);
+  const truckX = (s: PortState) => s.round.direction === 'load' ? s.phase === 'forklift-exit' ? -exitDistance(camera.right) * smooth(s.elapsed / 3.5) : stageIndex(s) > 3 ? -exitDistance(camera.right) : TRUCK_START * (1 - s.truck) : s.phase === 'transport' ? HAUL_END * s.haul : s.phase === 'departure' ? HAUL_END - (exitDistance(camera.right) + HAUL_END) * smooth(s.elapsed / 3.6) : stageIndex(s) > 7 ? -exitDistance(camera.right) : TRUCK_START * (1 - s.truck);
   function cargoPose(s: PortState, id: Cargo) {
     const index = s.loaded.indexOf(id), outgoing = s.round.direction === 'load';
     if (index >= 0) return outgoing ? { ...DECK[index], x: DECK[index].x + boatX(s), y: 0.62 } : { ...TRUCK_SLOTS[index], x: TRUCK_SLOTS[index].x + truckX(s), y: 1.24 };
@@ -133,8 +136,8 @@ export const createPortScene = (host: HTMLElement, makeRenderer = () => new THRE
       const p = cargoPose(s, id); to = s.craneAttached ? screen(s, craneTarget(s), craneLandingHeight(s) + 0.56) : screen(s, p, p.y + 0.7);
       return { id, from, to, route: [], points: [], via: [], value: s.elapsed / 0.4, label: s.craneAttached ? '拖吊鉤或貨箱到目的地光圈' : '拖吊鉤到任一貨箱，吊車幫你掛起來' };
     }
-    if (s.phase === 'boat') { route = [{ x: -8.5, z: SHIP_Z }, { x: 0, z: SHIP_Z }]; value = s.boat; label = '拖貨船靠岸'; }
-    else if (s.phase === 'truck') { route = [{ x: 9.6, z: ROAD_Z }, { x: -2.1, z: ROAD_Z }]; value = s.truck; label = '拖平板車停到碼頭'; }
+    if (s.phase === 'boat') { route = [{ x: BOAT_START, z: SHIP_Z }, { x: 0, z: SHIP_Z }]; value = s.boat; label = '拖貨船靠岸'; }
+    else if (s.phase === 'truck') { route = [{ x: TRUCK_START - 2.1, z: ROAD_Z }, { x: -2.1, z: ROAD_Z }]; value = s.truck; label = '拖平板車停到碼頭'; }
     else if (s.phase === 'transport') { route = [{ x: -2.1, z: ROAD_Z }, { x: HAUL_END - 2.1, z: ROAD_Z }]; value = s.haul; label = '拖載好的平板車，送貨進城'; }
     else if (s.phase === 'ship-transport') { route = [{ x: 0, z: SHIP_Z }, { x: SHIP_HAUL_END, z: SHIP_Z }]; value = s.haul; label = '拖載好物資的貨船，送往對岸'; }
     else if (s.phase === 'forklift') {
