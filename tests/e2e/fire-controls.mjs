@@ -9,7 +9,7 @@ export async function fireControls(page, touch = false) {
   const cancel = async () => { if (touch) await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] }); else { await page.evaluate(() => window.dispatchEvent(new Event('blur'))); await page.mouse.up(); } };
   const wait = (phase, action = 'ready') => page.locator(`#app[data-phase="${phase}"][data-action="${action}"]`).waitFor();
   async function project(p) {
-    const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(15, 25 / aspect);
+    const rect = await page.locator('canvas').boundingBox(), aspect = rect.width / rect.height, height = Math.max(14, 23 / aspect);
     const camera = new THREE.OrthographicCamera(-height * aspect / 2, height * aspect / 2, height / 2, -height / 2, 0.1, 300);
     camera.position.set(32, 34, 70.5); camera.lookAt(0, 2, 0.5); camera.updateMatrixWorld(true);
     const point = new THREE.Vector3(p.x, p.y, p.z).project(camera);

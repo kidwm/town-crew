@@ -51,7 +51,7 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
         unlock();
         if (state.action !== 'ready' || !scene.hit(event.clientX, event.clientY, state)) return;
         const vertical = isBasket(state) || isSpraying(state), plane = isBasket(state) ? 2.4 : isSpraying(state) ? 1.35 : isDriving(state) ? 1.5 : state.phase === 'hose' ? 0.95 : 0.7;
-        const p = scene.onPlane(event.clientX, event.clientY, vertical, plane); if (!p) return;
+        const p = scene.onPlane(event.clientX, event.clientY, vertical, plane, state); if (!p) return;
         const anchor = isDriving(state) ? { ...p, x: state.truckX } : state.phase === 'hose' ? state.hose : isBasket(state) ? state.basket : state.stretcher;
         update(grab(state));
         if (isSpraying(state)) aim(event.clientX, event.clientY);
@@ -62,7 +62,7 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
         if (state.phase !== held.phase || state.action !== 'dragging') return;
         held.screen = { x: event.clientX, y: event.clientY };
         if (isSpraying(state)) { aim(event.clientX, event.clientY); return; }
-        const p = scene.onPlane(event.clientX, event.clientY, held.vertical, held.plane); if (!p) return;
+        const p = scene.onPlane(event.clientX, event.clientY, held.vertical, held.plane, state); if (!p) return;
         const next = { x: p.x + held.offset.x, y: p.y + held.offset.y, z: p.z + held.offset.z };
         update(isDriving(state) ? drive(state, next.x) : moveHandle(state, next));
         const target = scene.targets(state, held.screen, held.origin).find(t => t.accepted)?.id;

@@ -1,3 +1,4 @@
+import { driveWorldX, driveStateX } from './drive-view.ts';
 import { Effect } from 'effect';
 import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
 import * as THREE from 'three';
@@ -119,7 +120,7 @@ export const createFireScene = (host: HTMLElement, makeRenderer = () => new THRE
   const ray = new THREE.Raycaster();
   const resize = yield* Effect.acquireRelease(Effect.sync(() => new ResizeObserver(() => {
     const { width, height } = host.getBoundingClientRect(); if (!width || !height) return;
-    const aspect = width / height, view = Math.max(15, 25 / aspect);
+    const aspect = width / height, view = Math.max(14, 23 / aspect);
     camera.left = -view * aspect / 2; camera.right = view * aspect / 2; camera.top = view / 2; camera.bottom = -view / 2;
     camera.updateProjectionMatrix(); renderer.setSize(width, height);
   })), value => Effect.sync(() => value.disconnect()));
@@ -163,20 +164,20 @@ export const createFireScene = (host: HTMLElement, makeRenderer = () => new THRE
       if (isSpraying(s)) return waterTarget(x, y, s) !== null;
       setRay(x, y);
       const object = isDriving(s) ? (s.phase === 'dispatch' ? engine.hit : ambulance.hit) : s.phase === 'hose' ? connectorHit : isBasket(s) ? aerial.basketHit : stretcher.hit;
-      const p = screen(isDriving(s) ? { x: s.truckX, y: 1.5, z: s.phase === 'dispatch' ? 2.3 : STREET_Z } : handlePoint(s));
+      const p = screen(isDriving(s) ? { x: driveWorldX(s), y: 1.5, z: s.phase === 'dispatch' ? 2.3 : STREET_Z } : handlePoint(s));
       const finger = local({ x, y });
       return Math.hypot(p.x - finger.x, p.y - finger.y) <= 30 || ray.intersectObject(object).length > 0;
     },
-    onPlane(x: number, y: number, vertical: boolean, value: number) {
+    onPlane(x: number, y: number, vertical: boolean, value: number, driving?: FireState) {
       setRay(x, y); const normal = vertical ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
       const p = ray.ray.intersectPlane(new THREE.Plane(normal, -value), new THREE.Vector3());
-      return p ? { x: p.x, y: p.y, z: p.z } : undefined;
+      return p ? { x: driving && isDriving(driving) ? driveStateX(driving, p.x) : p.x, y: p.y, z: p.z } : undefined;
     },
     dragHint(s: FireState): DragHint | undefined {
       if (s.action !== 'ready' || s.phase === 'complete') return;
       if (isDriving(s)) {
         const z = s.phase === 'dispatch' ? 2.3 : STREET_Z;
-        return { from: screen({ x: s.truckX, y: 1.5, z }), to: screen({ x: s.phase === 'dispatch' ? ENGINE_STOP : STREET_STOP, y: 1.5, z }), direction: 'right', label: '按住車子，拖到停車位' };
+        return { from: screen({ x: driveWorldX(s), y: 1.5, z }), to: screen({ x: s.phase === 'dispatch' ? ENGINE_STOP : STREET_STOP, y: 1.5, z }), direction: 'right', label: '按住車子，拖到停車位' };
       }
       if (isSpraying(s)) {
         const index = s.phase === 'roof-fire' ? 3 : s.fires.findIndex((heat, i) => i < 3 && heat > 0);
@@ -191,7 +192,7 @@ export const createFireScene = (host: HTMLElement, makeRenderer = () => new THRE
       const index = stages.indexOf(s.phase), t = s.elapsed;
       const engineExit = s.phase === 'stowing' ? smooth((t - 0.7) / 1.8) : 0;
       engine.root.visible = index <= 7;
-      engine.root.position.set(s.phase === 'dispatch' ? s.truckX - (s.action === 'entering' ? 6 * (1 - smooth(t / 1.1)) : 0) : ENGINE_STOP - engineExit * 15, 0, 2.3);
+      engine.root.position.set(s.phase === 'dispatch' ? driveWorldX(s) - (s.action === 'entering' ? 6 * (1 - smooth(t / 1.1)) : 0) : ENGINE_STOP - engineExit * 15, 0, 2.3);
       engine.roll(engine.root.position.x); engine.beacon(time, index <= 5);
       aerial.root.visible = index >= 3 && index <= 7;
       const aerialX = s.phase === 'ladder-arrival' ? STREET_STOP - 17 * (1 - smooth(t / 1.4)) : s.phase === 'stowing' ? STREET_STOP + 17 * smooth((t - 1) / 1.8) : STREET_STOP;
@@ -207,7 +208,7 @@ export const createFireScene = (host: HTMLElement, makeRenderer = () => new THRE
       }
       aerial.pose(basket, deployed);
       ambulance.root.visible = index >= 8 && index <= 11;
-      const ambulanceX = s.phase === 'ambulance' ? s.truckX - (s.action === 'entering' ? 6 * (1 - smooth(t / 1.1)) : 0) : STREET_STOP + (s.phase === 'departure' ? 18 * smooth((t - 0.7) / 2.5) : 0);
+      const ambulanceX = s.phase === 'ambulance' ? driveWorldX(s) - (s.action === 'entering' ? 6 * (1 - smooth(t / 1.1)) : 0) : STREET_STOP + (s.phase === 'departure' ? 18 * smooth((t - 0.7) / 2.5) : 0);
       ambulance.root.position.set(ambulanceX, 0, STREET_Z); ambulance.roll(ambulanceX); ambulance.beacon(time, index >= 8 && index <= 11);
       const doorOpen = s.phase === 'ambulance' && s.action === 'working' ? smooth(t / 0.6) : s.phase === 'stretcher' || s.phase === 'boarding' ? 1 : s.phase === 'departure' ? 1 - smooth(t / 0.6) : 0;
       ambulance.open(doorOpen);
