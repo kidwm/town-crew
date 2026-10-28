@@ -304,6 +304,9 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 }
 
 .police-targets { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.police-choices { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.police-choice-ring { fill: #fff4c518; stroke: #fff4c5; stroke-width: 2.5; }
+.police-choice-arrow { fill: none; stroke: #fff4c5; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .police-world .progress { width: 205px; }
 .bike-picker { position: absolute; right: 30px; bottom: 112px; display: flex; gap: 10px; }
 .bike-picker[hidden] { display: none; }
@@ -344,3 +347,15 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
   .sanitation-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
   .sanitation-source { width: 34px; height: 34px; }
 }
+
+/* Checkpoint identity check is an automatic scene cue, never a reading task. */
+.police-check { position: absolute; transform: translate(-50%, -100%); padding: 8px 12px; border-radius: 16px; background: #fff9e9f2; color: #667c77; box-shadow: 0 4px 12px #405c4d18; pointer-events: none; text-align: center; }
+.police-check[hidden] { display: none; }
+.police-check > div { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.police-check svg { width: 36px; height: 40px; }
+.police-check .check-symbol { font-size: 24px; color: #779b75; }
+.police-check .check-label { display: block; font-size: 11px; margin-top: 4px; white-space: nowrap; }
+.police-check[data-matched='true'] { outline: 3px solid #c7b77b; }
+.police-check > div[hidden] { display: none; }
+.police-check .check-vehicle svg { width: 68px; height: 42px; }
+.police-check .clearance-symbol { color: #779b75; font-size: 26px; }

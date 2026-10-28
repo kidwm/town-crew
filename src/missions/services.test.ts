@@ -211,6 +211,7 @@ function scheduledMission(t: TestContext, fixture: typeof snapshotFixtures[numbe
     const control = new Element(); control.value = String(value);
     app.queries.set(`#${name}`, control); app.queries.set(`#house-${name}`, control);
   }
+  if (fixture.id === 'police-patrol') { const control = new Element(); control.value = 'bike1'; app.queries.set('#lead-bike', control); const inspection = new Element(); inspection.value = '0'; app.queries.set('#inspection', inspection); }
   const original = dev ? store.development.saveDevelopment : store.progress.saveProgress;
   const observe = (...args: Parameters<typeof original>) => { order.push('save'); original(...args); };
   if (dev) t.mock.method(store.development, 'saveDevelopment', observe);

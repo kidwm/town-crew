@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>八關 E07／E08 服務與啟動驗證</title>
+<title>九關 E07／E08 服務與啟動驗證</title>
 <style>
   body { margin: 0; font: 13px system-ui; background: #f6f4eb; color: #23453e; }
   #startup-controls { height: 200px; box-sizing: border-box; padding: 10px; overflow: auto; }
@@ -11,8 +11,8 @@
   body #app { position: relative; height: calc(100% - 200px); }
 </style>
 <header id="startup-controls">
-  <strong>E07／E08 八關驗證</strong>
-  <select id="mission" aria-label="任務"><option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option><option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option><option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option></select>
+  <strong>E07／E08 九關驗證</strong>
+  <select id="mission" aria-label="任務"><option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option><option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option><option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option><option value="sanitation">清潔隊</option></select>
   <select id="mode" aria-label="存檔模式"><option value="1">開發存檔</option><option value="0">正式存檔</option></select>
   <select id="fault" aria-label="故障案例"><option value="none">正常啟動</option><option value="scene">場景初始化失敗</option><option value="connect">控制器連接失敗</option><option value="storage">儲存 getter 拒絕</option></select>
   <button id="apply">載入案例</button><button id="frame">下一幀排程失敗</button><button id="pagehide">同步保存並檢查</button>

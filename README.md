@@ -257,34 +257,35 @@ while the boat moves; these decorative animations do not change saved progress.
 
 ## Help the police team
 
-1. A short opening shows a resident's bag being taken to a car. Drag the patrol
-   car around the street corner to secure the southern entrance; both cars pause
-   when the child stops. Four buildings form two alleys and an outer loop.
-2. Choose either police motorcycle first, then drag it toward its destination.
-   One goes around the block to the far end of the alley; the other closes the
-   northern junction.
-   Vehicles follow rounded roads and steer automatically. Both must be in place
-   before officers approach, arrest the person and return the bag. The northern
-   motorcycle then moves into its guard bay.
-3. Drag the patrol car into the opposite alley to clear the walking route, then bring
-   in a distinct blue-grey detective passenger van along the foreground street.
-4. The van parks sideways with its sliding door facing the player; the camera stays
-   fixed throughout the mission. Drag the handle sideways to open it. The officer
-   accompanies the passenger down the cleared central street, around the rear of
-   the van and through the open door; boarding and door closure happen automatically.
-5. Drag the lead motorcycle around the block to the foreground exit, then drive the van
-   out. The remaining motorcycle, patrol car and recovered vehicle leave before
-   the police-station arrival celebration.
+Six short vehicle tasks turn a checkpoint inspection into a coordinated pickup and recovery:
 
-Four coordinated route configurations combine left/right interception with
-left/right van arrival. A fresh round always changes configuration and vehicle
-colour; the suspect uses either the existing car or a civilian passenger van.
-The child chooses motorcycle order. Reload retains the configuration, appearance,
-completed dispatches, partial driving, door position and automatic animation.
-There is no timer or penalty. A held pointer cannot dispatch the next vehicle.
-The original traffic car, officer and street models are shared without changing
-that mission's appearance. Motorcycles and the sliding-door passenger van are new
-procedural models; the van has its own passenger body rather than the truck chassis.
+1. Drag the patrol car into the checkpoint bay. Both motorcycles then ride in from
+   beyond the frame and park before their controls unlock.
+2. Drag either police motorcycle to the exit guard position. The other guards the
+   entrance. A taxi and loaded freight flatbed are inspected and released in sequence;
+   the third vehicle is a small passenger car whose driver matches the wanted record.
+   An officer accompanies the passenger to the waiting area.
+3. The detective van drives in from beyond the frame and stops at its waiting position.
+   Drag it into the foreground pickup bay once the hint appears.
+4. Pull its camera-facing sliding door sideways. The 96 px grab area and minimum
+   72 px gesture remain; a tap does not open the door. Boarding and closure are automatic.
+5. After the chosen motorcycle automatically takes the lead, drag the van toward the exit.
+6. Reverse the flatbed tow truck toward the stopped car. Once aligned, the bed lowers,
+   the winch loads the car, the bed rises and secures it, then the loaded truck leaves.
+   The remaining crews clear the checkpoint and traffic resumes.
+
+The fixed camera and two mirrored layouts remain. New rounds alternate direction and
+normal-vehicle order, and change the wanted car's colour. Children choose the lead
+motorcycle directly. The bottom row groups work into four vehicle cards: patrol car,
+paired motorcycles, detective van and tow truck; the van's three tasks share one card.
+The wanted car always uses the smaller passenger-car model, distinct from the detective van.
+Each task allows release and continuation. Complete version-3 snapshots retain round,
+inspection index, chosen motorcycle, six work fractions and automatic animation time,
+including loading. Versions 1/2 start fresh; badges and sound preferences remain.
+There is no timer or penalty, and a held pointer cannot control the next task.
+Existing tow-truck, taxi and pallet-cargo factories are now shared renderer-only modules;
+their original missions retain re-exported APIs and unchanged models.
+See the [checkpoint design and framing record](docs/police-checkpoint-proposal.md).
 
 ## Help the traffic crew
 
@@ -487,9 +488,11 @@ Traffic-rescue entries use `?dev=1&mission=traffic-rescue&stage=…`:
 Stage reset, reload and HMR retain isolated development saves and the current tow assignment.
 
 Police entries use `?dev=1&mission=police-patrol&stage=…`:
-`intro`, `pursuit`, `bikes`, `arrest`, `clearance`, `van`, `door`, `boarding`,
-`lead`, `transport`, `depart`, and `complete`. Add `layout=0` through `layout=3`
-to inspect a configuration. The panel switches configurations and resets stages;
+`intro`, `setup`, `bikes-arrival`, `guard`, `inspect`, `van-arrival`, `van`, `door`, `boarding`,
+`lead`, `transport`, `tow-arrival`, `tow`, `tow-load`, `depart`, and `complete`.
+Add `layout=0|1`, `traffic=taxi-first|freight-first`, `inspection=0|1|2`, and
+`bike=bike0|bike1` (for stages after selection). The panel switches direction,
+normal-vehicle order, current inspection and lead motorcycle, and resets stages;
 reload and HMR retain independent development progress.
 
 Port entries use `?dev=1&mission=port-cargo&stage=…`:
@@ -542,7 +545,10 @@ rendered interactive frame. It excludes earlier dependency loading and is
 
 ## Code boundaries and future town missions
 
-Start each new mission proposal with the [mission design principles and checklist](docs/mission-design.md).
+For existing mission maintenance and new mission design, follow the [repository guide](AGENTS.md),
+[mission design principles](docs/mission-design.md), and [Effect maintenance checklist](docs/effect-usage.md#維護與新增關卡清單).
+Choose checks from the [Effect verification guide](docs/effect-verification.md#按變更選擇驗證) before implementing the change.
+Start each new mission proposal with the design checklist, including resource ownership, cancellation and save recovery.
 Plan replay variation and child choices alongside the core interaction: define valid configurations,
 which main variation avoids repeating the previous round, and how reload preserves the current round.
 Keep gestures familiar and coordinate routes, targets and hints for every configuration.
@@ -574,8 +580,8 @@ road-repair sequence.
   vehicles, characters, scene, HUD, controller and continuous water audio.
 - `src/missions/traffic-rescue/`: independent collision, policing, two-car towing,
   continuous street cleaning and ambulance transport.
-- `src/missions/police-patrol/`: independent police cooperation, four route configurations,
-  two motorcycle dispatches, sliding-door boarding and escorted transport.
+- `src/missions/police-patrol/`: six checkpoint tasks, three inspected vehicles, two mirrored layouts,
+  direct motorcycle choice, automatic inspection, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
 - `src/missions/sanitation/`: four-vehicle collection, rear/side bin lifts, independent cargo orders, fixed-view pullout/merge routes, random content/dispatch and version-2 recovery.
@@ -592,27 +598,19 @@ road-repair sequence.
 - `src/app/`: illustrated mission selection, separate optional progress storage and sound preference.
 - `src/main.ts`: lazy mission loading, hash navigation, app bootstrap and Effect's scoped ownership of the scene, audio,
   listeners, animation loop, scene switching and HMR cleanup. The previous mission is released before the next one mounts.
-- `src/runtime/mission-lifecycle.ts`: typed startup and audio-close errors for all nine missions,
-  plus interruption-aware failure reporting. All scene and connection resources register cleanup as they are acquired.
-- `src/runtime/scene-lifecycle.ts`: shared scoped ownership of renderers and scene graph resources,
-  including geometry and materials for meshes, lines and points.
-- `src/runtime/frame-loop.ts` and `audio-unlock.ts`: shared E03/E04 handling for all nine missions; frame failures end
-  the mission scope, while gesture-bound audio failures remain optional and cancellation-aware.
-- `src/runtime/storage.ts`: synchronous optional storage and JSON boundaries; shared formal progress/preferences and
-  all nine missions use typed failures, diagnostic deduplication and caller-owned memory fallback.
-- `src/app/development.ts`: copied, per-key development memory snapshots for eight missions; road retains its HMR data facade.
-- `src/runtime/snapshot.ts` and each mission’s `persistence.ts`: E06 Schema validation for complete current-version saves,
-  domain invariants and input cancellation. Older versions or missing required fields start fresh; no legacy migrations remain.
-- Each mission’s `services.ts` and `startup.ts`: E07 injected synchronous persistence and scoped audio Layers for all nine missions; round memory survives navigation and main.ts HMR.
-- `src/app/mission-persistence.ts`: shared load/save/decoder and preference boundary for eight missions, with mission-specific round policies retained.
-- `src/runtime/mission-startup.ts`: E08 startup spans and stage timings for all nine missions, correlated Effect error logs, and normal-cancellation handling.
-- `src/runtime/autosave.ts`: E09 across all nine missions, scoped Schedule workers supervised with their frame loops (800 ms for road/house/fire/traffic; 700 ms for police/port/mountain/transfer/sanitation); hidden pages skip periodic writes, while pagehide/finalizer saves remain synchronous.
-- `src/app/navigation.ts`: global navigation Fibers; the latest request waits for all earlier cleanup, including through superseded requests and HMR.
-- `src/app/pwa.ts`: optional production registration with at most three attempts, 1/2-second backoff for TypeError/NetworkError, and pagehide/HMR cancellation.
-- `tests/manual/effect-runtime.html`, `effect-storage.html`, `effect-startup.html`, `effect-autosave.html` and `effect-pwa.html`: Vite-only fault controls for Codex built-in browser verification.
+- `src/runtime/`: shared scoped scene/audio ownership, typed failures, frame supervision, synchronous storage,
+  snapshot validation, startup diagnostics and scheduled autosave. The [Effect guide](docs/effect-usage.md)
+  defines their contracts and source entry points.
+- Each mission’s `persistence.ts`, `services.ts` and `startup.ts`: current-version recovery, injectable persistence,
+  scoped audio and startup composition. Mission-specific differences belong in the [mission table](docs/effect-usage.md#各任務差異).
+- `src/app/navigation.ts` and `pwa.ts`: navigation cleanup barriers and optional cancellable PWA registration.
+- `tests/manual/effect-*.html`: Vite-only fault controls for Codex built-in browser verification;
+  see the [coverage and procedures](docs/effect-verification.md). All four mission selectors include sanitation and cover the nine missions; dated execution results remain in the history.
 - `tests/e2e/`: repeatable production and development browser checks.
 
-See [architecture](docs/architecture.md), [Effect usage and adoption plan](docs/effect-usage.md), and [project plan](PROJECT_PLAN.md).
+See [architecture](docs/architecture.md) and the [project plan](PROJECT_PLAN.md).
+Effect documentation is split into the [current guide](docs/effect-usage.md),
+[verification guide](docs/effect-verification.md), and [complete adoption history](docs/history/effect-adoption.md).
 
 Effect owns side effects and resource lifetimes. Frame calculations and gameplay
 rules are ordinary TypeScript functions without renderer objects or Effect
@@ -624,28 +622,19 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-The original eight missions have 263 domain tests, plus 82 lifecycle/resource tests covering
-partial initialization across all missions, cleanup failures, typed errors,
-interruption, shared geometry, fire audio shutdown and partial-initialization retry, broken cleanup logging,
-and frame/HUD failures and optional audio unlock in every mission.
-Another 68 storage/persistence tests cover synchronous storage failures, JSON encoding/decoding,
-memory fallback and deletion masking, current-version Schema recovery and rejection of old/missing fields across all eight missions,
-pagehide saves, last-round precedence and throwing injected reporters. Another 74 E07/E08 tests cover isolated service injection,
-audio Layer lifetime, startup failures, parallel-load spans, cancellation and diagnostic sink/clock failures.
-Another 48 E09 tests cover scheduled autosave in all eight missions, real formal/development sessions,
-navigation Fibers and bounded PWA retries (535 tests in total).
-The ninth sanitation mission adds 113 collection/geometry checks and 26 lifecycle,
-persistence, service-injection and autosave regressions, for **674 tests in total**.
-The sanitation browser suite passed both layouts on desktop mouse and portrait-phone
-emulated touch, including cancelled dwell, partial lift/drive/sweep reloads, mid-tip
-recovery, independent loading orders, all four departures, badges and replay.
-Together with the nine-mission PWA checks, 14 production browser cases passed;
-two development cases also passed both lifts, reload/HMR, stage/content/order resets
-and the sweeper’s automatic approach, folding brushes and merge in both layouts.
-The E01–E09 audit was verified in Codex’s built-in browser: fire water-audio retry,
-all eight missions with simultaneous audio-close/logger failure, frozen-frame autosave,
-synchronous pagehide saves, stopped workers after exit, and navigation in the current production build.
-See the [Effect verification record](docs/effect-usage.md) for the exact cases and limits.
+Node tests cover all nine missions' domain rules and Effect integration: partial initialization,
+independent cleanup, typed failures, optional audio, current-version recovery, injected services,
+startup diagnostics and supervised autosave. Shared app/runtime tests cover storage fallback,
+navigation and PWA registration. Use `npm test` for Node checks and `npm run check` for tests,
+type checking and the production build.
+
+Follow the [Effect verification guide](docs/effect-verification.md) for change-specific checks,
+fault controls and current coverage gaps. Interactive checks use Codex's built-in browser;
+checked-in Playwright suites remain available for repeatable automation and CI.
+The [dated history](docs/history/effect-adoption.md) preserves Effect integration results, counts and limits,
+including the original eight-mission audit and the later sanitation work; these are not claims
+that every browser suite was rerun on the current checkout.
+
 The domain tests cover fixed arm lengths,
 reach limits, gesture thresholds, missed/cancelled input, the two distinct roller
 passes, complete missions, restart, and snapshot recovery. Road checks also cover
@@ -661,15 +650,19 @@ Traffic tests cover both car orders, rig assignments and arrival sides, automati
 uncommitted hook choice, version-1/2 rejection, actual-model cone/vehicle clearance and shared passing speed,
 wheel-lift ground contact, nonrepeating colours, one load per trip,
 interrupted cleaning, equipment recovery, stage entry and contradictory snapshots.
-Police rules cover all four configurations and both motorcycle orders, interrupted
-driving and door opening, held-pointer isolation, nonrepeating rounds, valid stage
-entry, snapshot rejection and clearance between the lead motorcycle and parked van, and whole-vehicle footprints
-along all routes against the four buildings.
+Police rules cover both directions, motorcycle choices and normal-vehicle orders,
+all six tasks, inspection-index recovery, partial work and cancelled dwell, held-pointer
+isolation, alternating rounds, version-3 recovery and version-1/2 rejection. Actual-model
+checks cover vehicle/cone clearance, six viewport sizes, lowered ramps, tyre contact,
+loaded-car attachment and departures; four vehicle cards group the six tasks.
 Port rules cover both directions, both layouts and both independent cargo orders, early release, cancelled dwell, suspended cargo and partial driving, automatic reload, snapshot rejection, version-1/2 rejection, empty hook pickup, alternating directions, independent layouts, raised truck pickup, side-view quay pickup, shorter second pickup through the vacant bay, whole-forklift/cargo clearance and whole-vehicle departures across viewport widths.
 Mountain rules cover all four configurations and all six rock orders, fixed arm reach, actual vehicle footprints, partial driving/cleaning, cancelled dwell, automatic clocks, malformed saves and nonrepeating distributions. Browser checks follow all four configurations on mouse and portrait-phone touch, retain carried and truck-loaded rocks across reload, isolate held pointers, reopen the road, award badges and restart. Development checks cover carried rocks across reload/HMR and stage/configuration resets.
 The port browser suite follows both directions and layouts using visible hints on mouse and portrait-phone touch, preserves partial boat/fork work, suspended cargo and loaded boxes across reload, checks held-pointer isolation, completion and replay. Development checks include carried and suspended cargo across HMR/reload, direction switching and stage reset.
-The police browser suite exercises all four configurations on mouse and phone touch,
-including cancellation, reload, boarding, badges, replay and development HMR.
+The police browser suite is maintained for CI: both checkpoint directions on mouse
+and phone touch, direct motorcycle choice, three inspections, the wide door grab area,
+manual recovery, loading reload, badges, replay and development HMR.
+Police gameplay and hint checks are recorded in the [checkpoint design](docs/police-checkpoint-proposal.md);
+Effect integration checks remain in the [verification history](docs/history/effect-adoption.md).
 The access tests check vehicle clearance throughout entrance/departure,
 continuous gate positions at handoff, the roller's complete working range,
 and rejection of development snapshots missing the current gate fields.

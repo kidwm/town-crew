@@ -99,7 +99,8 @@ for (const mission of missions) {
     const signals = [...canvas.signals, ...env.window.signals, ...env.document.signals];
     assert.ok(signals.length > 0);
     assert.ok(signals.every(s => s.aborted));
-    assert.equal(app.querySelector('.world')!.children[0].removed, true);
+    assert.ok(app.querySelector('.world')!.children.length > 0);
+    assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
     assert.equal(env.frames.size, 0);
   });
 
@@ -131,7 +132,8 @@ for (const mission of missions) {
     assert.deepEqual(order, mission.id === 'fire-rescue' ? ['save', 'water', 'listeners', 'audio', 'scene'] : ['save', 'listeners', 'audio', 'scene']);
     assert.equal(env.frames.size, 0);
     assert.ok([...canvas.signals, ...env.document.signals, ...env.window.signals].every(s => s.aborted));
-    assert.equal(app.querySelector('.world')!.children[0].removed, true);
+    assert.ok(app.querySelector('.world')!.children.length > 0);
+    assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
     assert.equal(canvas.removed, true);
     assert.equal(env.resize.disconnected, true);
     assert.deepEqual(calls, ['context-loss']);
@@ -166,7 +168,8 @@ for (const mission of missions) {
       assert.deepEqual(calls, ['audio', 'dispose', 'context-loss']);
       assert.equal(env.frames.size, 0); assert.equal(canvas.removed, true); assert.equal(env.resize.disconnected, true);
       assert.ok([...canvas.signals, ...env.document.signals, ...env.window.signals].every(s => s.aborted));
-      assert.equal(app.querySelector('.world')!.children[0].removed, true);
+      assert.ok(app.querySelector('.world')!.children.length > 0);
+      assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
       if (mission.id === 'fire-rescue') assert.deepEqual(water.mock.calls.at(-1)!.arguments, [false]);
     });
   }
@@ -237,7 +240,8 @@ test('fire water shutdown failure does not prevent listener, hint or audio clean
   assert.ok(exit.cause.reasons.some(r => r._tag === 'Die' && r.defect === original));
   assert.equal(env.frames.size, 0);
   assert.ok(canvas.signals.every(s => s.aborted));
-  assert.equal(app.querySelector('.world')!.children[0].removed, true);
+  assert.ok(app.querySelector('.world')!.children.length > 0);
+  assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
   assert.equal(close.mock.callCount(), 1);
 });
 

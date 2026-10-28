@@ -2,6 +2,8 @@ interface Point { x: number; y: number }
 export interface DragHint {
   from: Point; to: Point; via?: Point[]; direction: 'up' | 'left' | 'right'; label: string;
 }
+/** Includes press, travel, endpoint dwell and fade; callers may switch only after a whole demonstration. */
+export const dragHintCycleLength = (hint: Pick<DragHint, 'via'>) => (hint.via?.length ? 2.5 : 1.25) + 1.15;
 
 /** One gesture demonstration for lifting a bed or driving any vehicle. */
 export function createDragHint(host: HTMLElement) {
@@ -34,7 +36,7 @@ export function createDragHint(host: HTMLElement) {
       arrow.setAttribute('visibility', Math.hypot(to.x - from.x, to.y - from.y) < 1 ? 'hidden' : 'visible');
       arrow.setAttribute('d', `M-12 -9L0 0L-12 9`);
       arrow.setAttribute('transform', `translate(${to.x} ${to.y}) rotate(${angle * 180 / Math.PI})`);
-      const duration = hint.via?.length ? 2.5 : 1.25, cycleLength = duration + 1.15;
+      const duration = hint.via?.length ? 2.5 : 1.25, cycleLength = dragHintCycleLength(hint);
       const cycle = (time - started) % cycleLength;
       const progress = reducedMotion.matches ? 0 : Math.max(0, Math.min(1, (cycle - 0.35) / duration));
       const eased = progress * progress * (3 - 2 * progress);

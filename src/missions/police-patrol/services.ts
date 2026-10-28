@@ -18,7 +18,7 @@ export function createPolicePersistence(
   development: DevelopmentStore = createDevelopmentStore(storage),
 ) {
   let previousRound: Round | undefined;
-  const roundKey = 'town-crew:police:last-round:v1';
+  const roundKey = 'town-crew:police:last-round:v3';
   function rememberRound(round: Round) {
     previousRound = { ...round }; storage.writeJson(roundKey, previousRound);
   }

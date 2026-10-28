@@ -49,14 +49,14 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 通行小客車 | [road-repair/vehicles.ts](../src/missions/road-repair/vehicles.ts) · `createCarVisual` | 修馬路 | 關卡內模型；完工後通行。與交通救援的小客車目前是不同實作。 |
 | 砂石車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createDump` | 蓋房子 | 關卡內模型；使用蓋房子自己的底盤、活動車斗與載料。與修馬路砂石車尚未共用整車。 |
 | 水泥車 | [house-build/vehicles.ts](../src/missions/house-build/vehicles.ts) · `createMixer` | 蓋房子 | 旋轉攪拌筒與螺旋條紋；出料槽及水泥流在該關 `scene.ts`。 |
-| 材料平板車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createFlatbed`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨、清潔隊 | 原六輪材料運送車與三層貨物顯示；碼頭沿用整車與空平板變體，載入兩個棧板貨箱。與交通救援可傾斜拖吊平板車用途及實作不同。 |
+| 材料平板車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createFlatbed`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨、清潔隊、警察隊 | 原六輪材料運送車與三層貨物顯示；碼頭與警察沿用整車與空平板變體，載入兩個棧板貨箱。與交通救援可傾斜拖吊平板車用途及實作不同。 |
 | 吊車 | [construction-models.ts](../src/runtime/construction-models.ts) · `createCrane`；蓋房子保留匯出入口 | 蓋房子、碼頭搬貨、清潔隊 | 原黃色吊車，保留伸縮吊臂、吊索、吊鉤與可收回支撐腳；兩關共用實際吊鉤的投影與直徑 96 px 抓取區，採拖空鉤取貨、拖吊鉤或懸吊物放貨；碼頭用同一吊車卸船／裝船，不新增另一台近似吊車。 |
 | 消防車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createEngine` | 消防救援 | 共用救援底盤，上裝含器材艙、水管捲盤及可瞄準水砲。 |
 | 雲梯車 | [fire-rescue/vehicles.ts](../src/missions/fire-rescue/vehicles.ts) · `createLadder` | 消防救援 | 共用救援底盤；梯架、工作籃、噴嘴、支撐腳與工作籃互動範圍。 |
 | 救護車 | [emergency-models.ts](../src/runtime/emergency-models.ts) · `createAmbulance` | 消防救援、交通救援 | 已共用，詳見上表。 |
-| 事故／通行／家庭小客車 | [car.ts](../src/runtime/car.ts) · `createCar` | 交通救援、警察隊、蓋房子 | 共用可變車色、雙黃燈、損傷與車輪轉動；蓋房子使用 `openingDoors` 選項，增加中空乘坐艙、透明車窗及四片可開合車門，比例 0.82。預設交通／警察外觀保留。尚未與修路小客車整合。 |
+| 事故／通行／家庭小客車 | [car.ts](../src/runtime/car.ts) · `createCar` | 交通救援、警察隊、蓋房子 | 共用可變車色、雙黃燈、損傷與車輪轉動；蓋房子與警察臨檢受檢車使用 `openingDoors` 選項，增加中空乘坐艙、透明車窗及四片可開合車門；蓋房子比例為 0.82。預設交通車／巡邏警車外觀保留。尚未與修路小客車整合。 |
 | 警車 | [car.ts](../src/runtime/car.ts) · `createCar(shapes, true)` | 交通救援、警察隊 | 原交通小客車變體，保留警示燈、藍色車身條紋與徽章。 |
-| 平板拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createTowTruck` | 交通救援 | 共用救援底盤；保留原可傾斜平板、斜板、絞盤與固定帶。左右進場共用同一模型並旋轉朝向；掛鉤、鋼索在場景內，裝載位置與角度見 `domain/towing.ts`。 |
+| 平板拖吊車 | [tow-truck.ts](../src/runtime/tow-truck.ts) · `createTowTruck`；交通保留匯出入口 | 交通救援、警察隊 | 共用救援底盤；保留原可傾斜平板、斜板、絞盤與固定帶。左右進場共用同一模型並旋轉朝向；掛鉤、鋼索在場景內，交通裝載位置與角度見 `domain/towing.ts`；警察以相同原平板幾何推導輪胎接地及裝載姿態。 |
 | 吊掛拖吊車 | [traffic-rescue/vehicles.ts](../src/missions/traffic-rescue/vehicles.ts) · `createWheelLiftTruck`、`createWheelYoke` | 交通救援 | 沿用救援底盤與平板拖吊車配色；新增低器材車體、後吊臂、液壓桿、吊索與托輪架。托起前輪，後輪接地；不是蓋房子吊車的整車複製。 |
 | 道路清掃車 | [sweeper.ts](../src/runtime/sweeper.ts) · `createSweeper`；交通保留重新匯出 | 交通救援、山路搶通、清潔隊 | 共用救援底盤；集塵箱、進氣格柵、兩個旋轉圓刷及底部吸入口。 |
 
@@ -112,18 +112,18 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 物件 | 分類與來源 | 保留或新增內容 |
 | --- | --- | --- |
-| 巡邏警車、犯人小客車 | 沿用／共用：[car.ts](../src/runtime/car.ts) | 原 `traffic-rescue/vehicles.ts` 的 `createCar` 原樣抽出，原關卡保留重新匯出入口。車體、警示燈、徽章、配色與比例不變。 |
-| 警員 | 沿用／共用：[emergency-models.ts](../src/runtime/emergency-models.ts) · `createOfficer` | 原交通關卡的人物與制服換色原樣抽出；兩關呼叫同一函式。 |
-| 樹木、背景房屋、長椅 | 沿用／共用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 原交通場景三種物件抽出，交通場景保留原位置、幾何、材質與比例。警察關卡將房屋排成四個街角；北側房屋深度為 0.8 倍，前景店面深度為 0.65 倍、高度為 0.58 倍，讓巷道與車輛保持可見。其它關卡的同類模型仍各自存在。 |
-| 街道路面與路緣 | 關卡場景：[police-patrol/scene.ts](../src/missions/police-patrol/scene.ts) · `pave` | 外圍道路、中央街道、巷道與警戒灣合併鋪面；各層只有一份不重疊的表面，統一道路底色，避免路口色塊與重疊接縫。 |
-| 警用重型機車 | 新增：[police-patrol/vehicles.ts](../src/missions/police-patrol/vehicles.ts) · `createMotorcycle` | 兩輪、前叉、引擎、整流罩、大風鏡、側箱、警示燈、把手及騎警。沿用車輪與制服人物基礎，新增安全帽與乘坐姿勢。兩台以小面積頭盔色標及介面 1／2 區分。 |
-| 偵防廂型車 | 新增：同檔 · `createDetectiveVan` | 深藍灰乘用廂型車，長車頭、連續側窗、後窗與尾燈、獨立乘坐艙、座椅、可滑動側門與小型警示燈。車身獨立建構，不採卡車駕駛室。 |
-| 一般廂型車 | 既有變體：同檔 · `createDetectiveVan(shapes, false)` | 共用新廂型車車體，取消警徽與警示燈，車身採該局隨機車色。 |
-| 犯人 | 既有變體：同檔 · `createSuspect` | 沿用居民基礎，將另一隻手臂改為可動以表現舉手；人物由開場拿包包的行為辨識。 |
-| 包包 | 新增：同檔 · `createBag` | 簡單袋身與半圓提把，四種柔和配色。 |
-| 警局抵達插圖、車輛圖示、選關卡片 | 新增 SVG：[police-art.ts](../src/app/police-art.ts)、[police-patrol/ui.ts](../src/missions/police-patrol/ui.ts) | 沿用現有手寫 SVG 風格，對應三種勤務車型；警局是完成畫面插圖，未新增獨立 3D 警局。 |
+| 巡邏警車、受檢小客車 | 沿用／共用：[car.ts](../src/runtime/car.ts) | 車體、警示燈、徽章、配色與比例不變；受檢小客車使用既有 `openingDoors` 選項，查驗後從近側下車。交通關卡保留重新匯出入口。 |
+| 警員與受檢者 | 沿用／共用：[emergency-models.ts](../src/runtime/emergency-models.ts) · `createOfficer`、`createPerson` | 兩位警員分別陪同接送與駕駛受檢車離場；受檢者採原居民外觀，通緝身分由查證動畫交代。 |
+| 樹木、背景房屋、長椅 | 沿用／共用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 臨檢改版採兩側遠景房屋、前景樹與小長椅，裁減舊街區景深以保留車輛大小。 |
+| 交通錐、路障 | 沿用／共用：[traffic-cone.ts](../src/runtime/traffic-cone.ts)、[road-barrier.ts](../src/runtime/road-barrier.ts) | 兩個交通錐與後側路障界定臨檢區；清場後自動撤收。 |
+| 街道路面、停靠位與臨檢牌 | 關卡場景：[police-patrol/scene.ts](../src/missions/police-patrol/scene.ts) | 一片連續直路、兩側路緣、停車標線與步行斑馬線；新增低矮手掌圖示臨檢牌，沒有文字辨識要求。 |
+| 警用重型機車 | 沿用：[police-patrol/vehicles.ts](../src/missions/police-patrol/vehicles.ts) · `createMotorcycle` | 兩輪、前叉、引擎、整流罩、大風鏡、側箱、警示燈、把手及騎警。兩台以小面積頭盔色標區分；直接拖車選擇出口警戒／領行角色。 |
+| 偵防廂型車 | 沿用：同檔 · `createDetectiveVan` | 深藍灰乘用廂型車，長車頭、連續側窗、後窗與尾燈、獨立乘坐艙、座椅、可滑動側門與小型警示燈。左右配置均開朝向玩家的側門。 |
+| 一般廂型車 | 保留但本關停用：同檔 · `createDetectiveVan(shapes, false)` | 共用偵防廂型車車體的歷史變體；目前受檢車不使用它，以免輪廓與勤務車混淆。 |
+| 舊追捕人物與包包 | 保留但本關不再使用：同檔 · `createSuspect`、`createBag` | 改版移除拿包包、舉手與歸還失物情節，不作為臨檢目標。 |
+| 警局插圖、車輛／門圖示、查證提示與選關卡片 | SVG：[police-art.ts](../src/app/police-art.ts)、[police-patrol/ui.ts](../src/missions/police-patrol/ui.ts) | 沿用手寫 SVG 風格，新增側門圖示與兩張身分圖像的查證提示；警局仍為完成畫面插圖。 |
 
-第五關目前以車輛包抄為核心，不新增腳印或人物拖曳玩法。
+第五關目前為[六步臨檢與拖吊](police-checkpoint-proposal.md)：計程車、載貨平板車依序放行，第三台固定為小客車；停用偵防車的一般廂型車變體。勤務車列為警車、雙重機、偵防車、平板拖吊車。原拖吊車、計程車與棧板貨物已抽為純渲染共用模型，原關匯出 API、幾何、配色與比例不變。沒有新增人物拖曳或辨識車牌玩法。
 
 ## 第六關模型沿用與新增（2026-10-03）
 
@@ -133,7 +133,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 工程底盤與連桿助手 | 沿用／共用：同檔 · `createConstructionChassis`、`link` | 原蓋房子車體與連桿計算原樣抽出；蓋房子的砂石車、水泥車仍用相同底盤，未整併救援或修路底盤。 |
 | 沿岸小貨船 | 新增：[port-cargo/vehicles.ts](../src/missions/port-cargo/vehicles.ts) · `createCargoBoat`、`cargoBoatOutline` | 低多邊形船殼、尖船艏、開放甲板、側端駕駛艙、窗戶、桅桿與防撞輪胎；四種船色。依運貨方向空船進場或保留可見的兩個甲板貨箱；裝船後載箱離港，不是巨型貨櫃船。靠岸泊位沿用同一船殼輪廓描虛線，到位淡出。 |
 | 堆高機 | 新增：同檔 · `createForklift` | 四輪、配重、護頂架、座椅、方向盤、雙立柱升降架與兩支活動貨叉；駕駛沿用制服人物。移動低位叉運；卸船局裝車，裝船局抬高貨叉卸車，同一模型自動升高／插入／退出／降叉。 |
-| 棧板物資箱 | 新增：同檔 · `createPalletCargo` | 底部木條與可插入的空隙、貨箱、固定條；四面食物蘋果／玩具積木圖樣，轉向後仍可辨識。船上、懸吊、碼頭、叉上與車上共用同一份模型；卸放時轉向對準側面進叉方向。省略貨物身分時建立無圖樣的半透明落點變體，僅提示下一個卸放位置並隨落地淡出。 |
+| 棧板物資箱 | 原碼頭模型現抽為共用：[pallet-cargo.ts](../src/runtime/pallet-cargo.ts) · `createPalletCargo`；碼頭保留匯出入口 | 底部木條與可插入的空隙、貨箱、固定條；四面食物蘋果／玩具積木圖樣，轉向後仍可辨識。船上、懸吊、碼頭、叉上與車上共用同一份模型；卸放時轉向對準側面進叉方向。省略貨物身分時建立無圖樣的半透明落點變體，僅提示下一個卸放位置並隨落地淡出。 |
 | 碼頭人員與駕駛 | 沿用／既有變體：[emergency-models.ts](../src/runtime/emergency-models.ts) · `createPerson` | 原居民／制服人物與揮手手臂，駕駛以同模型調整顯示比例與位置。未新增另一套人物輪廓。 |
 | 背景房屋與樹木 | 沿用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 原交通街景；房屋降低為 0.52 倍高度、0.65 倍寬、0.45 倍深，樹木採 0.65 倍；移到水岸兩端的陸地，讓前方卡車進出、船身與中央工作區保持可見。 |
 | 碼頭平台、水面、繫纜柱、防撞墊與繫纜 | 新增：[port-cargo/scene.ts](../src/missions/port-cargo/scene.ts) | 平台、水道及低矮碼頭配件；泊位繫纜接上船側，離港前撤除。取消常駐卸貨方框，改用棧板貨箱落點變體；船形虛線泊位只在靠岸時顯示。水面短波紋單向漂移並淡入淡出，船移動時帶短尾波，停船後逐漸消退。 |
@@ -165,7 +165,7 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 
 | 物件 | 分類與來源 | 保留或新增內容 |
 | --- | --- | --- |
-| 計程車 | 既有變體：[car.ts](../src/runtime/car.ts)、[passenger-transfer/vehicles.ts](../src/missions/passenger-transfer/vehicles.ts) · `createTaxi` | 沿用原可開門小客車、透明車窗、中空乘坐艙與四輪，採 1.1 倍；新增黃色配色、車頂燈、棋盤腰線及後座。`openDoors` 新增可選側別與只開後門，預設仍開四門，蓋房子保持原樣。 |
+| 計程車 | 既有變體：[car.ts](../src/runtime/car.ts)、[taxi.ts](../src/runtime/taxi.ts) · `createTaxi`；轉運站保留匯出入口 | 沿用原可開門小客車、透明車窗、中空乘坐艙與四輪，採 1.1 倍；新增黃色配色、車頂燈、棋盤腰線及後座。`openDoors` 新增可選側別與只開後門，預設仍開四門，蓋房子保持原樣。 |
 | 公車 | 新增：同檔 · `createBus(shapes, 'bus')` | 平車頭、低乘客艙、連續側窗、寬折門、座椅、中央走道、入口階梯與站牌式車頭／側面識別；四組柔和配色。乘客從實際門洞下車，不採工程卡車底盤。 |
 | 校車 | 新增：同檔 · `createBus(shapes, 'school')` | 黃色長車頭、深色腰線、較短客艙、窄折門、階梯與隨開門展開的停車指示臂。與公車／遊覽車共用客艙建構基礎，但車頭、比例及辨識零件不同。 |
 | 遊覽車 | 新增：同檔 · `createBus(shapes, 'coach')` | 高客艙、大側窗、乘客前門、下方中空行李艙與可掀側艙門，四組配色。行李平放後進入真正的艙內，旅客走階梯上車。 |

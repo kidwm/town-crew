@@ -395,21 +395,37 @@ test('traffic reload during wheel lifting keeps the same car, rig and animation 
 test('police development reload, HMR and stage resets retain configuration and partial motorcycle travel', async ({ page }) => {
   const { gesture } = await import('./gesture.mjs');
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await page.goto('/?dev=1&mission=police-patrol&stage=bikes&layout=3');
+  await page.goto('/?dev=1&mission=police-patrol&stage=guard&layout=1&traffic=freight-first');
   const app = page.locator('#app'), { down, move, cancel, wait } = await fireControls(page);
-  await wait('bikes'); await expect(app).toHaveAttribute('data-layout', '3');
+  await wait('guard'); await expect(app).toHaveAttribute('data-layout', '1');
   const h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
   await down(h.from); await move(h.to);
-  await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).bike0).toBeGreaterThan(0.1);
-  await cancel(); const work = await app.getAttribute('data-work'); await page.reload(); await wait('bikes'); await expect(app).toHaveAttribute('data-work', work);
+  await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).guard).toBeGreaterThan(0.1);
+  const selected = await app.getAttribute('data-selected');
+  await cancel(); const work = await app.getAttribute('data-work'); await page.reload(); await wait('guard'); await expect(app).toHaveAttribute('data-work', work);
+  await expect(app).toHaveAttribute('data-hint-vehicle', selected);
+  await expect(page.locator('.police-choices [data-bike]:visible')).toHaveCount(1);
   const world = await page.locator('.world').elementHandle(), now = new Date();
   await utimes(new URL('../../src/main.ts', import.meta.url), now, now); await page.waitForFunction(element => !element.isConnected, world);
-  await wait('bikes'); await expect(app).toHaveAttribute('data-work', work); await expect(app).toHaveAttribute('data-layout', '3'); await expect(page.locator('canvas')).toHaveCount(1);
-  await page.getByRole('button', { name: '重設目前階段' }).click(); await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).bike0).toBe(0);
-  await page.locator('#stage').selectOption('door'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '3');
-  await page.locator('#layout').selectOption('1'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '1');
-  await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '小小警察隊', exact: true }).click(); await wait('pursuit');
-  await expect(app).toHaveAttribute('data-order', ''); await expect(page.locator('canvas')).toHaveCount(1);
+  await wait('guard'); await expect(app).toHaveAttribute('data-work', work); await expect(app).toHaveAttribute('data-layout', '1'); await expect(page.locator('canvas')).toHaveCount(1);
+  await expect(app).toHaveAttribute('data-hint-vehicle', selected);
+  await expect(page.locator('.police-choices [data-bike]:visible')).toHaveCount(1);
+  await page.getByRole('button', { name: '重設目前階段' }).click(); await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).guard).toBe(0);
+  await expect(app).toHaveAttribute('data-traffic', 'freight-first');
+  await page.locator('#stage').selectOption('tow'); await wait('tow');
+  const tow = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(tow.from); await move({ x: (tow.from.x + tow.to.x) / 2, y: (tow.from.y + tow.to.y) / 2 });
+  await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).recover).toBeGreaterThan(0.01); await cancel();
+  const recovery = await app.getAttribute('data-work'), towWorld = await page.locator('.world').elementHandle();
+  const changed = new Date(); await utimes(new URL('../../src/main.ts', import.meta.url), changed, changed); await page.waitForFunction(element => !element.isConnected, towWorld);
+  await wait('tow'); await expect(app).toHaveAttribute('data-work', recovery);
+  await page.reload(); await wait('tow'); await expect(app).toHaveAttribute('data-work', recovery);
+  await page.locator('#stage').selectOption('inspect'); await page.locator('#inspection').selectOption('1');
+  await expect(app).toHaveAttribute('data-checked', '1'); await expect(app).toHaveAttribute('data-inspection', 'taxi');
+  await page.locator('#stage').selectOption('door'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '1');
+  await page.locator('#layout').selectOption('0'); await wait('door'); await expect(app).toHaveAttribute('data-layout', '0');
+  await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '小小警察隊', exact: true }).click(); await wait('setup');
+  await expect(app).toHaveAttribute('data-selected', ''); await expect(page.locator('canvas')).toHaveCount(1);
   await page.getByRole('button', { name: '回到選關', exact: true }).click(); await page.getByRole('button', { name: '消防隊救火', exact: true }).click();
   await wait('dispatch'); await expect(app).toHaveAttribute('data-mission', 'fire-rescue'); expect(errors).toEqual([]);
 });
@@ -466,4 +482,87 @@ test('sanitation sweeper automatically enters and merges out of the tighter bay 
     await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
   }
   expect(errors).toEqual([]);
+});
+
+for (const [phase, next, inspection] of [['bikes-arrival', 'guard', 0], ['van-arrival', 'van', 0], ['inspect', 'van', 2]]) {
+  test(`police ${phase} retains its clock across HMR and reload before unlocking input`, async ({ page }) => {
+    const query = `?dev=1&mission=police-patrol&stage=${phase}&layout=1&inspection=${inspection}`, key = `town-crew:police:dev:v1:${query}`;
+    await page.clock.install(); await page.clock.pauseAt(Date.now() + 1000);
+    await page.goto(`/${query}`);
+    const app = page.locator('#app');
+    async function mounted() {
+      await expect(page.locator('canvas')).toHaveCount(1); await expect(page.locator('.loading')).toHaveCount(0);
+      await page.clock.runFor(32);
+    }
+    async function snapshot() {
+      await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
+      return page.evaluate(key => JSON.parse(sessionStorage.getItem(key)), key);
+    }
+    await mounted(); await page.clock.runFor(phase === 'inspect' ? 2200 : 650);
+    await expect(app).toHaveAttribute('data-phase', phase); await expect(page.locator('.drag-hint')).toBeHidden();
+    if (phase === 'inspect') await expect(page.locator('.police-check')).toBeHidden();
+    const before = await snapshot(), world = await page.locator('.world').elementHandle(), now = new Date();
+    await utimes(new URL('../../src/main.ts', import.meta.url), now, now);
+    await expect.poll(() => page.evaluate(element => !element.isConnected, world)).toBe(true);
+    await mounted(); const hot = await snapshot();
+    expect(hot.phase).toBe(phase); expect(Math.abs(hot.elapsed - before.elapsed)).toBeLessThan(0.05); expect(hot.work).toEqual(before.work);
+    await page.reload(); await mounted(); const restored = await snapshot();
+    expect(restored.phase).toBe(phase); expect(Math.abs(restored.elapsed - hot.elapsed)).toBeLessThan(0.05);
+    if (phase === 'inspect') {
+      await expect(page.locator('.police-check')).toBeHidden();
+      await page.clock.runFor(900); await expect(page.locator('.police-check')).toBeVisible();
+    }
+    await page.clock.runFor(phase === 'inspect' ? 6000 : 2000); await expect(app).toHaveAttribute('data-phase', next);
+    await expect(app).toHaveAttribute('data-action', 'ready'); await expect(page.locator('.drag-hint')).toBeVisible();
+    expect(JSON.parse(await app.getAttribute('data-work'))).toEqual(before.work);
+  });
+}
+
+for (const layout of [0, 1]) test(`police choice hints alternate complete demonstrations and stop for input or reduced motion, layout ${layout}`, async ({ page }) => {
+  await page.clock.install(); await page.clock.pauseAt(Date.now() + 1000);
+  await page.goto(`/?dev=1&mission=police-patrol&stage=guard&layout=${layout}`);
+  await expect(page.locator('.loading')).toHaveCount(0); await page.clock.runFor(32);
+  const app = page.locator('#app'), first = layout ? 'bike1' : 'bike0', second = layout ? 'bike0' : 'bike1';
+  const shown = page.locator('.police-choices [data-bike]:visible');
+  const goal = await page.locator('.police-target[data-goal="guard"]').elementHandle();
+  await expect(shown).toHaveCount(2); await expect(app).toHaveAttribute('data-hint-vehicle', first);
+  await page.clock.runFor((layout ? 3650 : 2400) - 100);
+  await expect(app).toHaveAttribute('data-hint-vehicle', first);
+  await page.clock.runFor(150); await expect(app).toHaveAttribute('data-hint-vehicle', second);
+  expect(await goal.evaluate(node => node.isConnected)).toBe(true);
+  await page.clock.runFor((layout ? 2400 : 3650) - 150);
+  await expect(app).toHaveAttribute('data-hint-vehicle', second);
+  await page.clock.runFor(150); await expect(app).toHaveAttribute('data-hint-vehicle', first);
+  await expect(app).toHaveAttribute('data-selected', '');
+  await page.clock.runFor(800);
+  const tap = await page.locator(`.police-choices [data-bike="${first}"]`).evaluate(node => {
+    const rect = node.ownerSVGElement.getBoundingClientRect();
+    return { x: rect.x + Number(node.dataset.gripX), y: rect.y + Number(node.dataset.gripY) };
+  });
+  // Both events happen between animation frames; the same bike must still restart at its grip.
+  await page.mouse.click(tap.x, tap.y); await page.clock.runFor(16);
+  const handAtStart = await page.evaluate(() => {
+    const p = document.querySelector('.drag-hint-line').getPointAtLength(0);
+    const transform = document.querySelector('.drag-hint-hand').getAttribute('transform').match(/-?\d*\.?\d+/g).map(Number);
+    return Math.hypot(transform[0] - p.x, transform[1] - p.y);
+  });
+  expect(handAtStart).toBeLessThan(1);
+  const p = await page.locator(`.police-choices [data-bike="${second}"]`).evaluate(node => {
+    const rect = node.ownerSVGElement.getBoundingClientRect();
+    return { x: rect.x + Number(node.dataset.gripX), y: rect.y + Number(node.dataset.gripY) };
+  });
+  await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.clock.runFor(32);
+  await expect(app).toHaveAttribute('data-selected', second); await expect(page.locator('.drag-hint')).toBeHidden();
+  await expect(shown).toHaveCount(1);
+  await page.clock.runFor(6000); await expect(app).toHaveAttribute('data-selected', second);
+  await page.mouse.up(); await page.clock.runFor(32);
+  await expect(app).toHaveAttribute('data-selected', ''); await expect(shown).toHaveCount(2);
+  await expect(app).toHaveAttribute('data-hint-vehicle', second);
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.clock.runFor(32);
+  await expect(page.locator('.drag-hint')).toBeHidden(); await expect(page.locator('.police-choice-arrow:visible')).toHaveCount(2);
+  await page.clock.runFor(12000); await expect(app).toHaveAttribute('data-hint-vehicle', ''); await expect(shown).toHaveCount(2);
+  await page.emulateMedia({ reducedMotion: 'no-preference' }); await page.clock.runFor(32);
+  await expect(page.locator('.drag-hint')).toBeVisible(); await expect(app).toHaveAttribute('data-hint-vehicle', second);
+  await page.getByRole('button', { name: '回到選關', exact: true }).click();
+  await expect(page.locator('.police-choices')).toHaveCount(0); await expect(page.locator('canvas')).toHaveCount(0);
 });

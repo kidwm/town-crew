@@ -1,7 +1,9 @@
 # Web architecture
 
-For the current Effect call sites, lifecycle boundaries, adoption priorities and
-maintenance checklist, see [Effect usage and adoption plan](effect-usage.md).
+For current Effect contracts, source entry points and mission differences, see the
+[architecture and maintenance guide](effect-usage.md). Checks and coverage are maintained in the
+[verification guide](effect-verification.md); dated Effect integration decisions and results remain in the
+[adoption history](history/effect-adoption.md).
 
 Town Crew uses Web as its primary product implementation. Moving the existing
 Vite app to the repository root removes the second build workflow from everyday
@@ -42,10 +44,14 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/terminal.ts — fixed-view berth, shared routes and passenger paths
        │    ├─ scene.ts + vehicles.ts — terminal, three passenger buses and shared-car taxi
        │    └─ session.ts + ui.ts — gestures, luggage dwell, snapshots and stage/configuration entry
-       └─ police-patrol/
-            ├─ domain/police.ts — four street routes, dispatch order, guard positions and escorted transport
-            ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
-            └─ session.ts + ui.ts — pointer routes, configuration persistence, hints and developer entry
+       ├─ police-patrol/
+       │    ├─ domain/police.ts — six checkpoint tasks, three inspections, motorcycle choice and flatbed recovery
+       │    ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
+       │    └─ session.ts + ui.ts — pointer routes, configuration persistence, hints and developer entry
+       └─ sanitation/
+            ├─ domain/sanitation.ts — collection order, two bin lifts, cargo and recovery
+            ├─ scene.ts + vehicles.ts — collection bay, collection vehicles and shared sweeper
+            └─ session.ts + ui.ts — gestures, snapshots, handoffs and developer entry
 ```
 
 Domain modules have no DOM, Three.js, storage, or Effect dependencies. Renderer
@@ -62,98 +68,23 @@ Entering from selection clears the selected mission's snapshot after the previou
 scope has finished saving. Reload and HMR inside a mission restore its current
 snapshot; completion badges and mute preferences survive a fresh round.
 
-All nine missions use the E01/E02 lifecycle pattern established by the road pilot.
-Scene and connection factories return scoped Effects that register renderer,
-observer, input, hint, frame and save finalizers as resources are acquired.
-`runtime/scene-lifecycle.ts` shares renderer and scene graph ownership, including
-Mesh, Line and Points resources. Independent finalizers continue cleanup after
-another release fails. Fire separately stops its continuous water sound and
-attempts AudioContext close even if an audio node fails to release. Its water graph tracks the
-source, filter and gain separately; partial initialization rolls back those nodes so the next
-gesture can rebuild them in the same owned context.
-Typed module, scene, session and audio-close errors retain their original causes;
-the entry point uses `onExit` outside the mission scope to distinguish normal interruption from
-cleanup defects without replacing a newer screen. Node lifecycle tests inject
-initialization and release failures in every mission. A throwing audio-close diagnostic sink
-cannot turn normal interruption into a mission failure or prevent scene cleanup.
+All nine missions use the shared E01–E09 contracts. Scene and connection resources
+register independent finalizers as they are acquired; a failure must not skip other cleanup.
+Each mission composes injectable synchronous persistence and scoped audio in `services.ts` /
+`startup.ts`. Startup tracing ends before the long-running frame loop and autosave worker begin;
+the two workers supervise each other and stop before connection cleanup.
 
-All nine missions also use E03/E04. Each scoped `connect` returns a waiting frame-loop
-Effect that the entry point runs directly after initialization. `runtime/frame-loop.ts`
-bridges rAF callback/scheduling errors into `FrameLoopError`, retaining the original
-cause and stopping the loop before the mission scope releases input, audio and scene.
-Ordinary frame calculations stay synchronous. `runtime/audio-unlock.ts` starts unlock
-inside the user gesture, handles both synchronous throws and Promise rejection, and
-uses the connection's AbortSignal to stop observing work after disposal. Pending gestures
-are coalesced; later gestures may retry, with at most one development warning per connection.
-Interruption cannot cancel the browser's AudioContext.resume itself.
-All branches await this loop directly; the entry point no longer needs a trailing
-`Effect.never`. Fire retains its independent water-stop finalizer after frame shutdown
-and final save. DOM event and ResizeObserver callback exceptions remain outside the
-frame-loop boundary. See the Effect usage document for per-mission fault tests and
-the Vite-only manual fault page used with Codex's built-in browser.
+Persistence accepts complete current-version snapshots, then checks domain invariants and
+cancels stale input. Storage remains optional and synchronous, with caller-owned memory fallback;
+pagehide and final saves do not wait for asynchronous work. Optional gesture audio and PWA
+registration failures do not block gameplay; real startup, frame or autosave failures end the
+mission scope and are reported after cleanup. Normal interruption remains quiet.
 
-All nine missions use `runtime/storage.ts` for fully synchronous storage/JSON operations.
-Browser storage getters and get/set/remove calls run inside `Effect.try`, with typed failures
-recovered before `runSync` returns. Development diagnostics are deduplicated; production stays quiet.
-The boundary also isolates throwing injected reporters, preserving synchronous fallback.
-The shared `app/progress.ts` facade uses this boundary for all formal saves, badges and mute
-preferences while retaining copied memory snapshots and null tombstones after failed deletion.
-Road development saves retain copied memory/HMR snapshots; the other seven use the per-key
-`app/development.ts` memory facade. All seven last-round/colour records (fire has none) prefer
-newer in-memory data over stale storage after a failed write. Keys and synchronous pagehide/
-finalizer saves remain unchanged; E09 changes periodic scheduling for all nine missions as described below. Memory fallback cannot preserve
-unwritten changes across a full page reload; snapshot cloning defects still propagate normally.
-
-For E06, each mission owns a current-version Schema in `persistence.ts`. The seven new adapters
-share `runtime/snapshot.ts`: validate the input, call the pure domain resume function with the original
-keys, then validate/strip the recovered state. Road retains its snapshot envelope and tuning facade.
-Domain invariants and input cancellation remain ordinary TypeScript; legacy migrations have been removed.
-Formal and development saves only resume complete current formats: road 1, house 6, fire 1, traffic 3,
-police 1, port 3, mountain 3, transfer 4 and sanitation 2. Old versions, missing required fields and invalid states
-start fresh with a typed development diagnostic. Badges and mute preferences keep their own keys.
-Mission adapters remain lazy-loaded; measured bundle costs are recorded in the Effect adoption document. `tests/manual/effect-storage.html` isolates test keys and
-provides fault controls for Codex built-in browser validation.
-
-All nine missions resolve their `*Persistence` Context service once in `startup.ts` and pass its
-synchronous facade to the session. `Layer.succeed` uses a module-lived live instance, sharing the app
-progress singleton and existing development cache. Per-mission services own last-round/color memory;
-road also retains hot.data snapshot priority. Factory functions allow isolated stores in tests.
-`createMissionPersistence` shares the eight non-road missions' storage/decoder/preference boundary;
-`createDevelopmentStore` owns copied per-key memory. Gameplay and random-round policy remain in each mission.
-Pagehide still saves synchronously. Each `*Audio` uses `Layer.effect` with scoped acquireRelease;
-`Layer.build` runs after scene acquisition and before connection. Connection cleanup (including fire's
-continuous spray shutdown) precedes asynchronous audio close, which completes before scene release.
-
-Every mission wraps parallel module loading and sequential prepare/scene/audio/connect in a
-`mission.startup` root span. Road/fire have seven stages; the other seven retain their existing combined
-session/audio module and have six. Lazy `startup.ts` composes the session and services. Startup ends
-before the caller awaits the frame loop. Development builds emit one bounded timing/outcome summary
-per startup. After scope cleanup, Effect.logError records a genuine failure with mission, mode,
-startupId and failed stage; normal interruption stays quiet. Runtime/cleanup failures remain separate
-from successful startup. Summary/logger failures and an unavailable or non-finite timing clock
-cannot replace the original exit; unavailable timing is reported as zero duration. Production emits
-no successful-startup summary; no remote exporter or per-frame logging is installed.
-
-E09 uses `runtime/autosave.ts` for all nine missions. After startup completes, `forkScoped` starts
-a worker with `Schedule.spaced(intervalMs)`. Road/house/fire/traffic retain 800 ms intervals;
-police/port/mountain/transfer/sanitation retain 700 ms. The first periodic save waits one interval, and
-subsequent saves wait one interval after the preceding attempt. `Fiber.join` raced with the frame loop propagates an
-`AutosaveError` or frame failure, stops both workers, then permits connection finalizers.
-Hidden pages skip periodic writes; timers may still wake. Visibilitychange/pagehide and final
-saves remain synchronous. Storage failures retain E05's optional memory fallback, while unexpected
-clone failures end the mission. Existing gesture, restart and phase/checkpoint saves also remain
-synchronous. Fire still stops spraying after the final save and before audio/scene disposal.
-No mission retains the periodic rAF save check or its timestamp.
-Browser timer throttling does not cause catch-up writes or promise an exact save deadline.
-
-`app/pwa.ts` runs an optional registration Fiber in secure production contexts. It starts
-after load (or immediately if already complete), retrying TypeError/NetworkError at 1 then 2
-seconds, with at most three total attempts. Other errors stop immediately; terminal failure
-warns once without blocking gameplay. Pagehide/HMR cancels load waits, backoff and result
-observation, but cannot undo an already-issued native registration. BFCache restoration does
-not restart a cancelled job; a new document load does. Workbox cache/update policies are unchanged.
-Effect TestClock validates schedule boundaries; built-in browser controls separately exercise
-actual timers and cancellation. No Effect state or per-frame Effects enter the gameplay domain.
+The [Effect lifecycle and contracts](effect-usage.md#任務生命週期) define acquisition/release order,
+error boundaries, memory ownership, tracing and scheduling. The [mission differences table](effect-usage.md#各任務差異)
+is the source for snapshot versions, intervals and exceptions. Verify changes through the
+[shared test registrations and browser procedures](effect-verification.md), preserving the distinction
+between source integration, Node coverage and actual browser results.
 
 The Effect scope releases input/frame listeners, audio and scene resources on
 HMR. The primary-pointer adapter owns capture and cancellation. The controller
@@ -171,14 +102,21 @@ A continuous 0.4-second dwell commits placement before releasing pointer
 ownership, so a still-held finger cannot control the next load. This dwell is
 transient drag context; cancellation and reload discard it.
 
-The police mission owns a separate pure domain state machine and four validated
-route configurations. Round identity, eight continuous work fractions, motorcycle
-completion order and automatic animation time are versioned in its snapshot.
-Pointer targets select distance along rounded road paths; the domain advances cars
-at a bounded speed, stops on release, and requires endpoint dwell or valid release.
-The transient desired distance and pointer ownership never survive reload.
-The original traffic car and scenery builders are shared renderer-only functions;
-police motorcycle and passenger-van geometry remains in the police mission.
+The police mission owns a pure domain state machine with two mirrored checkpoint
+layouts. Its version-3 snapshot retains six continuous work fractions, round
+identity (including normal-traffic order), the inspection index, selected motorcycle
+and automatic inspection/crew-arrival/boarding/loading/departure time.
+Motorcycles and the detective van enter from outside the frame before input unlocks.
+The added automatic stages reuse version-3 elapsed time; existing stage meanings and
+required fields are unchanged, so current parked/work snapshots do not replay arrival.
+Pointer targets select distance along short paths; cars advance at bounded speed,
+stop on release, and require endpoint dwell or valid release. The transient desired
+distance and pointer ownership never survive reload. Version-1 pursuit and version-2
+five-task saves are rejected. Existing renderer-only vehicle, person, cone, barrier and scenery builders
+are reused; motorcycle and passenger-van geometry remains in the police mission.
+The taxi, flatbed tow truck and pallet cargo now live in renderer-only runtime modules;
+the original transfer/traffic/port modules re-export their unchanged factories.
+Scene/session resources retain the existing Effect ownership and cancellation contracts.
 
 ## Development and release
 
@@ -379,7 +317,11 @@ startup spans. Lazy entry, menu, badges and PWA precaching include the ninth mis
 
 ## Further missions
 
-Read the [mission design principles and proposal checklist](mission-design.md) at the start of design.
+Before designing a new mission or maintaining an existing one, follow [AGENTS.md](../AGENTS.md),
+the [mission design principles and proposal checklist](mission-design.md), and the
+[Effect maintenance/new-mission checklist](effect-usage.md#維護與新增關卡清單).
+Select checks from the [verification guide](effect-verification.md#按變更選擇驗證);
+new missions must also register their adapters, fixtures and test-runner/browser entries.
 Each proposal defines its fixed task dependencies, round variations, child-controlled choices,
 nonrepetition policy and restore behaviour. Keep validated round configuration in domain state;
 rendering, interaction targets, hints and routes derive from that same configuration. Select it
@@ -398,7 +340,7 @@ sync with additions, moves, changes and deliberate variants.
 Add a sibling mission with its own domain, controller, scene and cues. Decide its
 interaction first: firefighting's continuous aiming and two passenger trips do
 not follow the excavator/truck/roller state machine. Selection and optional
-progress storage are shared by the eight missions. Further abstractions
+progress storage are shared by all missions. Further abstractions
 should follow actual reuse. A generic mission engine is not required.
 
 ## History

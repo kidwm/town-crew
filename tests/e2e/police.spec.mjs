@@ -2,71 +2,87 @@ import { test, expect } from '@playwright/test';
 import { gesture } from './gesture.mjs';
 import { fireControls } from './fire-controls.mjs';
 
-for (const sample of [0.05, 0.3, 0.55, 0.8]) {
-  test(`police collaboration layout ${Math.floor(sample * 4)} completes with persistent choices and transport`, async ({ page }, info) => {
-    test.setTimeout(300_000);
+for (const layout of [0, 1]) {
+  test(`police checkpoint layout ${layout} completes six gestures with persistent choice`, async ({ page }, info) => {
     const touch = info.project.name === 'tablet-touch', errors = [];
     if (touch) await page.setViewportSize({ width: 390, height: 844 });
-    await page.addInitScript(n => { Math.random = () => n; }, sample);
+    await page.addInitScript(n => { Math.random = () => n; }, layout ? 0.75 : 0.25);
     page.on('pageerror', e => errors.push(e.message));
-    await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(9);
-    await page.getByRole('button', { name: '小小警察隊', exact: true }).click();
-    const app = page.locator('#app'), { down, move: touchMove, up, cancel, wait } = await fireControls(page, touch);
-    const move = p => touch ? touchMove(p) : page.mouse.move(p.x, p.y);
-    await wait('pursuit'); await expect(app).toHaveAttribute('data-layout', String(Math.floor(sample * 4)));
-    const layout = await app.getAttribute('data-layout'), body = await app.getAttribute('data-body'), color = await app.getAttribute('data-color');
+    await page.goto('/#police-patrol');
+    const app = page.locator('#app'), { down, move, up, cancel, wait } = await fireControls(page, touch);
     const hinted = async () => { const hint = page.locator('.drag-hint'); await expect(hint).toBeVisible(); return gesture(page, await hint.getAttribute('data-direction')); };
-    async function startDrive() { const h = await hinted(); await down(h.from); await move(h.to); }
-    async function go(next) { await startDrive(); await wait(next); await up(); }
-    // Empty space and taps cannot drive. A cancelled partial drive resumes in place.
-    await down({ x: 15, y: 150 }); await up(); await wait('pursuit');
-    const h = await hinted(); await down(h.from); await up(); await wait('pursuit');
+    async function start() { const h = await hinted(); await down(h.from); await move(h.to); }
+    async function go(next) { await start(); await wait(next); await up(); }
+    await expect(page.locator('.mission-steps [data-crew]')).toHaveCount(4);
+    await wait('setup'); await expect(app).toHaveAttribute('data-layout', String(layout));
+    await down({ x: 15, y: 150 }); await up(); await wait('setup');
+    const h = await hinted(); await down(h.from); await up(); await wait('setup');
     await down(h.from); await move({ x: (h.from.x + h.to.x) / 2, y: (h.from.y + h.to.y) / 2 });
-    await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).follow).toBeGreaterThan(0.01);
-    await cancel(); const partial = await app.getAttribute('data-work'); await page.reload(); await wait('pursuit');
-    await expect(app).toHaveAttribute('data-work', partial); await expect(app).toHaveAttribute('data-layout', layout);
-    await go('bikes');
-    const first = touch ? 'bike1' : 'bike0';
-    if (touch) {
-      const secondBike = page.getByRole('button', { name: '先派二號重機' });
-      await secondBike.click(); await expect(secondBike).toHaveAttribute('aria-pressed', 'true');
-    }
-    await startDrive(); await expect(app).toHaveAttribute('data-order', first); await wait('bikes');
-    // Assistance consumes the old pointer; moving it over the other bike cannot dispatch it.
-    const next = await hinted(); await move(next.from); await move(next.to); await page.waitForTimeout(500); await expect(app).toHaveAttribute('data-order', first); await up();
-    await page.reload(); await wait('bikes'); await expect(app).toHaveAttribute('data-order', first);
-    await page.screenshot({ path: info.outputPath('motorcycles.png') });
-    await go('clearance'); await go('van'); await go('door');
-    await page.screenshot({ path: info.outputPath('detective-van.png') });
-    const door = await hinted();
-    // The horizontal parking route exposes a lateral door gesture at the fixed town camera.
-    expect(Math.abs(door.to.x - door.from.x)).toBeGreaterThan(Math.abs(door.to.y - door.from.y) * 2);
-    // A finger beside the small phone-scale van can grab the door; empty space and taps cannot open it.
-    await down({ x: door.from.x, y: door.from.y + 96 }); await expect(app).toHaveAttribute('data-action', 'ready'); await up();
-    const grip = { x: door.from.x, y: door.from.y + 44 };
+    await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).setup).toBeGreaterThan(0.01);
+    await cancel(); const partial = await app.getAttribute('data-work'); await page.reload(); await wait('setup'); await expect(app).toHaveAttribute('data-work', partial);
+    await start(); await wait('bikes-arrival', 'working'); await up();
+    await expect(page.locator('.drag-hint')).toBeHidden();
+    await page.reload(); await wait('guard');
+    await expect(page.locator('.police-choices [data-bike]:visible')).toHaveCount(2);
+    await expect(page.locator('.police-target[data-goal="guard"]')).toHaveCount(1);
+    const initialHint = await app.getAttribute('data-hint-vehicle');
+    await expect(app).toHaveAttribute('data-hint-vehicle', initialHint === 'bike0' ? 'bike1' : 'bike0');
+    // Directly choose a bike, independently of the hand's current demonstration.
+    const selected = touch ? 'bike1' : 'bike0', guard = await hinted();
+    const from = await page.locator(`.police-choices [data-bike="${selected}"]`).evaluate(node => {
+      const rect = node.ownerSVGElement.getBoundingClientRect();
+      return { x: rect.x + Number(node.dataset.gripX), y: rect.y + Number(node.dataset.gripY) };
+    });
+    await down(from); await expect(page.locator('.drag-hint')).toBeHidden();
+    await expect(page.locator('.police-choices [data-bike]:visible')).toHaveCount(1);
+    await move({ x: (from.x + guard.to.x) / 2, y: (from.y + guard.to.y) / 2 });
+    await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).guard).toBeGreaterThan(0.1);
+    await cancel(); await expect(app).toHaveAttribute('data-selected', selected);
+    await page.reload(); await wait('guard'); await expect(app).toHaveAttribute('data-selected', selected);
+    await start(); await expect(app).toHaveAttribute('data-phase', 'inspect');
+    await expect(app).toHaveAttribute('data-checked', '0');
+    await up();
+    await expect(app).toHaveAttribute('data-checked', '1');
+    await expect(app).toHaveAttribute('data-inspection', layout ? 'taxi' : 'freight');
+    await page.reload(); await expect(app).toHaveAttribute('data-checked', '1');
+    await expect(app).toHaveAttribute('data-checked', '2');
+    await expect(app).toHaveAttribute('data-inspection', 'wanted');
+    await page.locator('.police-check[data-matched="true"]').waitFor({ state: 'visible' });
+    const checkBox = await page.locator('.police-check').boundingBox(), captionBox = await page.locator('.house-caption').boundingBox();
+    expect(checkBox.y).toBeGreaterThanOrEqual(captionBox.y + captionBox.height + 8);
+    await wait('van-arrival', 'working'); await expect(page.locator('.drag-hint')).toBeHidden();
+    await page.reload(); await wait('van'); await expect(app).toHaveAttribute('data-action', 'ready'); await up();
+    await go('door');
+    const door = await hinted(), grip = { x: door.from.x, y: door.from.y + 44 };
     await down(grip); await expect(app).toHaveAttribute('data-action', 'dragging'); await up(); await wait('door');
     expect(JSON.parse(await app.getAttribute('data-work')).door).toBe(0);
     await down(grip); await move({ x: grip.x + (door.to.x - door.from.x) * 0.3, y: grip.y + (door.to.y - door.from.y) * 0.3 });
     await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).door).toBeGreaterThan(0.02);
-    await cancel(); await wait('door'); const doorWork = await app.getAttribute('data-work');
-    expect(JSON.parse(doorWork).door).toBeLessThan(1);
-    await page.reload(); await wait('door'); await expect(app).toHaveAttribute('data-work', doorWork);
-    await startDrive(); await expect(app).toHaveAttribute('data-phase', 'boarding'); await up();
-    await page.reload(); await wait('lead'); await expect(app).toHaveAttribute('data-layout', layout); await expect(app).toHaveAttribute('data-body', body); await expect(app).toHaveAttribute('data-color', color);
-    await go('transport'); await go('complete');
-    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100'); await expect(page.locator('.police-arrival')).toBeVisible();
-    await page.screenshot({ path: info.outputPath('complete.png') });
-    await page.reload(); await wait('complete'); await page.locator('.finish-home').click();
-    await expect(page.locator('.police-patrol .completed-mark')).toBeVisible(); await expect(page.locator('canvas')).toHaveCount(0);
-    await page.getByRole('button', { name: '小小警察隊', exact: true }).click(); await wait('pursuit');
-    expect(await app.getAttribute('data-layout')).not.toBe(layout); await expect(app).toHaveAttribute('data-order', '');
-    const freshLayout = await app.getAttribute('data-layout'); await page.getByRole('button', { name: '重新開始警察任務' }).click(); await wait('pursuit');
-    await expect(app).not.toHaveAttribute('data-layout', freshLayout); await wait('pursuit'); await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
+    await cancel(); const doorWork = await app.getAttribute('data-work'); await page.reload(); await wait('door'); await expect(app).toHaveAttribute('data-work', doorWork);
+    await start(); await expect(app).toHaveAttribute('data-phase', 'boarding'); await up();
+    await page.reload(); await wait('transport'); await expect(app).toHaveAttribute('data-selected', selected);
+    await go('tow');
+    await expect(page.locator('[data-crew="van"]')).toHaveAttribute('data-state', 'done');
+    const tow = await hinted(); await down(tow.from); await move({ x: (tow.from.x + tow.to.x) / 2, y: (tow.from.y + tow.to.y) / 2 });
+    await expect.poll(async () => JSON.parse(await app.getAttribute('data-work')).recover).toBeGreaterThan(0.01);
+    await cancel(); const recovery = await app.getAttribute('data-work'); await page.reload(); await wait('tow'); await expect(app).toHaveAttribute('data-work', recovery);
+    await start(); await expect(app).toHaveAttribute('data-phase', 'tow-load'); await up();
+    await expect(page.locator('[data-crew="tow"]')).toHaveAttribute('data-state', 'active');
+    await page.reload(); await wait('complete');
+    await expect(page.locator('[data-crew="tow"]')).toHaveAttribute('data-state', 'done');
+    await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100');
+    await expect(page.locator('.police-arrival')).toBeVisible(); await page.reload(); await wait('complete');
+    await page.locator('.finish-home').click(); await expect(page.locator('.police-patrol .completed-mark')).toBeVisible();
+    await page.getByRole('button', { name: '小小警察隊', exact: true }).click(); await wait('setup');
+    await expect(app).toHaveAttribute('data-layout', String(1 - layout)); await expect(app).toHaveAttribute('data-selected', '');
+    await expect(page.locator('canvas')).toHaveCount(1); expect(errors).toEqual([]);
   });
 }
-
-test('police rejects malformed saves and production ignores development stages', async ({ page }) => {
+test('police rejects old pursuit and five-task snapshots and production ignores development stages', async ({ page }) => {
   await page.goto('/?dev=1&mission=police-patrol&stage=complete'); await expect(page.locator('#app')).toHaveAttribute('data-screen', 'menu');
-  await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:police-patrol', '{"version":1,"phase":"complete","work":{}}'));
-  await page.goto('/#police-patrol'); await expect(page.locator('#app')).toHaveAttribute('data-phase', 'pursuit'); await expect(page.locator('.dev-panel')).toHaveCount(0);
+  await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:police-patrol', JSON.stringify({ version: 1, phase: 'bikes', action: 'ready', round: { layout: 2, color: 3, body: 'van', bag: 1 }, elapsed: 0, active: null, aim: 0, work: { follow: 1, bike0: 0, bike1: 1, yield: 0, arrive: 0, door: 0, lead: 0, escort: 0 }, order: ['bike1'] })));
+  await page.goto('/#police-patrol'); await expect(page.locator('#app')).toHaveAttribute('data-phase', 'setup'); await expect(page.locator('.dev-panel')).toHaveCount(0);
+  await page.goto('/');
+  await page.evaluate(() => sessionStorage.setItem('town-crew:play:v1:police-patrol', JSON.stringify({ version: 2, phase: 'guard', action: 'ready', round: { layout: 0, color: 3, body: 'van' }, elapsed: 0, active: null, aim: 0, work: { setup: 1, guard: 0.5, arrive: 0, door: 0, escort: 0 }, selected: 'bike1' })));
+  await page.goto('/#police-patrol'); await expect(page.locator('#app')).toHaveAttribute('data-phase', 'setup');
 });

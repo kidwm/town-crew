@@ -17,7 +17,7 @@ export function mountMenu(app: HTMLElement, enter: (id: MissionId) => void) {
     { id: 'house-build' as const, title: '蓋房子', detail: '一層、再一層，一起蓋好兩層小樓。', vehicles: '砂石車 · 水泥車 · 平板車 · 吊車', art: houseArt, number: '02' },
     { id: 'fire-rescue' as const, title: '消防隊救火', detail: '澆熄火苗，接居民和小貓平安下來。', vehicles: '消防車 · 雲梯車 · 救護車', art: fireArt, number: '03' },
     { id: 'traffic-rescue' as const, title: '交通救援隊', detail: '拖走小車、刷乾淨，讓道路恢復通車。', vehicles: '警車 · 拖吊車 · 清掃車 · 救護車', art: trafficArt, number: '04' },
-    { id: 'police-patrol' as const, title: '小小警察隊', detail: '分路包抄、合作逮捕，一起完成押送。', vehicles: '巡邏警車 · 警用重機 · 偵防車', art: policeArt, number: '05' },
+    { id: 'police-patrol' as const, title: '小小警察隊', detail: '臨檢查驗、重機警戒，一起完成接送。', vehicles: '巡邏警車 · 警用重機 · 偵防車', art: policeArt, number: '05' },
     { id: 'port-cargo' as const, title: '碼頭搬貨', detail: '卸船進城、裝船出發，合作送物資。', vehicles: '貨船 · 吊車 · 堆高機 · 平板車', art: portArt, number: '06' },
     { id: 'mountain-clearance' as const, title: '山路搶通', detail: '推開土石、裝車運走，一起讓山路通車。', vehicles: '推土機 · 挖土機 · 鏟裝機 · 砂石車 · 清掃車', art: mountainArt, number: '07' },
     { id: 'passenger-transfer' as const, title: '乘客轉運站', detail: '進站、開門，幫大家換車出發。', vehicles: '公車 · 計程車 · 校車 · 遊覽車', art: transferArt, number: '08' },
