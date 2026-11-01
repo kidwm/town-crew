@@ -9,7 +9,7 @@ for (const layout of [0, 1]) test(`sanitation layout ${layout}: four trucks, two
   if (touch) await page.setViewportSize({ width: 390, height: 844 });
   await page.clock.install(); await page.addInitScript(n => { Math.random = () => n; }, layout ? 0.8 : 0.1);
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(9);
+  await page.goto('/'); await expect(page.locator('.mission-card')).toHaveCount(10);
   await page.getByRole('button', { name: '垃圾車清潔隊', exact: true }).click();
   const app = page.locator('#app'), { down, move: touchMove, up, cancel, wait } = await fireControls(page, touch);
   const move = p => touch ? touchMove(p) : page.mouse.move(p.x, p.y);

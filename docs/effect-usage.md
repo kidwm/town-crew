@@ -1,7 +1,7 @@
 # Effect 架構與維護指南
 
-核對日期：2026-10-24；程式基準 `8a74bce`，依賴固定為 **Effect 4.0.5**。
-本文件是九個任務的 Effect 現行規則與差異索引。維護既有關卡或新增關卡前，先讀本文件及 [驗證指南](effect-verification.md)。
+核對日期：2026-10-31；程式基準 `1de25db` 加第十關未提交變更，依賴固定為 **Effect 4.0.5**。
+本文件是十個任務的 Effect 現行規則與差異索引。維護既有關卡或新增關卡前，先讀本文件及 [驗證指南](effect-verification.md)。
 Effect 整合的實作、決策與歷次驗證證據保留於 [採用歷史](history/effect-adoption.md)；歷史結果不代替當前版本驗證。一般玩法與呈現變更記在對應關卡設計文件或專項紀錄。
 
 ## 使用原則
@@ -14,7 +14,7 @@ Effect 整合的實作、決策與歷次驗證證據保留於 [採用歷史](his
 
 ### E01～E09 對照
 
-編號保留供歷史、測試與討論引用；全部已接入九關，PWA 與導航為全站共用。
+編號保留供歷史、測試與討論引用；全部已接入十關，PWA 與導航為全站共用。
 
 | ID | 現行責任 | 本文件入口 |
 | --- | --- | --- |
@@ -99,8 +99,8 @@ HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise�
 - `StorageUnavailable` 讀取回傳 null，寫入／刪除不阻止遊戲；`SnapshotEncodeError` 不覆寫舊磁碟資料；`SnapshotDecodeError` 標記 json／schema／invariant／resume，無有效快照則開新局。
 - 預設 storage 診斷在開發建置依錯誤類別、key 與操作／階段去重，正式建置安靜；直接注入 reporter 拋錯也不破壞 fallback。
 - 正式進度先複製到記憶體，再嘗試持久寫入；讀取記憶體優先。清除用 null tombstone 遮蔽刪除失敗留下的舊檔。
-- 修路以外八關使用共用開發記憶體 facade；修路優先順序為同 key 的 HMR → 記憶體 → storage。不要把不同生命週期的快照混成單一暫存。
-- 除消防外八關保存上一回合／配色摘要，獨立於進度；新記憶體不可被寫入失敗後的舊磁碟摘要覆蓋。
+- 修路以外九關使用共用開發記憶體 facade；修路優先順序為同 key 的 HMR → 記憶體 → storage。不要把不同生命週期的快照混成單一暫存。
+- 除消防外九關保存上一回合／配色摘要，獨立於進度；新記憶體不可被寫入失敗後的舊磁碟摘要覆蓋。
 - Schema 位於 persistence adapter，domain 檢查遊戲不變量並解除失效手指／未提交停留，保留部分工作與已載貨物。
 - 共用 decoder 依序「目前 Schema → domain resume 原始輸入 → 目前 Schema」；先把原始輸入交給 domain，避免剝除未知鍵後掩蓋精確鍵集合錯誤。修路保留快照 envelope 與調校驗證。
 - `structuredClone` 等非預期程式缺陷仍拋錯；不得混成 StorageUnavailable。pagehide、隱藏事件與最後存檔必須保持同步。
@@ -135,9 +135,9 @@ HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise�
 
 ## 各任務差異
 
-下表依九關的 persistence、session、services 與 main 的載入分支核對。關卡名稱連到 persistence，組裝入口連到 startup；同目錄的 scene／session／services 負責各自邊界。
+下表依十關的 persistence、session、services 與 main 的載入分支核對。關卡名稱連到 persistence，組裝入口連到 startup；同目錄的 scene／session／services 負責各自邊界。
 共同規則只在上文定義，新增任務時補表列，不複製整套契約。
-九關皆已有 Node 整合與四個手動故障頁入口；各入口用途與實際執行範圍由驗證指南及歷史分別維護。
+十關皆已有 Node 整合與四個手動故障頁入口；各入口用途與實際執行範圍由驗證指南及歷史分別維護。
 
 | 任務／快照 Schema | version | 定期存檔 | 啟動階段 | 開發前綴 | 組裝入口與必要差異 |
 | --- | --- | --- | --- | --- | --- |
@@ -150,6 +150,7 @@ HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise�
 | [山路](../src/missions/mountain-clearance/persistence.ts) | 3 | 700 ms | 6 | mountain | [startup](../src/missions/mountain-clearance/startup.ts)；workOrder、loaderDocked、部分鏟料與抬升。 |
 | [轉運站](../src/missions/passenger-transfer/persistence.ts) | 4 | 700 ms | 6 | transfer | [startup](../src/missions/passenger-transfer/startup.ts)；同行車、部分開門／行駛、行李及自動時鐘。 |
 | [清潔隊](../src/missions/sanitation/persistence.ts) | 2 | 700 ms | 6 | sanitation | [startup](../src/missions/sanitation/startup.ts)；接棒次序／回收組合、兩種升桶、空桶／貨物與單向清掃；上一回合 key v2。 |
+| [列車轉乘](../src/missions/rail-transfer/persistence.ts) | 1 | 700 ms | 6 | rail | [startup](../src/missions/rail-transfer/startup.ts)；四車任選兩班先到共六組、兩組獨立順序；部分行駛／滑門與終點續接，取消保留工作且不提交；原 city／outbound 完整 v1 仍有效，上一回合 key v1。 |
 
 ## 維護與新增關卡清單
 

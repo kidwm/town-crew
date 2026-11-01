@@ -198,3 +198,16 @@ Rust／Bevy 歷史版本不作為現行模型來源。模型由 Three.js 程式�
 | 選關與四車圖示 | 新增 SVG：[sanitation-art.ts](../src/app/sanitation-art.ts) | 選關以升桶垃圾車為主；垃圾／回收／廚餘圖示新增，清掃車圖示直接沿用原交通關卡。 |
 
 每局四車、兩袋、兩次不同方向的升桶、四種回收物中的兩件及一次清掃；回收／廚餘出場次序隨機，多站巡迴與處理場卸貨暫緩。
+
+
+## 第十關模型沿用與新增（2026-10-31）
+
+| 物件 | 分類與來源 | 保留或新增內容 |
+| --- | --- | --- |
+| 六位乘客、站務員 | 沿用：[resident.ts](../src/runtime/resident.ts)、[emergency-models.ts](../src/runtime/emergency-models.ts) | 原人物輪廓、可動腿／手臂，成人及孩子比例；孩子背包沿用轉運站形體，不新增另一套人物。 |
+| 房屋、樹木、長椅 | 沿用：[town-scenery.ts](../src/runtime/town-scenery.ts) | 原模型縮放使用，站房降低、樹木與長椅退至兩端，讓出列車與轉乘路徑。 |
+| 高鐵、區間車、捷運、低地板輕軌 | 新增：[rail-transfer/vehicles.ts](../src/missions/rail-transfer/vehicles.ts) · `createTrain` | 2026-11-01 改為八節高鐵、六節區間車、六節捷運及雙節輕軌；各車身／首節門位置共用純 `domain/formation.ts`。高鐵為 2.35 長、同時收窄降低的流線鼻端；區間車較高銀色方頭、黃色端側面與窄門；捷運深色包覆前窗、每節雙寬門及雙冷氣箱；輕軌低入口、大窗與鉸接／集電弓。鋼輪轉向架位於客艙底部，長車體向畫面外延伸。四種配色，車輪隨位移轉動，換端時切換頭尾燈。 |
+| 軌道、止衝擋、月台、緩坡與中央大廳 | 新增場景：[rail-transfer/scene.ts](../src/missions/rail-transfer/scene.ts) | 四條獨立軌道、枕木、實體止衝擋、近側月台及連通步道；2026-11-01 月台向兩側延伸至畫外，首節與上下車位置保留可見。左右配置由純 `domain/station.ts` 共用給模型、人物、抓取與提示。 |
+| 選關及四車圖示 | 新增手寫 SVG：[rail-art.ts](../src/app/rail-art.ts) | 沿用柔和配色，輪廓對應四種軌道車，沒有新增外部圖像資產。 |
+
+現行第十關以本節補充原九關盤點；不改寫上方歷史盤點範圍。完整流程與首版限制見[列車轉乘](rail-transfer.md)。

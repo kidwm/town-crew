@@ -359,3 +359,31 @@ input[type='range'] { width: 100%; display: block; margin: 14px 0 0; accent-colo
 .police-check > div[hidden] { display: none; }
 .police-check .check-vehicle svg { width: 68px; height: 42px; }
 .police-check .clearance-symbol { color: #779b75; font-size: 26px; }
+
+/* Rail-transfer uses the shared town HUD and one fixed camera for all four platforms. */
+.rail-targets { position: absolute; inset: 0; pointer-events: none; }
+.rail-source, .rail-goal { position: absolute; transform: translate(-50%, -50%); width: 38px; height: 38px; border: 2px solid #fff5cf; border-radius: 50%; background: #fff1c420; box-shadow: 0 0 0 3px #71857230; }
+.rail-goal { border-style: dashed; }
+.rail-goal > span, .rail-choice-ring > span { position: absolute; left: 50%; transform: translateX(-50%); padding: 3px 9px; border-radius: 12px; background: #fff7dfee; white-space: nowrap; color: #536e60; font-size: 11px; }
+.rail-goal > span { top: calc(100% + 6px); }
+.rail-choice-ring { position: absolute; transform: translate(-50%, -50%); border: 2px solid #fff2bc; border-radius: 35%; background: #fff3ce0c; box-shadow: 0 0 0 4px #fff3c530; }
+.rail-choice-ring > span { bottom: calc(100% + 6px); }
+.rail-source[hidden], .rail-goal[hidden], .rail-choice-ring[hidden], .rail-finish[hidden] { display: none; }
+.rail-world .progress { width: 205px; }
+.rail-world .badge-icon { display: flex; width: 72px; }
+.rail-world .badge-icon svg { min-width: 0; width: 100%; }
+.rail-world .drag-hint { filter: drop-shadow(0 2px 2px #52684e80); }
+.rail-finish { position: absolute; left: 50%; top: 20%; transform: translateX(-50%); display: grid; justify-items: center; gap: 10px; color: #5b8067; white-space: nowrap; }
+.rail-finish > span { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: #fff8df; font-size: 38px; }
+@media (max-width: 760px) {
+  .rail-world .mission-badge { bottom: 75px; left: 14px; padding: 9px 12px; max-width: calc(100% - 28px); }
+  .rail-world .mission-badge strong { font-size: 12px; }
+  .rail-world .mission-steps { left: 16px; right: auto; bottom: 22px; }
+  .rail-world .progress { right: 16px; bottom: 34px; width: clamp(64px, calc(100vw - 280px), 110px); }
+  .rail-world .drag-hint-hand > * { transform: scale(.7); }
+  .rail-world .finish-actions { gap: 8px; padding: 10px; }
+  .rail-world .finish-actions button { min-width: 112px; padding: 10px 12px; font-size: 14px; }
+  .rail-choice-ring > span { padding: 2px 7px; font-size: 10px; }
+  .rail-source, .rail-goal { width: 30px; height: 30px; }
+  .rail-finish { font-size: 14px; }
+}

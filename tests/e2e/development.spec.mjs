@@ -566,3 +566,20 @@ for (const layout of [0, 1]) test(`police choice hints alternate complete demons
   await page.getByRole('button', { name: '回到選關', exact: true }).click();
   await expect(page.locator('.police-choices')).toHaveCount(0); await expect(page.locator('canvas')).toHaveCount(0);
 });
+
+
+test('rail development retains partial doors across reload/HMR and resets either flow and layout', async ({ page }) => {
+  const { gesture } = await import('./gesture.mjs');
+  await page.goto('/?dev=1&mission=rail-transfer&stage=door&direction=outbound&layout=1&visit=2');
+  const app = page.locator('#app'), { down, move, cancel, wait } = await fireControls(page);
+  await wait('door'); const h = await gesture(page, await page.locator('.drag-hint').getAttribute('data-direction'));
+  await down(h.from); await move({ x: h.from.x + (h.to.x - h.from.x) * 0.45, y: h.from.y }); await cancel();
+  const partial = await app.getAttribute('data-door'); expect(Number(partial)).toBeGreaterThan(0.2);
+  await page.reload(); await wait('door'); await expect(app).toHaveAttribute('data-door', partial);
+  const world = await page.locator('.world').elementHandle(); await utimes(new URL('../../src/main.ts', import.meta.url), new Date(), new Date());
+  await page.waitForFunction(element => !element.isConnected, world); await wait('door'); await expect(app).toHaveAttribute('data-door', partial); await expect(page.locator('canvas')).toHaveCount(1);
+  await page.locator('#direction').selectOption('city'); await page.locator('#layout').selectOption('0'); await wait('door');
+  await expect(app).toHaveAttribute('data-direction', 'city'); await expect(app).toHaveAttribute('data-layout', '0');
+  await page.locator('#stage').selectOption('entrance'); await wait('entrance'); await page.reload(); await wait('choose');
+  await expect(page.locator('.rail-choice-ring:not([hidden])')).toHaveCount(2);
+});

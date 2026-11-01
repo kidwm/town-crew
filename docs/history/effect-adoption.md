@@ -538,3 +538,35 @@ E01～E09 及 scene／connection 資源所有權無變更；沒有新增背景 t
 依使用者要求，於[臨檢設計](../police-checkpoint-proposal.md#重機二選一提示提案未實作)記錄「兩台同時標示可選＋單一小手輪流完整示範」建議，包含替代方案取捨、抓取停止輪播、零進度取消／部分進度續玩、減少動態模式、四邊取景及 Effect／驗證計畫；[設計原則](../mission-design.md#多選一的可選提示與手勢示範)新增通用要求及提案清單項目。
 
 本次只改文件，提示尚未實作；E01～E09、Schema、快照與模型均無變更。本次新增／修改段落的相對連結、章節錨點與空白格式檢查通過，核對本回合開始前的 `src/`／`tests/` 內容雜湊未變，歷史僅末尾追加。未執行 Node／build／內建瀏覽器／Playwright 或幼兒試玩；既有執行數字不作為本提示方案已驗收證據。沒有 commit、push 或部署。
+
+### 2026-10-31 第十關列車轉乘接入 E01～E09
+
+基準 `1de25db` 加本次列車轉乘與共用入口未提交變更。新增獨立 domain／scene／session／persistence／services／startup，`rail-transfer` 靜態 lazy 分支、選關與 SVG，沿用已存在的資源 scope、同步 storage、Context／Layer、六階段 startup 與受監督 700 ms autosave，沒有新契約例外或背景服務。四種列車、兩個轉乘方向、兩個獨立接車順序與固定四月台的設計、模型來源、四邊取捨見[關卡設計](../rail-transfer.md)。
+
+快照 version 1：完整 round、已離站順序、當前列車、部分行駛／滑門、自動接手與時鐘；恢復解除 pointer／未提交停留，保留合法部分工作及已提交自動行駛。Schema、domain 不變量與 fixture 同步登記；舊格式、缺欄位或矛盾狀態開新局，不遷移。正式／開發及上一局 key 獨立；輸入、提示、同步最後保存由 connection 持有，audio 與 scene 屬呼叫端任務 scope，沿用獨立 finalizer 與清理順序。
+
+執行結果：
+
+- `npm run check`：**744 tests，744 pass，0 fail**，TypeScript 與正式 build 通過；新關 22 個 domain／投影案例包括兩方向 × 兩配置 × 兩組獨立順序的 16 條完整流程。全十關共用 Node adapters、fixtures 與實際 runner 均已接入。共用 Three.js chunk 大於 500 kB 的既有類型提醒仍存在；PWA 產出 65 precache entries、1202.56 KiB。
+- 四個手動故障頁皆可選新關。內建瀏覽器 Vite `127.0.0.1:5174`，1280×720 與 390×844：runtime 的同步音效失敗後重試成功、close＋logger 失敗後仍回到選關（context 1／closed 1／canvas 0／Mission failed 0／unhandled 0）；rAF 故障後一次任務失敗、零 canvas、零未處理錯誤。
+- storage：正式／開發有效 `door=0.4` 與 version 1，pagehide 同步寫入嘗試各一次；兩種 mode 的 version 0 皆安全開新局。正式 set 拒絕仍保留部分門，開發 getter 拒絕仍啟動，error 0。首次正常正式案例在 connection 尚未完成時過早按 pagehide，沒有當作成功；等待首幀狀態就緒後重測確認一次同步寫入。
+- startup：正式模式六階段 success，開發 scene 故障及正式 connect 故障各一次 failure；失敗後零 canvas、零未處理錯誤，沒有把正式存檔模式當成正式 build。
+- autosave：正式／開發凍結 rAF，各 2.6 秒觀察為四次寫入／零動畫；hidden 樣本為零週期寫入，visibilitychange 與 pagehide 各同步一次。正式 clone 失敗與開發正常運行中的 frame 失敗各只回報一次 Mission failed，canvas 0／pending frame 0／unhandled 0。凍結時注入 frame 失敗的首次嘗試使內建瀏覽器觀察腳本出錯，未列為通過；另以乾淨 run、正常動畫重測 frame 邊界。
+- 實際遊玩完成 `outbound/layout=0`，輕軌 → 捷運 → 高鐵 → 區間車，全程整車離場、六人轉乘、徽章及反向重玩。部分門 `0.44444444444444453` 經 reload／HMR 保留，單一 canvas；另檢查 `city/layout=1` 的手機開發配置與下車路徑，未稱該局完整通關。
+- 正式 preview `127.0.0.1:53110` 載入 `/assets/index-CWKmbEtB.js`，與 dist 相符。原 `127.0.0.1:4173` 為舊 service worker 的九關畫面，未當成新版本結果；使用乾淨本機來源且未刪除舊來源資料。新正式輸出檢查選車、靠站、滑門與重載。
+- CI 的 `rail.spec.mjs`、development spec、減少動態案例、PWA 十關清單與 `testMatch` 已維護，相關 `node --check` 通過。本機依專案規則**沒有執行 Playwright**。
+
+限制：未執行全部四配置的瀏覽器完整通關、PWA 離線／更新、實體手機觸控、可聽音訊、長時間裝置效能或幼兒試玩；手機尺寸與滑鼠操作不代替硬體觸控。十關 Node 回歸不代表其他九關已重新逐關手動通關。未 commit、push 或部署。
+
+### 2026-11-01 列車轉乘的六組目前版快照與終點續接
+
+基準仍為 `1de25db` 加第十關及本次未提交內容。`round.direction` 的目前版 enum 從兩種擴為六種先到列車組合，原 `city`／`outbound` 意義、完整欄位及 version 1 不變；Schema、domain 驗證、上一局記憶與 fixtures 同步。只接受完整目前版本，沒有增加舊版遷移。新局不重複上一組，左右配置獨立；兩組的先後順序仍由幼兒選。
+
+短行程中斷後依剩餘距離降低續拖門檻；行駛或車門已到終點的完整 v1 快照，保留原步驟，下一個新手勢正常放手即可接續。取消及 resume 不自行提交，起點點按仍不開車。domain／手勢維持普通 TypeScript，connection 仍擁有 pointer 與保存；E01～E09 的 scope、資源所有權、錯誤傳播、同步最後存檔、700 ms autosave 與清理順序沒有改動。
+
+- `npm run check`：**785 tests，785 pass，0 fail**，TypeScript／正式 build 通過；列車 63 個 domain／手勢／模型／投影案例含六組 × 兩配置 × 兩組獨立順序的 48 條完整流程。共用 Schema adapter 收錄全六組／全階段，保留原兩種目前版快照；CI 六組及中斷案例已維護並通過語法檢查，本機沒有執行 Playwright。
+- 內建瀏覽器 390×844 的隔離正式存檔：輕軌剩 25%（6.66 px）重載後續拖完成，剩 1% 成功接續，已到終點的新手勢放手可完成，無 warning／error。原使用者分頁實測 `exit/ready/travel=1/selected=tram/order=high-speed,regional`；同來源保留存檔載入修正後，輕軌離站、接續到捷運，順序為 `high-speed,regional,tram`、canvas 一個、無 warning／error。
+- 正式網路預覽 `/rail-transfer-preview#rail-transfer` 的 `/assets/index-Dki3liFp.js` 與 dist 相符。此路徑避免本機舊 worker 的根頁快取；沒有刪除 storage／worker 或更改正式 PWA 策略。建置保留共用 Three.js chunk 大於 500 kB 的既有類型提醒。
+- Vite 1280×720 實際完成 `hsr-tram/layout=1` 的高鐵 → 輕軌 → 區間車 → 捷運，100% 完成、canvas 一個、無 warning／error。其餘組合沒有逐組瀏覽器通關。
+
+詳細玩法、四邊取景、混合組合的瀏覽器範圍及限制見[本次紀錄](../rail-transfer.md#2026-11-01-出發中斷修復與六組入場)。未重跑四個 Effect 手動故障入口、PWA 離線／更新生命週期、全部組合瀏覽器通關、實機觸控或可聽音訊；前次故障驗證仍是前次結果，沒有改寫既有歷史數字。未 commit、push 或部署。

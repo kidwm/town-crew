@@ -1,7 +1,7 @@
 # Effect 驗證指南
 
-核對日期：2026-10-24；程式基準 `8a74bce`，手動入口另含本次清潔隊補齊變更。本文件維護驗證方法、測試入口與覆蓋範圍，**不是本次執行結果**。
-現行契約與九關差異見 [架構與維護指南](effect-usage.md)。Effect 整合與契約相關的執行結果、版本、數據及限制追加到 [採用歷史](history/effect-adoption.md)；一般玩法、動畫與視覺的驗證摘要放在對應關卡設計文件或專項紀錄。
+核對日期：2026-10-31；程式基準 `1de25db` 加第十關與測試入口未提交變更。本文件維護驗證方法、測試入口與覆蓋範圍，**不是本次執行結果**。
+現行契約與十關差異見 [架構與維護指南](effect-usage.md)。Effect 整合與契約相關的執行結果、版本、數據及限制追加到 [採用歷史](history/effect-adoption.md)；一般玩法、動畫與視覺的驗證摘要放在對應關卡設計文件或專項紀錄。
 維護既有關卡及新增關卡都依本指南選擇檢查，不因沿用共用 helper 就省略整合驗證。
 
 ## 按變更選擇驗證
@@ -28,14 +28,14 @@
 | --- | --- |
 | [共用 lifecycle](../src/missions/lifecycle.test.ts)／[修路 lifecycle](../src/missions/road-repair/lifecycle.test.ts) | 部分 scene／connection 初始化、清理順序與失敗、frame／HUD 故障及可選音效。 |
 | [共用 persistence](../src/missions/persistence.test.ts)／[修路 persistence](../src/missions/road-repair/persistence.test.ts) | 目前 Schema、不變量、部分進度、正式／開發保存、上一回合與同步離頁。 |
-| [共用 services](../src/missions/services.test.ts)／[修路 services](../src/missions/road-repair/services.test.ts) | 替換 persistence／audio、scope 所有權、啟動故障與重訪；共用檔也含其他八關的正式／開發 autosave。 |
+| [共用 services](../src/missions/services.test.ts)／[修路 services](../src/missions/road-repair/services.test.ts) | 替換 persistence／audio、scope 所有權、啟動故障與重訪；共用檔也含其他九關的正式／開發 autosave。 |
 | [修路 autosave](../src/missions/road-repair/autosave.test.ts) | 修路正式／開發 session 的獨立排程、hidden、取消及 worker／frame 失敗。 |
-| [快照 fixtures](../tests/helpers/snapshots.ts) | 修路以外八關的有效部分進度及測試輸入；包含清潔隊。 |
+| [快照 fixtures](../tests/helpers/snapshots.ts) | 修路以外九關的有效部分進度及測試輸入；包含清潔隊。 |
 | [runtime 測試](../src/runtime/) | mission-lifecycle、frame-loop、audio-unlock、storage、snapshot、mission-startup、autosave 的共用契約與故障隔離。 |
 | [app 測試](../src/app/) | progress／development 記憶體與 storage、navigation 取消屏障、PWA 重試與取消。 |
 | 各關 `domain/*.test.ts` | 遊戲規則、配置、幾何、取消及 resume 不變量；不依賴瀏覽器 runtime。 |
 
-**九關皆已列入共用 Node 整合測試或修路專用測試；runtime／storage／startup／autosave 四個手動故障頁也皆可選九關。**
+**十關皆已列入共用 Node 整合測試或修路專用測試；runtime／storage／startup／autosave 四個手動故障頁也皆可選十關。**
 清潔隊沿用共用 fixture：版本 2 的部分升桶進度、明確版本 1 舊檔及矛盾完成狀態；正式／開發 key 與其他關卡隔離。
 完整遊玩另有 [正式互動測試](../tests/e2e/sanitation.spec.mjs) 及 [開發測試](../tests/e2e/development.spec.mjs)。
 入口登記與實際執行分開記錄；清潔隊本次四頁的模式、故障與結果見[驗證歷史](history/effect-adoption.md#2026-10-24-清潔隊手動故障頁補齊)。
@@ -43,6 +43,8 @@
 PWA 故障頁測試全站註冊控制器，不按關卡分列。歷史八關瀏覽器結果的範圍保持原樣，不視為每次已重跑九關。
 
 警察二選一提示另有純提示時鐘與六尺寸底圈／箭頭投影測試；police／development CI 維護輪播、直接抓另一台、點按取消、部分續玩、減少動態及提示清理案例。一般提示的實際驗證範圍與限制見[關卡設計紀錄](police-checkpoint-proposal.md#2026-10-28-提示實作與驗證)，不追加 Effect 採用歷史。
+
+列車轉乘已加入上述三個共用 adapters、有效部分滑門 fixture、舊 version 0／矛盾完成 fixture、四個手動頁選單與正式／開發 CI 入口。`npm test` 的 domain glob 收錄新關兩個測試檔，正式 `testMatch` 包含 `rail.spec.mjs`；本機以內建瀏覽器驗證，沒有啟動 Playwright 套件。實際範圍見[第十關設計](rail-transfer.md)及[Effect 歷史](history/effect-adoption.md)，不把登記本身當作執行結果。
 
 新增任務時，同步登記共用 lifecycle／persistence／services adapters、有效部分進度 fixture、任務差異表及適用瀏覽器入口。
 檢查 [package.json](../package.json) 的 `test`：目前收錄 app、runtime、各關 domain、共用 missions 測試及修路根目錄測試；
@@ -103,6 +105,7 @@ runtime 故障頁使用實際 storage keys，應使用可丟棄的本機測試�
 - 操作後觸發 pagehide，立即讀取寫入計數／快照，確認不靠 timer 或 Promise 才完成；再檢查正常 reload 與從選單重開的差別。
 - remove／readonly 案例需實際回選單再選同關，確認有刪除嘗試且開新局；只有載入與 pagehide 不會觸發刪除。唯讀時磁碟可仍是舊進度，畫面須使用新局記憶體。
 - set 失敗可測同頁導航恢復記憶體，不能把整頁重載後仍續玩列為保證。重訪記憶體時以 hash 切到別關再切回，與「經選單開新局」分開；Schema 增加必要欄位時同步調整 fixture，不能用預設值掩蓋舊格式。
+- 列車轉乘另有輕軌出發剩 25%、剩 1% 及已到終點的目前版案例：重載後短距離可續拖，已到終點可用新手勢放手接續；取消本身不能提交。混合入場的有效部分門使用 `hsr-tram`。
 
 ### 組裝、追蹤與導航
 

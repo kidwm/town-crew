@@ -48,6 +48,7 @@ main.ts — hash navigation and per-mission Effect scopes
        │    ├─ domain/police.ts — six checkpoint tasks, three inspections, motorcycle choice and flatbed recovery
        │    ├─ scene.ts + vehicles.ts — town blocks, motorcycles and sliding-door passenger vans
        │    └─ session.ts + ui.ts — pointer routes, configuration persistence, hints and developer entry
+       ├─ rail-transfer/ — independent rail dispatch, passenger routes, four platforms and versioned recovery
        └─ sanitation/
             ├─ domain/sanitation.ts — collection order, two bin lifts, cargo and recovery
             ├─ scene.ts + vehicles.ts — collection bay, collection vehicles and shared sweeper
@@ -68,7 +69,7 @@ Entering from selection clears the selected mission's snapshot after the previou
 scope has finished saving. Reload and HMR inside a mission restore its current
 snapshot; completion badges and mute preferences survive a fresh round.
 
-All nine missions use the shared E01–E09 contracts. Scene and connection resources
+All ten missions use the shared E01–E09 contracts. Scene and connection resources
 register independent finalizers as they are acquired; a failure must not skip other cleanup.
 Each mission composes injectable synchronous persistence and scoped audio in `services.ts` /
 `startup.ts`. Startup tracing ends before the long-running frame loop and autosave worker begin;

@@ -1,3 +1,6 @@
+import { createRailPersistence, RailPersistence } from './rail-transfer/services.ts';
+import { prepareRailMission } from './rail-transfer/startup.ts';
+import type { createRailScene } from './rail-transfer/scene.ts';
 import { createSanitationPersistence, SanitationPersistence } from './sanitation/services.ts';
 import { prepareSanitationMission } from './sanitation/startup.ts';
 import type { createSanitationScene } from './sanitation/scene.ts';
@@ -52,6 +55,10 @@ type Options = { app: HTMLDivElement; dev: boolean; home: () => void; fresh: boo
 type FakeScene = () => Effect.Effect<{ canvas: Element }, never, Scope.Scope>;
 type FakeAudio = () => { unlock: () => Promise<void>; play: () => void; setMuted: () => void; setSpraying: (active: boolean) => void; dispose: () => Promise<void> };
 const adapters = {
+  'rail-transfer': {
+    create: (store: Store) => createRailPersistence(store.progress, store.storage, store.development),
+    prepare: (store: Store, options: Options, scene: FakeScene, audio: FakeAudio, trace: StartupDiagnostics) => prepareRailMission(options, scene as unknown as typeof createRailScene, audio, trace).pipe(Effect.provide(Layer.succeed(RailPersistence, createRailPersistence(store.progress, store.storage, store.development)))),
+  },
   sanitation: {
     create: (store: Store) => createSanitationPersistence(store.progress, store.storage, store.development),
     prepare: (store: Store, options: Options, scene: FakeScene, audio: FakeAudio, trace: StartupDiagnostics) => prepareSanitationMission(options, scene as unknown as typeof createSanitationScene, audio, trace).pipe(Effect.provide(Layer.succeed(SanitationPersistence, createSanitationPersistence(store.progress, store.storage, store.development)))),
@@ -200,7 +207,7 @@ for (const fixture of snapshotFixtures) {
 }
 
 // Exercise each real session/startup with its actual cadence, independent of rAF.
-const saveIntervals = { 'house-build': 800, 'fire-rescue': 800, 'traffic-rescue': 800,
+const saveIntervals = { 'rail-transfer': 700, 'house-build': 800, 'fire-rescue': 800, 'traffic-rescue': 800,
   'police-patrol': 700, 'port-cargo': 700, 'mountain-clearance': 700, 'passenger-transfer': 700, sanitation: 700 };
 function scheduledMission(t: TestContext, fixture: typeof snapshotFixtures[number], dev: boolean) {
   const env = browser(t), store = isolated(), order: string[] = [], app = new Element(), stage = new Element();

@@ -1,3 +1,7 @@
+import * as rail from './rail-transfer/domain/rail.ts';
+import { decodeRailSnapshot } from './rail-transfer/persistence.ts';
+import { createRailSession } from './rail-transfer/session.ts';
+import type { RailScene } from './rail-transfer/scene.ts';
 import * as sanitation from './sanitation/domain/sanitation.ts';
 import { decodeSanitationSnapshot } from './sanitation/persistence.ts';
 import { createSanitationSession } from './sanitation/session.ts';
@@ -44,6 +48,7 @@ const audio = () => ({ setMuted() {}, setSpraying() {}, unlock: async () => {}, 
 const scene = () => ({ canvas: new Element() });
 const app = () => new Element() as unknown as HTMLDivElement;
 const adapters = {
+  'rail-transfer': { decode: decodeRailSnapshot, resume: rail.resumeRail, states: () => rail.stages.flatMap(stage => rail.directions.flatMap(direction => ([0, 1] as const).flatMap(layout => [0, 1, 2, 3].map(visit => rail.createRail(stage, { direction, layout, palette: 1, cast: 2 }, visit))))), create: createRailSession, connect: (session: ReturnType<typeof createRailSession>) => session.connect(scene() as unknown as RailScene, audio()) },
   sanitation: { decode: decodeSanitationSnapshot, resume: sanitation.resumeSanitation, states: () => sanitation.stages.flatMap(stage => ([0, 1] as const).map(layout => sanitation.createSanitation(stage, { layout, palette: 2, cast: 1 }))), create: createSanitationSession, connect: (session: ReturnType<typeof createSanitationSession>) => session.connect(scene() as unknown as SanitationScene, audio()) },
   'house-build': { decode: decodeHouseSnapshot, resume: house.resumeHouse, states: () => house.stages.flatMap(stage => (['gable', 'shed', 'flat'] as const).flatMap(roof => ([0, 1] as const).map(layout => house.createHouse(stage, { roof, layout, palette: 2, family: 1, pet: 'dog' })))), create: createHouseSession, connect: (session: ReturnType<typeof createHouseSession>) => session.connect(scene() as unknown as HouseScene, audio()) },
   'fire-rescue': { decode: decodeFireSnapshot, resume: fire.resumeFire, states: () => fire.stages.map(stage => fire.createFire(stage)), create: createFireSession, connect: (session: ReturnType<typeof createFireSession>) => session.connect(scene() as unknown as FireScene, audio()) },

@@ -15,12 +15,12 @@
   <select id="mission" aria-label="測試任務">
     <option value="road-repair">修路</option><option value="house-build">蓋房子</option><option value="fire-rescue">救火</option>
     <option value="traffic-rescue">交通救援</option><option value="police-patrol">警察</option><option value="port-cargo">碼頭</option>
-    <option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option><option value="sanitation">清潔隊</option>
+    <option value="mountain-clearance">山路</option><option value="passenger-transfer">轉運站</option><option value="sanitation">清潔隊</option><option value="rail-transfer">列車轉乘</option>
   </select>
   <select id="mode" aria-label="存檔模式"><option value="1">開發存檔</option><option value="0">正式存檔</option></select>
   <select id="fixture" aria-label="存檔案例">
     <option value="valid">有效部分進度</option><option value="json">損壞 JSON</option><option value="schema">錯誤數字型別</option>
-    <option value="invariant">矛盾狀態</option><option value="legacy">舊版本（應開新局）</option>
+    <option value="invariant">矛盾狀態</option><option value="legacy">舊版本（應開新局）</option><option value="rail-short">輕軌出發剩 25%</option><option value="rail-near">輕軌出發剩 1%</option><option value="rail-end">輕軌出發已到終點</option>
   </select>
   <select id="fault" aria-label="儲存故障">
     <option value="none">正常儲存</option><option value="getter">Storage getter 拒絕</option><option value="get">讀取拒絕</option>
@@ -42,7 +42,7 @@
     document.querySelector('#apply').onclick = () => {
       location.href = `${location.pathname}?mission=${mission.value}&dev=${mode.value}&fixture=${fixture.value}&fault=${fault.value}&run=${Date.now()}#${mission.value}`;
     };
-    const { snapshotFixtures } = await import('/tests/helpers/snapshots.ts');
+    const { snapshotFixtures, railInterruptedExit } = await import('/tests/helpers/snapshots.ts');
     const missionFixture = snapshotFixtures.find(value => value.id === missionId);
     const original = { sessionStorage: window.sessionStorage, localStorage: window.localStorage };
     const prefix = `manual:effect-storage:${params.get('run')}:`;
@@ -59,6 +59,7 @@
       seed = fixture.value === 'invariant' ? missionFixture.invalid() : fixture.value === 'legacy' ? missionFixture.legacy?.() ?? { ...missionFixture.valid(), version: 0 } : missionFixture.valid();
       if (fixture.value === 'schema') seed.elapsed = '0';
     }
+    if (missionId === 'rail-transfer' && fixture.value.startsWith('rail-')) seed = railInterruptedExit(({ 'rail-short': 0.75, 'rail-near': 0.99, 'rail-end': 1 })[fixture.value]);
     if (!original.sessionStorage.getItem(prefix + 'seeded')) {
       original.sessionStorage.setItem(prefix + key, fixture.value === 'json' ? '{invalid' : JSON.stringify(seed));
       original.sessionStorage.setItem(prefix + 'seeded', 'true');

@@ -1,3 +1,4 @@
+import { createRail } from '../../src/missions/rail-transfer/domain/rail.ts';
 import { createSanitation } from '../../src/missions/sanitation/domain/sanitation.ts';
 import type { MissionId } from '../../src/app/progress.ts';
 import { createHouse } from '../../src/missions/house-build/domain/house.ts';
@@ -8,8 +9,17 @@ import { createPort } from '../../src/missions/port-cargo/domain/port.ts';
 import { createMountain } from '../../src/missions/mountain-clearance/domain/mountain.ts';
 import { createTransit } from '../../src/missions/passenger-transfer/domain/transit.ts';
 
+export function railInterruptedExit(travel = 0.99) {
+  return { ...createRail('exit', { direction: 'city', layout: 0, palette: 0, cast: 0 }, 3), travel, aim: travel };
+}
+
 // Pure fixtures shared by Node boundary tests and the isolated manual browser entry.
 export const snapshotFixtures = [
+  { id: 'rail-transfer', title: '列車轉乘', prefix: 'rail', initial: 'intro', stage: 'door',
+    valid: () => ({ ...createRail('door', { direction: 'hsr-tram', layout: 1, palette: 2, cast: 1 }, 2), action: 'dragging', door: 0.4, aim: 0.4, moved: true }),
+    legacy: () => ({ ...createRail('door'), version: 0 }),
+    invalid: () => ({ ...createRail('complete'), order: ['high-speed'] }),
+  },
   { id: 'house-build', title: '蓋房子', prefix: 'house', initial: 'gravel', stage: 'concrete',
     valid: () => ({ ...createHouse('concrete'), action: 'ready', pours: [0.4, 0, 1] }),
     legacy: () => { const { round, attached, ...state } = createHouse('concrete'); return { ...state, version: 2, action: 'ready', pours: [1, 0.4, 0] }; },

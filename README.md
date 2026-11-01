@@ -2,7 +2,7 @@
 
 **Play:** [小小城市隊](https://town-crew.pages.dev)
 
-Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, help passengers transfer, and help the sanitation crew in nine replayable town missions,
+Repair a road, build a two-storey home, help the fire brigade, clear a traffic collision, help the police team, move cargo at the dock, clear a mountain road, help passengers transfer, help the sanitation crew, and help rail passengers transfer in ten replayable town missions,
 using Vite, TypeScript, Three.js and Effect **4.0.5**. The game runs in the browser with mouse or single-touch
 pointer input and uses procedural 3D models without downloaded game assets.
 
@@ -21,6 +21,7 @@ npm run dev
 - Clear a mountain road: <http://localhost:5173/#mountain-clearance>
 - Help passengers transfer: <http://localhost:5173/#passenger-transfer>
 - Help the sanitation crew: <http://localhost:5173/#sanitation>
+- Transfer between trains: <http://localhost:5173/#rail-transfer>
 - Development tools: <http://localhost:5173/?dev=1&stage=excavator>
 - Phone/tablet on the same network: use the Network URL printed by Vite.
 - `npm run build` checks TypeScript and creates `dist/`.
@@ -42,7 +43,7 @@ The production build is a PWA. Use the browser's install action, or on iPhone/iP
 choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
 icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
 
-On the first online visit, the service worker caches the menu and **all nine missions**,
+On the first online visit, the service worker caches the menu and **all ten missions**,
 including their lazy-loaded JavaScript. After that initial cache completes, reloads
 and switching to previously unopened missions work offline. New builds wait until
 all existing game tabs/windows close before activating, keeping a running mission
@@ -67,12 +68,30 @@ still allow normal text selection, and the menu retains touch scrolling.
 
 ## Choose a mission
 
-The entrance has nine large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
+The entrance has ten large illustrated cards in a two-column grid (one column on phones). All missions are available immediately.
 Use the home button to return to selection; selecting a mission starts a new round.
 Production progress is stored separately for each mission in sessionStorage, so
 reloading within the current mission resumes it. Completion badges and the sound preference
 use localStorage. No account is required; unavailable storage never blocks play.
 Restart clears only the current mission's progress, while its earned badge remains.
+
+## Transfer between trains
+
+Four double-ended rail vehicles help six people transfer: an eight-car high-speed train, six-car regional and metro trains, and a two-section low-floor tram. Any two arrive first. Choose either
+arriving train, drag it into its own platform, pull open
+the real sliding door, and watch three passengers walk through the central
+concourse to their next platform. Doors close before the child drags the empty
+train out. After both have fully left, the other two trains enter their
+waiting positions; choose their independent boarding and departure order.
+All six incoming pairs can occur, independently of the mirrored layout; new rounds change the incoming pair.
+
+One fixed view exposes the operating cab and near-side doors on all four independent terminal tracks. Longer consists and platforms continue beyond the frame.
+Two mirrored configurations keep pedestrian ramps clear of the tracks; short
+manual approaches/exits hand over to continuous automatic parking/departure.
+Version-1 snapshots retain configuration, orders, partial doors/driving and
+automatic clocks across reload/HMR. The mission reuses existing passengers,
+steward and scenery, with four new procedural rail bodies and steel bogies.
+See the [rail-transfer design and verification](docs/rail-transfer.md).
 
 ## Help the sanitation crew
 
@@ -584,6 +603,7 @@ road-repair sequence.
   direct motorcycle choice, automatic inspection, sliding-door boarding and escorted transport.
 - `src/missions/port-cargo/`: independent two-way cargo flows, forklift truck pickup/loading, mirrored dock routes, cargo persistence and town delivery.
 - `src/missions/mountain-clearance/`: independent pushing, three-rock loading, two soil loads with separate parking/raising gestures, hauling, sweeping, mirrored routes and versioned recovery. Pure site/loader geometry defines the same paths used by the renderer and clearance tests.
+- `src/missions/rail-transfer/`: four rail vehicles, independent dispatch, six incoming pairs, fixed-view platforms and version-1 recovery.
 - `src/missions/sanitation/`: four-vehicle collection, rear/side bin lifts, independent cargo orders, fixed-view pullout/merge routes, random content/dispatch and version-2 recovery.
 - `src/missions/passenger-transfer/`: independent passenger transfers, child-selected taxi/school dispatch, actual door gestures, suitcase stowage, fixed-view terminal routes and versioned recovery.
 - `src/runtime/resident.ts`: the original house resident, with its seated/walking legs and waving arm, shared with the transfer station.
@@ -605,7 +625,7 @@ road-repair sequence.
   scoped audio and startup composition. Mission-specific differences belong in the [mission table](docs/effect-usage.md#各任務差異).
 - `src/app/navigation.ts` and `pwa.ts`: navigation cleanup barriers and optional cancellable PWA registration.
 - `tests/manual/effect-*.html`: Vite-only fault controls for Codex built-in browser verification;
-  see the [coverage and procedures](docs/effect-verification.md). All four mission selectors include sanitation and cover the nine missions; dated execution results remain in the history.
+  see the [coverage and procedures](docs/effect-verification.md). All four mission selectors include rail transfer and cover the ten missions; dated execution results remain in the history.
 - `tests/e2e/`: repeatable production and development browser checks.
 
 See [architecture](docs/architecture.md) and the [project plan](PROJECT_PLAN.md).
@@ -622,7 +642,7 @@ without adopting an existing vehicle sequence.
 
 ## Verification
 
-Node tests cover all nine missions' domain rules and Effect integration: partial initialization,
+Node tests cover all ten missions' domain rules and Effect integration: partial initialization,
 independent cleanup, typed failures, optional audio, current-version recovery, injected services,
 startup diagnostics and supervised autosave. Shared app/runtime tests cover storage fallback,
 navigation and PWA registration. Use `npm test` for Node checks and `npm run check` for tests,

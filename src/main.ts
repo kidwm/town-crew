@@ -18,6 +18,7 @@ let fromMenu = false;
 const events = new AbortController();
 function route(): MissionId | undefined {
   if (location.hash === '#menu') return;
+  if (location.hash === '#rail-transfer') return 'rail-transfer';
   if (location.hash === '#house-build') return 'house-build';
   if (location.hash === '#road-repair') return 'road-repair';
   if (location.hash === '#traffic-rescue') return 'traffic-rescue';
@@ -27,6 +28,7 @@ function route(): MissionId | undefined {
   if (location.hash === '#mountain-clearance') return 'mountain-clearance';
   if (location.hash === '#sanitation') return 'sanitation';
   if (location.hash === '#passenger-transfer') return 'passenger-transfer';
+  if (dev && params.get('mission') === 'rail-transfer') return 'rail-transfer';
   if (dev && params.get('mission') === 'sanitation') return 'sanitation';
   if (dev && params.get('mission') === 'passenger-transfer') return 'passenger-transfer';
   if (dev && params.get('mission') === 'mountain-clearance') return 'mountain-clearance';
@@ -148,6 +150,18 @@ function show() {
           ], { concurrency: 'unbounded' });
           return yield* prepareSanitationMission({ app, dev, home, fresh }, createSanitationScene, createSanitationAudio, trace).pipe(
             Effect.provide(SanitationPersistenceLive),
+          );
+        }));
+        yield* run;
+      } else if (mission === 'rail-transfer') {
+        const trace = diagnostics;
+        const run = yield* trace.startup(Effect.gen(function* () {
+          const [{ createRailScene }, { prepareRailMission, RailPersistenceLive, createRailAudio }] = yield* Effect.all([
+            trace.stage('module.scene', loadMissionModule(mission, 'scene', () => import('./missions/rail-transfer/scene.ts'))),
+            trace.stage('module.session', loadMissionModule(mission, 'session', () => import('./missions/rail-transfer/startup.ts'))),
+          ], { concurrency: 'unbounded' });
+          return yield* prepareRailMission({ app, dev, home, fresh }, createRailScene, createRailAudio, trace).pipe(
+            Effect.provide(RailPersistenceLive),
           );
         }));
         yield* run;
