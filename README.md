@@ -40,8 +40,8 @@ npm run dev
 ## Install and play offline
 
 The production build is a PWA. Use the browser's install action, or on iPhone/iPad
-choose Share → Add to Home Screen. It opens in its own window with the town-and-truck
-icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
+choose Share → Add to Home Screen. It opens in its own window with the toy-block town
+and road-loop icon. Installation requires HTTPS or localhost ([PWA installation requirements](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps/Guides/Making_PWAs_installable)).
 
 On the first online visit, the service worker caches the menu and **all ten missions**,
 including their lazy-loaded JavaScript. After that initial cache completes, reloads
@@ -60,7 +60,9 @@ Activation also removes the
 retired custom worker's caches. Cloudflare Pages headers allow the browser to check
 for worker and manifest updates. The editable icon source
 is `public/icons/town-crew.svg`, with PNG exports for 192/512px installation icons,
-a 512px maskable icon, a 180px Apple touch icon, and a 32px favicon.
+a 512px maskable icon, and a 180px Apple touch icon. The browser favicon uses
+the car-only `public/icons/favicon.svg`, with 16/32px PNG fallbacks.
+The selected E design and its source provenance are recorded in [PWA icon design](docs/pwa-icon.md).
 Regenerate the PNGs with `npm run icons` (or `PLAYWRIGHT_CHANNEL=chrome npm run icons`
 to use an installed Chrome).
 Game labels and controls prevent selection and iOS touch callouts; editable fields

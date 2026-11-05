@@ -1,35 +1,112 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <title>小小城市隊：小屋與工程車</title>
-  <rect width="512" height="512" fill="#d7e9e6"/>
-  <circle cx="256" cy="250" r="206" fill="#f7f3df"/>
-  <path d="M0 349Q245 280 512 349V512H0Z" fill="#bad4ad"/>
-  <path d="M-64 448Q259 323 576 433" fill="none" stroke="#8a9d92" stroke-width="68"/>
-  <path d="M20 426Q259 351 493 410" fill="none" stroke="#fff2ce" stroke-width="7" stroke-linecap="round" stroke-dasharray="28 28"/>
-  <g stroke="#476c68" stroke-linejoin="round" stroke-linecap="round">
-    <path d="M126 257v66" fill="none" stroke="#9b8762" stroke-width="14"/>
-    <path d="M385 249v70" fill="none" stroke="#9b8762" stroke-width="14"/>
-    <path d="M103 251c-26-13-21-48 3-57-2-29 38-38 51-10 29 4 33 43 6 55-8 24-41 30-60 12Z" fill="#87b58b" stroke="none"/>
-    <path d="M367 257c-25-8-31-43-11-56-4-27 28-42 46-24 27-2 41 32 20 50 1 29-33 43-55 30Z" fill="#9abd91" stroke="none"/>
-    <path d="M206 188h128v140H206Z" fill="#f1dbb1" stroke-width="9"/>
-    <path d="M283 188h51v140h-51Z" fill="#e0bd92" stroke="none"/>
-    <path d="m187 189 83-76 83 76Z" fill="#d38268" stroke-width="10"/>
-    <path d="m202 182 68-61 12 61Z" fill="#e99e7c" stroke="none"/>
-    <rect x="228" y="211" width="39" height="40" rx="5" fill="#9ac9c7" stroke-width="7"/>
-    <path d="M248 216v30" stroke="#fff4d7" stroke-width="5"/>
-    <path d="M286 275h27v53h-27Z" fill="#85aaa1" stroke-width="7"/>
-    <path d="M142 295h136l-14 50H148Z" fill="#e5b04d" stroke-width="9"/>
-    <path d="M146 294h132" stroke="#ffe1a0" stroke-width="12"/>
-    <path d="M277 286h46q8 0 14 9l27 35v40H270v-76q0-8 7-8Z" fill="#f4c967" stroke-width="9"/>
-    <path d="M287 301h32l20 28h-52Z" fill="#abd6d3" stroke-width="7"/>
-    <path d="M146 347h124v23H146Z" fill="#e5b04d" stroke-width="9"/>
-    <path d="M136 371h236" stroke-width="12"/>
-    <path d="M345 349h15" stroke="#fff3cf" stroke-width="9"/>
-    <path d="M280 344h12" stroke-width="5"/>
-    <circle cx="180" cy="373" r="25" fill="#476c68" stroke-width="6"/>
-    <circle cx="324" cy="373" r="25" fill="#476c68" stroke-width="6"/>
-    <circle cx="180" cy="373" r="11" fill="#c1d3bb" stroke="none"/>
-    <circle cx="324" cy="373" r="11" fill="#c1d3bb" stroke="none"/>
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Town Crew separated toy-block buildings inside the road loop</title>
+  <desc>The crane workshop is raised and separated from the fire station. The foreground toy car shows a partially occluded far-front tire, matching the car-only favicon. Enlarged subjects, road geometry and centered lane markings are preserved.</desc>
+
+  <rect width="1024" height="1024" fill="#FAF1DE" />
+
+  <g id="road-loop" transform="translate(71.68 47.6) scale(.86)"><g id="road">
+      <path d="M610 175C510 133 386 174 294 230C196 290 129 402 124 523C114 665 194 797 322 869C445 941 579 916 697 844C826 763 891 665 901 570" fill="none" stroke="#087C76" stroke-width="108" stroke-linecap="round" />
+      <path id="uniform-lane-markings" d="M610 175C510 133 386 174 294 230C196 290 129 402 124 523C114 665 194 797 322 869C445 941 579 916 697 844C826 763 891 665 901 570" fill="none" stroke="#FFF4DF" stroke-width="30" stroke-linecap="round" stroke-dasharray="44.000000 94.247841" stroke-dashoffset="62.247841" /></g>
+
+    </g><g id="town-content" transform="translate(0 -48)"><g id="rear-greenery" fill="#9BAE7C">
+    <path d="M267 480 C245 476 242 453 254 440 C262 431 275 430 285 434 C280 414 294 400 311 402 C327 403 336 416 336 431 C352 420 373 429 375 447 C379 463 365 477 348 484Z" />
+    <path d="M557 479 C545 463 551 443 567 438 C570 417 592 409 608 423 C621 434 620 450 615 462 C636 454 653 469 648 487 L591 510Z" />
   </g>
-  <path d="M157 131v22m-11-11h22" stroke="#fffaf0" stroke-width="7" stroke-linecap="round"/>
-  <circle cx="363" cy="134" r="8" fill="#f4c967"/>
-</svg>
+
+  <g id="small-town-building-enlarged" transform="matrix(1.100000 0 0 1.100000 -38.900000 -31.250000)"><g id="small-town-building">
+    <path d="M435 383 L528 405 L528 491 L435 469Z" fill="#FFF0CE" />
+    <path d="M528 405 L581 375 L581 461 L528 491Z" fill="#DFD1AE" />
+    <path d="M432 381 L487 349 L580 371 L528 402Z" fill="#8BAA78" />
+    <path d="M432 381 L528 402 L528 414 L432 393Z" fill="#779465" />
+    <path d="M528 402 L580 371 L586 382 L528 414Z" fill="#617E57" />
+    <path d="M466 476 V446 C466 428 479 420 491 424 C503 427 510 439 510 454 V486Z" fill="#3F7B74" />
+    <path d="M516 357 V294" fill="none" stroke="#17665F" stroke-width="12" stroke-linecap="round" />
+    <path d="M522 301 C544 288 557 315 581 301 L578 337 C555 350 541 324 522 337Z" fill="#E6B453" />
+  </g>
+
+  </g><g id="fire-station-placement-enlarged" transform="matrix(1.100000 0 0 1.100000 -37.699998 -56.037860)"><g id="fire-station-placement" transform="translate(139.131590 72.236892) scale(0.8618419899)"><g id="fire-station">
+      <path d="M124 535L205 555V740L125 694Z" fill="#D85240" />
+      <path d="M205 555L428 517V708L205 740Z" fill="#EF6751" />
+      <path d="M124 535Q138 495 199 478V460C199 422 235 394 279 393C332 390 376 419 376 461V479Q411 488 428 517L205 555Z" fill="#FFF0CC" />
+      <path d="M124 535Q135 507 160 495L221 516Q211 531 205 555Z" fill="#F5DCA9" />
+      <path d="M257 491C259 469 268 453 288 453C307 453 319 467 321 491Z" fill="#EF6751" />
+      <rect x="246" y="489" width="87" height="23" rx="10" fill="#D85240" />
+      <path d="M242 434L255 447M290 415V435M338 434L325 447" fill="none" stroke="#E8A42E" stroke-width="16" stroke-linecap="round" />
+      <path d="M223 734V633C223 591 249 565 292 560L352 555C388 552 413 579 413 613V710Z" fill="#FFF0CC" />
+      <path d="M245 729V637C245 608 262 587 291 583L350 579C376 577 392 593 392 620V714Z" fill="#155A59" />
+      <g id="little-fire-engine">
+        <path d="M280 620V611Q280 595 296 594L321 592Q337 592 337 609V617Z" fill="#F5BD48" />
+        <path d="M314 593L326 592Q337 592 337 607V617L315 619Z" fill="#FFF0CC" />
+        <circle cx="258" cy="707" r="15" fill="#155A59" />
+        <circle cx="354" cy="712" r="15" fill="#155A59" />
+        <path d="M257 641Q256 624 275 621L356 615Q376 614 379 634L382 692Q383 710 363 714L282 719Q267 720 264 704Z" fill="#EF6751" />
+        <path d="M281 646Q281 639 290 638L354 634Q365 633 366 643L368 654Q369 663 357 664L292 668Q281 669 281 658Z" fill="#FFF0CC" />
+        <circle cx="299" cy="692" r="11.5" fill="#FFF0CC" />
+        <circle cx="359" cy="688" r="11.5" fill="#FFF0CC" />
+      </g>
+    </g>
+
+    </g></g><g id="construction-workshop-placement-enlarged" transform="matrix(1.100000 0 0 1.100000 -44.799997 -92.119432)"><g id="construction-workshop-placement" transform="translate(74.225796 164.348387) scale(0.7806451613)"><g id="cargo-workshop">
+      <path d="M598 520L680 475Q695 469 712 474L868 514Q886 519 890 534L795 562Z" fill="#FFD16C" />
+      <path d="M795 562L890 534V680L795 731Z" fill="#E8A42E" />
+      <path d="M580 557Q580 531 598 520L768 550Q795 554 795 579V731L580 689Z" fill="#F5BD48" />
+      <path d="M607 695V631Q607 602 633 606L745 625Q768 629 768 651V725Z" fill="#155A59" />
+      <path d="M604 574Q600 566 610 556Q615 550 624 552L752 575Q772 579 774 596Q777 611 761 608L616 587Q607 586 604 574Z" fill="#155A59" />
+      <path d="M617 587L642 555L667 560L641 591Z" fill="#FFF0CC" />
+      <path d="M669 596L694 565L719 569L694 600Z" fill="#FFF0CC" />
+      <path d="M722 603L745 574L758 577Q766 579 770 585L748 607Z" fill="#FFF0CC" />
+      <path d="M817 609Q817 600 825 597L834 594Q842 592 842 601V628Q842 635 834 638L825 642Q817 645 817 636Z" fill="#155A59" />
+      <path d="M853 595Q853 588 860 585L868 582Q877 578 877 587V614Q877 622 869 625L861 629Q853 632 853 623Z" fill="#155A59" />
+      <g id="cargo-blocks" fill="#FFD16C">
+        <path d="M666 646Q666 632 679 635L708 640Q720 642 720 653V674L666 664Z" />
+        <path d="M635 678Q635 663 648 665L675 670Q688 672 688 685V708L635 698Z" />
+        <path d="M695 689Q695 675 708 677L735 682Q748 684 748 697V719L695 709Z" />
+      </g>
+      <g id="toy-crane">
+        <path d="M819 393V440Q840 448 839 466Q838 485 820 487Q805 488 804 471" fill="none" stroke="#155A59" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M645 422Q645 406 661 399L800 340Q820 332 837 345Q857 360 854 380Q852 398 834 407L730 461V522Q730 537 715 534L656 527Q645 526 645 513Z" fill="#F5BD48" />
+        <path d="M667 429Q667 422 676 418L702 438L667 456Z" fill="#C88B28" />
+        <path d="M691 410L730 394L716 431Z" fill="#C88B28" />
+        <path d="M750 389L782 372L775 407Z" fill="#C88B28" />
+        <path d="M732 429L744 400L763 415Z" fill="#C88B28" />
+        <path d="M667 479L709 458V515L667 509Z" fill="#C88B28" />
+        <circle cx="819" cy="372" r="21" fill="#155A59" />
+      </g>
+    </g>
+
+    </g></g><g id="base-greenery">
+    <path d="M241 706 C223 698 216 687 220 673 C224 658 239 651 251 658 C256 638 279 637 289 654 C294 663 293 673 288 681 C307 676 321 689 317 704 C314 716 302 720 287 717Z" fill="#99AC76" transform="translate(24 0)" />
+    <path d="M694 731 C681 725 681 709 692 702 C699 698 707 700 712 704 C711 686 725 676 739 683 C749 687 752 697 749 707 C760 702 773 711 771 722 C770 733 758 738 744 738Z" fill="#95A972" />
+  </g>
+</g><g id="foreground-toy-car-enlarged" transform="matrix(1.100000 0 0 1.100000 -51.200000 -85.149249)"><g id="foreground-toy-car" transform="translate(383.599109 578.212217) scale(0.2583518931)"><g id="toy-car">
+    <path id="far-front-tire" fill="#074E52" d="M913 730C913 792 887 835 852 830C817 825 795 781 796 727C797 672 819 632 855 636C890 640 914 680 913 730Z" /><path fill="#5D8896" d="M111 451Q82 459 61 483Q48 498 48 527L48 681Q48 723 84 740L463 856Q493 866 532 854L551 676Q549 638 510 619L145 460Q125 452 111 451Z" />
+    <path fill="#77AEBE" d="M112 451Q86 460 65 480Q47 499 78 512L473 648Q515 662 553 651L913 568Q948 561 927 537Q906 516 863 499L803 476L405 557L145 454Q127 448 112 451Z" />
+
+    <path fill="#F8E6BF" d="M174 261Q149 301 130 355L104 463Q98 486 119 493L396 584L812 482L736 281Q726 254 701 245L215 240Q185 239 174 261Z" />
+
+    <path fill="#074E52" d="M217 319Q194 313 183 341L151 443Q143 469 167 478L332 531Q359 539 360 511L347 387Q345 363 323 355Z" />
+    <path fill="#074E52" d="M443 333Q414 340 419 368L449 514Q453 537 480 532L751 466Q778 459 767 434L707 291Q698 272 678 278Z" />
+
+    <path fill="#EFD5A4" d="M175 186Q151 209 149 238Q146 264 171 277L378 346Q397 353 419 347L714 273Q745 265 739 235Q736 213 717 195L461 150Z" />
+    <path fill="#F8E6BF" d="M204 168L452 114Q480 108 507 116L701 177Q732 187 717 207Q709 217 688 222L425 287Q407 292 386 285L193 219Q162 208 177 190Q187 175 204 168Z" />
+
+    <path fill="#77AEBE" d="M405 563L803 476L889 512Q924 527 932 551L549 646Q520 651 492 642L406 612Q381 604 389 589Q393 575 405 563Z" />
+
+    <g fill="#074E52">
+      <path d="M279 749C279 817 240 869 187 865C132 861 89 809 88 744C87 681 126 628 180 632C235 636 278 684 279 749Z" />
+      <path d="M540 807C540 875 496 925 439 920C381 915 336 863 336 794C336 727 376 678 434 683C491 688 539 740 540 807Z" />
+    </g>
+
+    <path fill="#77AEBE" d="M544 646L925 551Q946 572 946 609L946 715Q946 766 906 784L629 848Q581 860 534 850L540 813Q542 750 516 714L507 682Q500 661 489 648Q518 653 544 646Z" />
+
+    <g fill="#F8E6BF">
+      <path d="M228 749C228 777 211 798 189 796C166 794 150 772 150 744C150 717 167 697 189 699C211 701 228 723 228 749Z" />
+      <path d="M482 805C482 834 464 856 441 854C417 852 400 828 400 800C400 772 418 752 441 754C464 756 482 779 482 805Z" />
+      <path d="M613 661L637 656Q666 650 667 680L667 715Q667 739 644 745L619 750Q591 755 591 726L591 692Q591 668 613 661Z" />
+      <path d="M859 606L882 601Q907 597 907 624L907 655Q907 680 884 686L862 691Q837 696 837 668L837 637Q837 612 859 606Z" />
+    </g>
+
+    <path fill="#074E52" d="M704 686L789 666Q811 661 814 682Q817 701 796 707L711 727Q688 732 685 711Q682 693 704 686Z" />
+  </g>
+</g></g></svg>

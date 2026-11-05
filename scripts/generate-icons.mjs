@@ -3,15 +3,19 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const directory = new URL('../public/icons/', import.meta.url);
-const svg = await readFile(new URL('town-crew.svg', directory), 'utf8');
+const [townSvg, faviconSvg] = await Promise.all([
+  readFile(new URL('town-crew.svg', directory), 'utf8'),
+  readFile(new URL('favicon.svg', directory), 'utf8'),
+]);
 const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL });
 try {
-  for (const [name, size] of [
-    ['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512],
-    ['apple-touch-icon.png', 180], ['favicon-32.png', 32],
+  for (const [name, size, svg] of [
+    ['icon-192.png', 192, townSvg], ['icon-512.png', 512, townSvg],
+    ['icon-maskable-512.png', 512, townSvg], ['apple-touch-icon.png', 180, townSvg],
+    ['favicon-16.png', 16, faviconSvg], ['favicon-32.png', 32, faviconSvg],
   ]) {
-    // The house and vehicle already fit inside the central 80% safe circle.
-    // Keep a full opaque background so launchers can apply any icon mask.
+    // The town artwork fits inside the central 80% safe circle and has an
+    // opaque background for launcher masks. Favicons use the separate car SVG.
     const page = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
     await page.setContent(`<style>body{margin:0}img{display:block;width:100%;height:100%}</style><img src="data:image/svg+xml,${encodeURIComponent(svg)}">`);
     await page.locator('img').evaluate(img => img.decode());
