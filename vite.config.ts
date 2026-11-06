@@ -10,7 +10,7 @@ export default defineConfig({
     devOptions: { enabled: false },
     workbox: {
       cacheId: 'town-crew',
-      globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
+      globPatterns: ['**/*.{js,css,html,png,svg,webmanifest,wav}'],
       globIgnores: ['**/sw-cleanup.js'],
       inlineWorkboxRuntime: true,
       navigateFallback: 'index.html',

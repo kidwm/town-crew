@@ -1,3 +1,4 @@
+import { fireLines, fireInstructionId } from './domain/narration.ts';
 import { driveWorldX, driveStateX } from './drive-view.ts';
 import { Effect } from 'effect';
 import { acquireRenderer, acquireScene } from '../../runtime/scene-lifecycle.ts';
@@ -177,16 +178,16 @@ export const createFireScene = (host: HTMLElement, makeRenderer = () => new THRE
       if (s.action !== 'ready' || s.phase === 'complete') return;
       if (isDriving(s)) {
         const z = s.phase === 'dispatch' ? 2.3 : STREET_Z;
-        return { from: screen({ x: driveWorldX(s), y: 1.5, z }), to: screen({ x: s.phase === 'dispatch' ? ENGINE_STOP : STREET_STOP, y: 1.5, z }), direction: 'right', label: '按住車子，拖到停車位' };
+        return { from: screen({ x: driveWorldX(s), y: 1.5, z }), to: screen({ x: s.phase === 'dispatch' ? ENGINE_STOP : STREET_STOP, y: 1.5, z }), direction: 'right', label: fireLines[fireInstructionId(s)] };
       }
       if (isSpraying(s)) {
         const index = s.phase === 'roof-fire' ? 3 : s.fires.findIndex((heat, i) => i < 3 && heat > 0);
         if (index < 0) return;
         const point = screen(raised(FIRES[index], 0.4));
-        return { from: point, to: point, direction: 'up', label: '按住火苗，水柱跟著手指走' };
+        return { from: point, to: point, direction: 'up', label: fireLines[fireInstructionId(s)] };
       }
       const target = goals(s)[0]; if (!target) return;
-      return { from: screen(handlePoint(s)), to: screen(goalPoint(target)), direction: s.phase === 'boarding' ? 'right' : 'up', label: s.phase === 'rescue' ? '拖工作籃，接居民或小貓' : '拖到目的地，幫你接好' };
+      return { from: screen(handlePoint(s)), to: screen(goalPoint(target)), direction: s.phase === 'boarding' ? 'right' : 'up', label: fireLines[fireInstructionId(s)] };
     },
     render(s: FireState, time: number) {
       const index = stages.indexOf(s.phase), t = s.elapsed;

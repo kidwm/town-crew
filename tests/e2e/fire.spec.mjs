@@ -4,6 +4,31 @@ import { gesture } from './gesture.mjs';
 import { fireControls } from './fire-controls.mjs';
 import { withPausedClock } from './timing.mjs';
 
+test('fire narration unlocks, replays, mutes and releases the media on navigation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeAudio = window.Audio;
+    window.__fireVoiceMedia = [];
+    window.Audio = function (...args) {
+      const media = new NativeAudio(...args);
+      window.__fireVoiceMedia.push(media);
+      return media;
+    };
+  });
+  await page.goto('/#fire-rescue');
+  const replay = page.getByRole('button', { name: '再聽一次提示' });
+  await replay.click();
+  await expect(replay).toHaveAttribute('data-status', 'playing');
+  await expect.poll(() => page.evaluate(() => window.__fireVoiceMedia.filter(media => !media.paused).length)).toBe(1);
+  await page.getByRole('button', { name: '關閉音效', exact: true }).click();
+  await expect(replay).toHaveAttribute('data-status', 'muted');
+  expect(await page.evaluate(() => window.__fireVoiceMedia.every(media => media.paused))).toBe(true);
+  await replay.click();
+  await expect(replay).toHaveAttribute('data-status', 'playing');
+  await page.getByRole('button', { name: '回到選關', exact: true }).click();
+  await expect(page.locator('.mission-card')).toHaveCount(10);
+  expect(await page.evaluate(() => window.__fireVoiceMedia.every(media => media.paused && !media.getAttribute('src')))).toBe(true);
+});
+
 test('fire brigade extinguishes, rescues both floors in either order, and transports the resident', async ({ page }, info) => {
   const touch = info.project.name === 'tablet-touch', errors = [];
   // The touch run exercises the narrower portrait layout for the entire mission.

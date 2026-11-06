@@ -35,6 +35,7 @@ export class Element extends EventTarget {
 }
 
 export function browser(t: TestContext) {
+  const media: TestAudio[] = [];
   const frames = new Map<number, FrameRequestCallback>();
   let started!: () => void;
   const frameReady = new Promise<void>(resolve => { started = resolve; });
@@ -43,6 +44,7 @@ export function browser(t: TestContext) {
   const document = Object.assign(new Element(), { body: new Element(), hidden: false, createElementNS: () => new Element() });
   const window = new Element();
   const values = {
+    Audio: class extends TestAudio { constructor() { super(); media.push(this); } },
     document, window, location: { search: '' }, devicePixelRatio: 1,
     matchMedia: () => ({ matches: false }),
     requestAnimationFrame: (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); started(); return nextFrame; },
@@ -60,7 +62,16 @@ export function browser(t: TestContext) {
       else Reflect.deleteProperty(globalThis, name);
     });
   }
-  return { document, window, frames, resize, frameReady };
+  return { document, window, frames, resize, frameReady, media };
+}
+
+export class TestAudio extends EventTarget {
+  src = ''; preload = ''; currentTime = 0; ended = false; pauses = 0; loads = 0; plays: string[] = [];
+  play() { this.ended = false; this.plays.push(this.src); return Promise.resolve(); }
+  pause() { this.pauses++; }
+  load() { this.loads++; }
+  removeAttribute(name: string) { if (name === 'src') this.src = ''; }
+  finish() { this.ended = true; this.dispatchEvent(new Event('ended')); }
 }
 
 export function renderer() {

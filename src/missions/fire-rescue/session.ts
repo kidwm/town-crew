@@ -9,7 +9,9 @@ import { createFire, stages, grab, drive, moveHandle, spray, accept, release, ad
 import type { FireState, Stage, Point, Goal } from './domain/fire.ts';
 import type { FireScene } from './scene.ts';
 import type { createFireAudio } from './sounds.ts';
-import { mountFireUI, names, instructions, icons, goalNames } from './ui.ts';
+import { mountFireUI, names, icons, goalNames } from './ui.ts';
+import { createFireNarration } from './narration.ts';
+import { fireInstructionId, fireLines } from './domain/narration.ts';
 
 export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () => void, fresh = false, persistence = firePersistence) {
   const query = new URLSearchParams(location.search).get('stage');
@@ -24,6 +26,10 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
     const options = { signal: events.signal };
     const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    const voiceButton = app.querySelector<HTMLButtonElement>('.voice-replay')!;
+    const narration = yield* Effect.acquireRelease(Effect.sync(() => createFireNarration(state, {
+      muted, hidden: document.hidden, onStatus(status) { voiceButton.dataset.status = status; },
+    })), value => Effect.sync(() => value.dispose()));
     yield* Effect.addFinalizer(() => Effect.sync(() => audio.setSpraying(false)));
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
@@ -40,6 +46,7 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
       }
       if (next.rescued.some((done, i) => done && !state.rescued[i])) audio.play('arrived');
       state = next;
+      narration.update(state);
     }
     function aim(x: number, y: number) {
       const wet = scene.waterTarget(x, y, state), point = scene.onPlane(x, y, true, 1.35);
@@ -49,6 +56,7 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
     const pointer = bindPrimaryDrag<{ phase: Stage; vertical: boolean; plane: number; offset: Point; origin: { x: number; y: number }; screen: { x: number; y: number }; goal?: Goal; settle: number }>(scene.canvas, {
       start(event) {
         unlock();
+        narration.unlock();
         if (state.action !== 'ready' || !scene.hit(event.clientX, event.clientY, state)) return;
         const vertical = isBasket(state) || isSpraying(state), plane = isBasket(state) ? 2.4 : isSpraying(state) ? 1.35 : isDriving(state) ? 1.5 : state.phase === 'hose' ? 0.95 : 0.7;
         const p = scene.onPlane(event.clientX, event.clientY, vertical, plane, state); if (!p) return;
@@ -74,24 +82,33 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
       },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); update(createFire()); save(); };
+    const restart = () => { unlock(); pointer.cancel(); update(createFire()); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     const syncSound = () => { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); };
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    voiceButton.addEventListener('click', () => {
+      unlock();
+      // A direct request to hear the hint also enables the existing sound preference.
+      muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound();
+      narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
-    select?.addEventListener('change', () => { pointer.cancel(); state = createFire(select.value as Stage); save(); }, options);
-    app.querySelector('.reset-stage')?.addEventListener('click', () => { pointer.cancel(); state = createFire(select!.value as Stage); save(); }, options);
-    document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options);
-    window.addEventListener('pagehide', save, options);
+    select?.addEventListener('change', () => { pointer.cancel(); state = createFire(select.value as Stage); narration.restart(state); save(); }, options);
+    app.querySelector('.reset-stage')?.addEventListener('click', () => { pointer.cancel(); state = createFire(select!.value as Stage); narration.restart(state); save(); }, options);
+    document.addEventListener('visibilitychange', () => { previous = performance.now(); narration.setHidden(document.hidden); if (document.hidden) save(); }, options);
+    window.addEventListener('pagehide', () => { narration.setHidden(true); save(); }, options);
+    window.addEventListener('pageshow', () => narration.setHidden(document.hidden), options);
     app.querySelector('.loading')!.remove();
+    narration.start();
     const targets = app.querySelector<HTMLElement>('.fire-targets')!;
     let targetKey = '', displayed: Stage | undefined;
     function label(selector: string, text: string) { const node = app.querySelector(selector); if (node && node.textContent !== text) node.textContent = text; }
     function animate(now: number) {
       const dt = document.hidden ? 0 : Math.min((now - previous) / 1000, 0.1); previous = now; time += dt;
       update(advance(state, dt));
+      narration.update(state, dt);
       let held = pointer.context();
       if (held && (held.phase !== state.phase || state.action !== 'dragging')) { pointer.cancel(); held = undefined; }
       if (held && !isSpraying(state) && !isDriving(state)) {
@@ -116,9 +133,9 @@ export function createFireSession(app: HTMLDivElement, dev: boolean, onHome: () 
       app.dataset.resident = String(state.rescued[0]); app.dataset.cat = String(state.rescued[1]); app.dataset.passenger = state.passenger ?? '';
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`;
       app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-      let instruction = instructions[state.phase];
+      let instruction: string = fireLines[fireInstructionId(state)];
       if (items.some(t => t.accepted)) instruction = '對準了，幫你接好！';
-      if (state.phase === 'rescue' && state.action === 'returning') instruction = state.passenger ? '接到了，慢慢回到地面' : '火熄滅了，準備接大家下來';
+      if (state.phase === 'rescue' && state.action === 'returning') instruction = state.passenger ? fireLines['picked-up'] : fireLines['fire-out'];
       if (state.phase === 'rescue' && state.action === 'working') instruction = state.passenger === 'cat' ? '小貓跳進工作籃了' : '消防員陪居民一起下來';
       if (state.phase === 'rescue' && state.action === 'unloading') instruction = '回到地面，平安了！';
       label('.house-instruction', instruction);

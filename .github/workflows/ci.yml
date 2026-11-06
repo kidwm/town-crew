@@ -27,6 +27,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # Includes offline narration text/settings/audio/review hashes; no TTS API keys or requests.
       - run: npm run check
       - run: npx playwright install --with-deps chromium
       - run: npx playwright install --with-deps webkit

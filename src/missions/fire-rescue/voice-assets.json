@@ -1,0 +1,948 @@
+{
+  "version": 1,
+  "clips": {
+    "intro": {
+      "file": "voice/fire-rescue/intro.530a5b8627fc.wav",
+      "textHash": "94bd2e4274eb41010bc30e57206ad914087884207b2549c98df4755604fa3d90",
+      "sourceHash": "32c52dd0c51569d2e165fcd4db88daecac0ce92a2e845db9eed11937239d19cd",
+      "audioHash": "530a5b8627fc38fd6afb27dcca1394d2625e27f497e0b4d204df32fa3d00720e",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:29:04.545Z",
+        "usage": {
+          "total_tokens": 150,
+          "total_input_tokens": 16,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 16
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 134,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 134
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 259
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "消防隊出動，一起把火滅掉，接大家下來。",
+        "sourceHash": "32c52dd0c51569d2e165fcd4db88daecac0ce92a2e845db9eed11937239d19cd",
+        "audioHash": "530a5b8627fc38fd6afb27dcca1394d2625e27f497e0b4d204df32fa3d00720e",
+        "reviewedAt": "2026-11-05T06:30:35.051Z"
+      }
+    },
+    "dispatch": {
+      "file": "voice/fire-rescue/dispatch.a2e8775bcea7.wav",
+      "textHash": "ea8e571c41e6036b50101bba124b74c889dbd016c683a681a601fdb9c8fff8cb",
+      "sourceHash": "556ffd1b9fb38293593f0a5bc0a3026f6181d6e7fe70d360b91f153dbeb407f6",
+      "audioHash": "a2e8775bcea7ca848b50f7400167a6c9daa7de78e01febc2d9a9b029290c24ea",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:12:17.457Z",
+        "usage": {
+          "total_tokens": 117,
+          "total_input_tokens": 13,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 13
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 104,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 104
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 200
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "按住消防車，拖到發亮的停車位。",
+        "sourceHash": "556ffd1b9fb38293593f0a5bc0a3026f6181d6e7fe70d360b91f153dbeb407f6",
+        "audioHash": "a2e8775bcea7ca848b50f7400167a6c9daa7de78e01febc2d9a9b029290c24ea",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "dispatch-help": {
+      "file": "voice/fire-rescue/dispatch-help.8933fb02ef11.wav",
+      "textHash": "37e5a23c90b7184708abf96538dfdf93b760000dc6b999ee0caf06663971298a",
+      "sourceHash": "ec392ebc172a43bd40418068cefaa9906ad0d72f50c7a52426d6b146bc50f697",
+      "audioHash": "8933fb02ef116caf8ff70f2a8a2bd6e101dfc6e4160d0999cf6c9ae8484c4996",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:12:21.112Z",
+        "usage": {
+          "total_tokens": 144,
+          "total_input_tokens": 15,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 15
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 129,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 129
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 202
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "手指放在消防車上，按住，再慢慢移過去。",
+        "sourceHash": "ec392ebc172a43bd40418068cefaa9906ad0d72f50c7a52426d6b146bc50f697",
+        "audioHash": "8933fb02ef116caf8ff70f2a8a2bd6e101dfc6e4160d0999cf6c9ae8484c4996",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "hose": {
+      "file": "voice/fire-rescue/hose.efc92a129ad5.wav",
+      "textHash": "82e81a5c66ebd736fdfa89baa5a77f8d088870c77f0891ba45697ce275566174",
+      "sourceHash": "1aabd52a1c50ca3b69e73be3a394b68f339df702753e17d272a8ee39859dd9eb",
+      "audioHash": "efc92a129ad5192bba3c24257edba6d61a43e88f8941a58db9847cac5091e299",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:12:24.096Z",
+        "usage": {
+          "total_tokens": 131,
+          "total_input_tokens": 15,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 15
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 116,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 116
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 202
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "把水管頭拖到消防栓，接好水管。",
+        "sourceHash": "1aabd52a1c50ca3b69e73be3a394b68f339df702753e17d272a8ee39859dd9eb",
+        "audioHash": "efc92a129ad5192bba3c24257edba6d61a43e88f8941a58db9847cac5091e299",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "ground-fire": {
+      "file": "voice/fire-rescue/ground-fire.13de7f621b89.wav",
+      "textHash": "f173e342234c683a29839f79f7556ce1167d59b395766b36813848a6fae2cc36",
+      "sourceHash": "c1c21fc8a4f780b802ce328497e39ffaab80502ed89b17799ced8af64bff8347",
+      "audioHash": "13de7f621b894c32b3edcc70204029fd843f808a42b5a3dc388a9119389bc722",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:13:53.072Z",
+        "usage": {
+          "total_tokens": 128,
+          "total_input_tokens": 15,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 15
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 113,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 113
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 202
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "按住火苗，讓水柱慢慢把火澆熄。",
+        "sourceHash": "c1c21fc8a4f780b802ce328497e39ffaab80502ed89b17799ced8af64bff8347",
+        "audioHash": "13de7f621b894c32b3edcc70204029fd843f808a42b5a3dc388a9119389bc722",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "ladder-arrival": {
+      "file": "voice/fire-rescue/ladder-arrival.d0ff13866297.wav",
+      "textHash": "d51985afec6163b971b8ae2cad2eaba85551be3c9f96cbcda1acb46f9501348b",
+      "sourceHash": "5f612a099b1f1d7f95f3c5457cbfbba904e0f78afb3f7ea013a6beffba7cb0f1",
+      "audioHash": "d0ff13866297fbb36936fabd9799adf536e5430d48321ea256f758c44fbf0f8d",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:14:12.707Z",
+        "usage": {
+          "total_tokens": 57,
+          "total_input_tokens": 9,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 9
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 48,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 48
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 196
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "雲梯車來幫忙了。",
+        "sourceHash": "5f612a099b1f1d7f95f3c5457cbfbba904e0f78afb3f7ea013a6beffba7cb0f1",
+        "audioHash": "d0ff13866297fbb36936fabd9799adf536e5430d48321ea256f758c44fbf0f8d",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "roof-reach": {
+      "file": "voice/fire-rescue/roof-reach.c2eed58553bd.wav",
+      "textHash": "5f27a26d2cb67a2005e43bad7a166db939beef3cbe7d379fc3e83427d85b8747",
+      "sourceHash": "bd860566eebf33e8c6b7c33d6e5fe0cb3a58b1c77294a7d570543384fb99f315",
+      "audioHash": "c2eed58553bd175a5e510aabc1667e8cfa93487f7fd207ff9d2dd971f18e7356",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:14:35.425Z",
+        "usage": {
+          "total_tokens": 112,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 98,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 98
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 201
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "把雲梯上的籃子拖到屋簷旁邊。",
+        "sourceHash": "bd860566eebf33e8c6b7c33d6e5fe0cb3a58b1c77294a7d570543384fb99f315",
+        "audioHash": "c2eed58553bd175a5e510aabc1667e8cfa93487f7fd207ff9d2dd971f18e7356",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "rescue-choice": {
+      "file": "voice/fire-rescue/rescue-choice.063cfdd663d9.wav",
+      "textHash": "51205939f6ef9cbde99faa9a0f2b7a290645f8264d26c8e3b8451f6c6264428c",
+      "sourceHash": "7ff89b7a4852219cf0ecc246e8ff96249cc741bd43c0f4cce07c35187030eb65",
+      "audioHash": "063cfdd663d9e6cc45fe079e42107824d41585d22bd8b4f08075624f04703ad4",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:14:55.705Z",
+        "usage": {
+          "total_tokens": 109,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 95,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 95
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 201
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "先接小貓，或先接人都可以喔。",
+        "sourceHash": "7ff89b7a4852219cf0ecc246e8ff96249cc741bd43c0f4cce07c35187030eb65",
+        "audioHash": "063cfdd663d9e6cc45fe079e42107824d41585d22bd8b4f08075624f04703ad4",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "ambulance": {
+      "file": "voice/fire-rescue/ambulance.30423ff5c781.wav",
+      "textHash": "c0f524bdb08b4375895c9b5bd4af23094063555c4fc0bd75372d3f6e31a2216d",
+      "sourceHash": "bc65b19bc70d59f29f649b03146efd806e1fd65f33057c1b6020841e5dfb224a",
+      "audioHash": "30423ff5c7818c74f3252eba12324f2990fece01720d036d274031fe825c7f99",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:15:17.216Z",
+        "usage": {
+          "total_tokens": 110,
+          "total_input_tokens": 12,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 12
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 98,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 98
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 199
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "把救護車拖到發亮的停車位。",
+        "sourceHash": "bc65b19bc70d59f29f649b03146efd806e1fd65f33057c1b6020841e5dfb224a",
+        "audioHash": "30423ff5c7818c74f3252eba12324f2990fece01720d036d274031fe825c7f99",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "complete": {
+      "file": "voice/fire-rescue/complete.c1e23c8a6cc4.wav",
+      "textHash": "d8e0ed30512da74b470682a4683681f4a7330f1d611afa07b2526091e6496e07",
+      "sourceHash": "acdeb0fd60ebe5cbb7e83964c4a5f24331693e9e7cffeeb490d4f59f94340a92",
+      "audioHash": "c1e23c8a6cc40c37d5c91a44b43817170dc998aa1893b4ff110d759526587784",
+      "generation": {
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T06:15:38.147Z",
+        "usage": {
+          "total_tokens": 125,
+          "total_input_tokens": 12,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 12
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 113,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 113
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 199
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "大家都平安了，謝謝你，小小幫手。",
+        "sourceHash": "acdeb0fd60ebe5cbb7e83964c4a5f24331693e9e7cffeeb490d4f59f94340a92",
+        "audioHash": "c1e23c8a6cc40c37d5c91a44b43817170dc998aa1893b4ff110d759526587784",
+        "reviewedAt": "2026-11-05T06:17:47.811Z"
+      }
+    },
+    "roof-fire": {
+      "file": "voice/fire-rescue/roof-fire.bdd50e7afb57.wav",
+      "textHash": "a871fc2f9bf91db2e730775b5287642d3818724bd8654ea887bfb5ddcfe0987a",
+      "sourceHash": "1b71454462d77dddd2120b650a62d936c33f1437b24816e0b5275591865635f6",
+      "audioHash": "bdd50e7afb57288003f3f574af2c4347773af08b592befa3f012904df7aea50d",
+      "generation": {
+        "sourceHash": "1b71454462d77dddd2120b650a62d936c33f1437b24816e0b5275591865635f6",
+        "audioHash": "bdd50e7afb57288003f3f574af2c4347773af08b592befa3f012904df7aea50d",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:21:42.909Z",
+        "usage": {
+          "total_tokens": 133,
+          "total_input_tokens": 15,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 15
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 118,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 118
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 247
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "按住屋簷的火苗，慢慢把火澆熄。",
+        "sourceHash": "1b71454462d77dddd2120b650a62d936c33f1437b24816e0b5275591865635f6",
+        "audioHash": "bdd50e7afb57288003f3f574af2c4347773af08b592befa3f012904df7aea50d",
+        "reviewedAt": "2026-11-05T08:21:45.191Z",
+        "usage": {
+          "total_tokens": 176,
+          "total_input_tokens": 162,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 44
+            },
+            {
+              "modality": "audio",
+              "tokens": 118
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 14,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 186
+        }
+      }
+    },
+    "rescue-cat": {
+      "file": "voice/fire-rescue/rescue-cat.a4625984e09c.wav",
+      "textHash": "03b620611f55235d949a456b2e94d21a7847c0cb17365757c00c07c594d6c540",
+      "sourceHash": "894729d2976079d75b9d8b7da923e3613a60f35b54be1dbc1ea3e9347beb4d8c",
+      "audioHash": "a4625984e09c706f811c4d06aeaf26263b0c652caa14c4eed73831496e359be4",
+      "generation": {
+        "sourceHash": "894729d2976079d75b9d8b7da923e3613a60f35b54be1dbc1ea3e9347beb4d8c",
+        "audioHash": "a4625984e09c706f811c4d06aeaf26263b0c652caa14c4eed73831496e359be4",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:22:04.639Z",
+        "usage": {
+          "total_tokens": 110,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 96,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 96
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 201
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "把雲梯上的籃子，拖到小貓旁邊。",
+        "sourceHash": "894729d2976079d75b9d8b7da923e3613a60f35b54be1dbc1ea3e9347beb4d8c",
+        "audioHash": "a4625984e09c706f811c4d06aeaf26263b0c652caa14c4eed73831496e359be4",
+        "reviewedAt": "2026-11-05T08:22:06.407Z",
+        "usage": {
+          "total_tokens": 153,
+          "total_input_tokens": 140,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 44
+            },
+            {
+              "modality": "audio",
+              "tokens": 96
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 13,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 159
+        }
+      }
+    },
+    "rescue-resident": {
+      "file": "voice/fire-rescue/rescue-resident.630c2ca471b6.wav",
+      "textHash": "f610b7694517977f737ecd13d3c827ecfdd5d9c92767852f6752a9496210401f",
+      "sourceHash": "6006076babcf7c0ad4d486d0bfc45976fcc8cb0606f0094681dc8e7694050b63",
+      "audioHash": "630c2ca471b699e9cc0a2e1ca1bb587ed422d5ebfe65d078360f5ae184fc00a3",
+      "generation": {
+        "sourceHash": "6006076babcf7c0ad4d486d0bfc45976fcc8cb0606f0094681dc8e7694050b63",
+        "audioHash": "630c2ca471b699e9cc0a2e1ca1bb587ed422d5ebfe65d078360f5ae184fc00a3",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:22:24.831Z",
+        "usage": {
+          "total_tokens": 103,
+          "total_input_tokens": 13,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 13
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 90,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 90
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 200
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "把雲梯上的籃子拖到居民旁邊。",
+        "sourceHash": "6006076babcf7c0ad4d486d0bfc45976fcc8cb0606f0094681dc8e7694050b63",
+        "audioHash": "630c2ca471b699e9cc0a2e1ca1bb587ed422d5ebfe65d078360f5ae184fc00a3",
+        "reviewedAt": "2026-11-05T08:22:28.164Z",
+        "usage": {
+          "total_tokens": 145,
+          "total_input_tokens": 134,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 44
+            },
+            {
+              "modality": "audio",
+              "tokens": 90
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 11,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 153
+        }
+      }
+    },
+    "stowing": {
+      "file": "voice/fire-rescue/stowing.0b8a56cebbd0.wav",
+      "textHash": "d0611142df7cb9ba78fb4e9cc9cdc6bb51ce8e1a3345a7cbcd6f868889bb7df8",
+      "sourceHash": "3b9f244a0c2996fc66ffe497efe0640c472107ee19cd7b860e47f65f09f6186a",
+      "audioHash": "0b8a56cebbd0ddb5fe2268d31896030576b2ef75488fecc158df6ccee7e48fb5",
+      "generation": {
+        "sourceHash": "3b9f244a0c2996fc66ffe497efe0640c472107ee19cd7b860e47f65f09f6186a",
+        "audioHash": "0b8a56cebbd0ddb5fe2268d31896030576b2ef75488fecc158df6ccee7e48fb5",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:32:02.179Z",
+        "usage": {
+          "total_tokens": 125,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 111,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 111
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 271
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "referenceTextSupplied": false,
+        "transcript": "大家都下來了，收好雲梯，準備接送。",
+        "sourceHash": "3b9f244a0c2996fc66ffe497efe0640c472107ee19cd7b860e47f65f09f6186a",
+        "audioHash": "0b8a56cebbd0ddb5fe2268d31896030576b2ef75488fecc158df6ccee7e48fb5",
+        "reviewedAt": "2026-11-05T08:32:04.001Z",
+        "usage": {
+          "total_tokens": 168,
+          "total_input_tokens": 155,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 44
+            },
+            {
+              "modality": "audio",
+              "tokens": 111
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 13,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 178
+        }
+      }
+    },
+    "stretcher": {
+      "file": "voice/fire-rescue/stretcher.a1cb1a93d21b.wav",
+      "textHash": "cefb3b50a4b0eed07754ba9b0bd9bf9f0429b9e43bfee2f3e0bbe4153f9fa3c6",
+      "sourceHash": "967cba9ddb96266dd3d964bc0fa6aa35e1327ab3469e4be419f3a83e0fa6bfc3",
+      "audioHash": "a1cb1a93d21b24932a94f1245dc9bc934427598e4ec670783b70d61785a9a5a2",
+      "generation": {
+        "sourceHash": "967cba9ddb96266dd3d964bc0fa6aa35e1327ab3469e4be419f3a83e0fa6bfc3",
+        "audioHash": "a1cb1a93d21b24932a94f1245dc9bc934427598e4ec670783b70d61785a9a5a2",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:32:23.615Z",
+        "usage": {
+          "total_tokens": 82,
+          "total_input_tokens": 10,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 10
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 72,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 72
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 197
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段消防救援遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把擔架拖到居民身旁。",
+        "sourceHash": "967cba9ddb96266dd3d964bc0fa6aa35e1327ab3469e4be419f3a83e0fa6bfc3",
+        "audioHash": "a1cb1a93d21b24932a94f1245dc9bc934427598e4ec670783b70d61785a9a5a2",
+        "reviewedAt": "2026-11-05T08:34:54.734Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 3
+        }
+      }
+    },
+    "boarding": {
+      "file": "voice/fire-rescue/boarding.f4ce2af5b4d4.wav",
+      "textHash": "7675855ad736a83e76c672538858ef8ecd13ce80e1103d08a143e433d19931a8",
+      "sourceHash": "8bbd92d7e965fb78b6363db460ca554cf67048bcf471fbd5e7ba299997c2b5bb",
+      "audioHash": "f4ce2af5b4d4ba105313927bdafb74330856de6be6d79d060962a07770ec992d",
+      "generation": {
+        "sourceHash": "8bbd92d7e965fb78b6363db460ca554cf67048bcf471fbd5e7ba299997c2b5bb",
+        "audioHash": "f4ce2af5b4d4ba105313927bdafb74330856de6be6d79d060962a07770ec992d",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:34:57.203Z",
+        "usage": {
+          "total_tokens": 83,
+          "total_input_tokens": 11,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 11
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 72,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 72
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 198
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段消防救援遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把擔架拖回救護車後面。",
+        "sourceHash": "8bbd92d7e965fb78b6363db460ca554cf67048bcf471fbd5e7ba299997c2b5bb",
+        "audioHash": "f4ce2af5b4d4ba105313927bdafb74330856de6be6d79d060962a07770ec992d",
+        "reviewedAt": "2026-11-05T08:34:58.279Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 3
+        }
+      }
+    },
+    "departure": {
+      "file": "voice/fire-rescue/departure.3dd325850b8c.wav",
+      "textHash": "418d761a2a797d87df6d43acba212e017c46f2978ecc02df6f67307871d449e3",
+      "sourceHash": "ddb19c18ca67bda46521450485864cc5e9f7a6bb03029422c9dd5d853c6f1392",
+      "audioHash": "3dd325850b8ce496e43570e7e7a65b6a3804c974e2ea61671623ec94e671f853",
+      "generation": {
+        "sourceHash": "ddb19c18ca67bda46521450485864cc5e9f7a6bb03029422c9dd5d853c6f1392",
+        "audioHash": "3dd325850b8ce496e43570e7e7a65b6a3804c974e2ea61671623ec94e671f853",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T08:35:18.535Z",
+        "usage": {
+          "total_tokens": 105,
+          "total_input_tokens": 11,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 11
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 94,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 94
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 198
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段消防救援遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "繫好安全帶，我們平安出發。",
+        "sourceHash": "ddb19c18ca67bda46521450485864cc5e9f7a6bb03029422c9dd5d853c6f1392",
+        "audioHash": "3dd325850b8ce496e43570e7e7a65b6a3804c974e2ea61671623ec94e671f853",
+        "reviewedAt": "2026-11-05T08:35:50.181Z",
+        "usage": {
+          "total_tokens": 158,
+          "total_input_tokens": 148,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 54
+            },
+            {
+              "modality": "audio",
+              "tokens": 94
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 10,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 167
+        }
+      }
+    },
+    "fire-out": {
+      "file": "voice/fire-rescue/fire-out.70af8b45d078.wav",
+      "textHash": "8e8f5fa85b9908f4997d273fb4464d9efbf48cd733f726a4f4adc8edcb405a28",
+      "sourceHash": "281f0276356e721bd409ca4e9f98f5d5edef9b9fbc0d29b7b0dc5f8c0ba93169",
+      "audioHash": "70af8b45d078ed34bb3d703d0a437227298f71b4e191aa6de7fe6ae2d2a7f8d9",
+      "generation": {
+        "sourceHash": "281f0276356e721bd409ca4e9f98f5d5edef9b9fbc0d29b7b0dc5f8c0ba93169",
+        "audioHash": "70af8b45d078ed34bb3d703d0a437227298f71b4e191aa6de7fe6ae2d2a7f8d9",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T10:37:32.320Z",
+        "usage": {
+          "total_tokens": 43,
+          "total_input_tokens": 6,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 6
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 37,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 37
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 193
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段消防救援遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "火熄滅了。",
+        "sourceHash": "281f0276356e721bd409ca4e9f98f5d5edef9b9fbc0d29b7b0dc5f8c0ba93169",
+        "audioHash": "70af8b45d078ed34bb3d703d0a437227298f71b4e191aa6de7fe6ae2d2a7f8d9",
+        "reviewedAt": "2026-11-05T10:43:52.292Z",
+        "usage": {
+          "total_tokens": 96,
+          "total_input_tokens": 91,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 37
+            },
+            {
+              "modality": "text",
+              "tokens": 54
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 5,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 100
+        }
+      }
+    },
+    "picked-up": {
+      "file": "voice/fire-rescue/picked-up.16684cf8edd8.wav",
+      "textHash": "7b2286e16c661e3955e4fcde1382799d7080ded4bb8a43c4ad8d591c3da4ccf3",
+      "sourceHash": "d77337d3e274ed34304cc60f5ef1e0f7cf09823746a051558af5f80747504c13",
+      "audioHash": "16684cf8edd837a15d10dd6d1e9da2730c8dae153c91c4bc7b2a388b218ba6d6",
+      "generation": {
+        "sourceHash": "d77337d3e274ed34304cc60f5ef1e0f7cf09823746a051558af5f80747504c13",
+        "audioHash": "16684cf8edd837a15d10dd6d1e9da2730c8dae153c91c4bc7b2a388b218ba6d6",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-05T10:43:54.541Z",
+        "usage": {
+          "total_tokens": 84,
+          "total_input_tokens": 8,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 8
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 76,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 76
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 250
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段消防救援遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "接到了。我們慢慢下來。",
+        "sourceHash": "d77337d3e274ed34304cc60f5ef1e0f7cf09823746a051558af5f80747504c13",
+        "audioHash": "16684cf8edd837a15d10dd6d1e9da2730c8dae153c91c4bc7b2a388b218ba6d6",
+        "reviewedAt": "2026-11-05T10:43:55.997Z",
+        "usage": {
+          "total_tokens": 137,
+          "total_input_tokens": 130,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 76
+            },
+            {
+              "modality": "text",
+              "tokens": 54
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 7,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 149
+        }
+      }
+    }
+  }
+}

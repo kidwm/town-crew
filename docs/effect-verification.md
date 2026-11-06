@@ -13,13 +13,14 @@
 | 固定取景／相機範圍／進出場 | 沿用幾何變更檢查，核對全階段與配置的投影範圍、整車／工具極限、手動起終點及自動離場距離；只做文件評估則依純文件列。 | 按[取景驗收](mission-design.md#取景驗收)比較同畫布尺寸前後主體大小，逐邊說明保留／裁減；實際操作、取消、部分工作重載與交接，不能只拍停車畫面。 |
 | E01／E02 資源／初始化 | scene、connection 的部分初始化與獨立清理；分類錯誤、純取消與混合 cleanup defect。 | 啟動失敗、離場、單一 canvas、音效 close 失敗後仍清理。 |
 | E03／E04 frame／音效 | 首次及後續排程、frame／HUD 拋錯；同步／非同步 unlock 失敗、pending 合併與取消。 | 手勢內解鎖、重試、故障離場；消防另驗水聲部分初始化回滾。 |
+| 消防預錄語音／台詞 | `voice:check`、runtime／消防 narration、共用 lifecycle；缺檔、台詞／設定／cue／音檔修改及過期轉錄紀錄拒絕。 | 介紹／提示交接、重播、靜音、續玩、離場、直向手機及正式離線播放。 |
 | E05／E06 存檔 | storage／snapshot、任務 persistence；正式／開發部分進度、memory 優先、刪除遮蔽、同步 pagehide。 | 當前格式續玩、舊／缺欄位／矛盾格式開新局、storage 拒絕、重新選關與重載。 |
 | E07／E08 組裝／診斷 | service 隔離、audio Layer 生命週期、四階段故障、平行載入、summary／logger／clock 失敗。 | success／failure／cancelled 摘要、快速導航、reload／HMR、正式 lazy 載入。 |
 | E09 autosave | TestClock 首次等待、正常週期、hidden、取消、save／frame 互相監督；正式／開發 session。 | 凍結 rAF 仍存檔、hidden 不定期寫、pagehide 同步、離場停止、故障清理。 |
 | 全站導航／PWA | navigation／PWA 測試；連續取消仍等待最早清理、有界重試、load／backoff／結果觀察取消。 | 快速切關及延遲 close、PWA 故障頁；改快取策略時另驗正式離線／更新。 |
 | 新關卡 | 上述適用邊界、任務登記、fixture、共用 adapters 與 runner；核對 [新增清單](effect-usage.md#設計與新增關卡)。 | 新關實際互動、reload／HMR、離場與正式入口；缺少手動測試入口時先補入口才使用該套案例。 |
 
-跨模組、runtime、服務組裝或瀏覽器行為變更執行 `npm run check`（完整 Node 測試、TypeScript 與正式建置）。
+跨模組、runtime、服務組裝或瀏覽器行為變更執行 `npm run check`（離線語音核對、完整 Node 測試、TypeScript 與正式建置）。
 共用 helper 變動須涵蓋全部呼叫端；單關修改則驗受影響關卡與共用契約，不機械式重跑無關完整通關。
 
 ## 共用測試與任務登記
@@ -65,6 +66,18 @@ npm run check
 前兩行是可選的定位範例，不必在完整檢查通過後重複執行。`npm run check` 已包含 `npm test`，以該次實際 runner 輸出記錄總數。
 TestClock 適合精準檢查 `interval - 1` 尚未寫入、再前進 1 ms 首次寫入，及取消後零寫入；不以真實 timer 的精準毫秒斷言代替。
 時間測試不控制 rAF、performance.now、Web Audio 或真實 storage；這些仍需對應的整合與瀏覽器檢查。
+
+## 消防預錄語音與 CI
+
+[domain/narration.ts](../src/missions/fire-rescue/domain/narration.ts) 是基本畫面提示及配音的共同來源，共 19 句；設定為 Gemini `gemini-3.8-flash-tts`／`Sulafat`、臺灣華語、溫柔適合幼兒。13 個階段、開場、閒置教學、剩餘救援對象及滅火完成／角色上籃的 cue 對應納入來源雜湊。成功回饋只在狀態轉換時觸發，操作中的其他短暫視覺回饋不逐幀朗讀。
+
+1. 改台詞、聲線／語氣／讀音指令或 cue 後，執行 `npm run voice:generate:fire`。它只補錄來源雜湊過期或缺少的句子；可用 `npm run voice:generate:fire -- stretcher` 指定句子重新核對。API key 只從本機 `.env.local` 的 `GEMINI_API_KEY` 讀取，不進前端或 CI。
+2. 生成後另送音檔給 `gemini-3.1-flash-lite` 轉錄。轉錄請求只有音檔、繁體逐字稿要求和一般遊戲背景（既有消防核對紀錄保留原消防背景），**沒有原台詞、讀音提示或期待答案**。有疑義時可明確指定 `VOICE_REVIEW_PROVIDER=openai npm run voice:generate:fire -- stretcher`，用本機 `OPENAI_API_KEY` 的 `gpt-transcribe` 複核；不會自動切換服務。配音始終使用 Gemini。
+3. 比較前僅做 Unicode NFC 與移除標點／空白，不自動修正同音字、語助詞或繁簡。內容不同即失敗，候選保存在 `output/voice-candidates/<mission>/`，不更新正式 manifest；先辨認是配音錯誤還是轉錄誤辨，再補讀音指令重錄或獨立複核。候選來源及音檔雜湊相符時可重用，避免重複生成費用。
+4. 通過後寫入 [voice-assets.json](../src/missions/fire-rescue/voice-assets.json)：台詞 SHA-256、含設定／cue 的 sourceHash、WAV SHA-256，以及綁定相同 sourceHash／audioHash 的轉錄模型、逐字稿、時間。檔名含音檔雜湊，PWA 預快取 WAV；發佈後舊快取不會冒充新檔。
+5. `npm run voice:check` 及 CI 的 `npm run check` 只讀本機檔案計算雜湊，核對句子完整性、WAV 格式、路徑／檔名與核對紀錄。**不連 API、不重錄、不自動更新 manifest**，不需要 CI secrets。錯誤注入測試在 [voice-assets.test.mjs](../scripts/voice-assets.test.mjs)；播放器／交接測試在 runtime narration 與 [fire-narration.test.ts](../src/missions/fire-narration.test.ts)，Scope 釋放納入共用 lifecycle。瀏覽器 CI 入口為 fire spec 的 narration 案例、development spec 的滅火／上籃成功回饋與重載案例，以及 pwa spec 的離線播放斷言。
+
+雜湊保證已核對的來源與音檔沒有漂移，不是不可偽造的審核簽章；不要手改雜湊繞過核對。它也無法理解未改 cue 的場景語意變更，玩法／配置修改仍需人工確認提示是否適用。ASR 只輔助核對說了什麼，不能證明臺灣口音、聲調、溫柔程度或幼兒理解度；這些仍需實際試聽。較短的自動動畫旁白會念完再交接，操作提示則立即切換到目前目標。
 
 ## Codex 內建瀏覽器操作
 

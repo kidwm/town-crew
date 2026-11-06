@@ -179,6 +179,40 @@ test('mirrored road lets the child drag past nearer pieces and retains the chose
   await expect(app).toHaveAttribute('data-action', 'ready');
 });
 
+test('fire success narration follows extinguishing and completed boarding without replaying restored events', async ({ page }) => {
+  await page.addInitScript(() => {
+    const NativeAudio = window.Audio;
+    window.__fireVoicePlays = [];
+    window.Audio = function (...args) {
+      const media = new NativeAudio(...args), play = media.play.bind(media);
+      media.play = () => { window.__fireVoicePlays.push(media.src); return play(); };
+      return media;
+    };
+  });
+  await page.goto('/?dev=1&mission=fire-rescue&stage=roof-fire');
+  const app = page.locator('#app'), replay = page.getByRole('button', { name: '再聽一次提示' });
+  const { wait, down, up, dragGoal } = await fireControls(page);
+  await wait('roof-fire'); await replay.click();
+  await expect(replay).toHaveAttribute('data-status', 'playing');
+  const { gesture } = await import('./gesture.mjs');
+  const flame = await gesture(page, 'up'); await down(flame.from);
+  await wait('rescue', 'returning');
+  await expect(page.locator('.house-instruction')).toHaveText('火熄滅了！');
+  await expect(replay).toHaveAttribute('data-status', 'playing'); await up();
+  const count = id => page.evaluate(id => window.__fireVoicePlays.filter(src => src.includes(`/${id}.`)).length, id);
+  expect(await count('fire-out')).toBe(1);
+  await wait('rescue'); await dragGoal('cat');
+  await wait('rescue', 'working'); expect(await count('picked-up')).toBe(0);
+  await wait('rescue', 'returning');
+  await expect(page.locator('.house-instruction')).toHaveText('接到了，我們慢慢下來。');
+  await expect(replay).toHaveAttribute('data-status', 'playing'); await up();
+  await wait('rescue'); expect(await count('picked-up')).toBe(1);
+  await page.reload(); await wait('rescue'); await replay.click();
+  await expect(replay).toHaveAttribute('data-status', 'playing');
+  expect(await count('fire-out')).toBe(0); expect(await count('picked-up')).toBe(0);
+  await expect(app).toHaveAttribute('data-cat', 'true');
+});
+
 test('fire rescue reload, HMR and stage reset preserve the selected passenger progress', async ({ page }) => {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));

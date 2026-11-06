@@ -4,6 +4,7 @@ import { createSanitationScene, type SanitationScene } from './sanitation/scene.
 import { createSanitationSession } from './sanitation/session.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getEventListeners } from 'node:events';
 import { Cause, Effect, Exit, type Scope } from 'effect';
 import * as THREE from 'three';
 import type { MissionId } from '../app/progress.ts';
@@ -11,7 +12,7 @@ import { AudioCloseError, SceneInitError, SessionInitError, closeMissionAudio, i
 import { FrameLoopError } from '../runtime/frame-loop.ts';
 import type { AutosaveError } from '../runtime/autosave.ts';
 import { acquireScene } from '../runtime/scene-lifecycle.ts';
-import { Element, browser, renderer } from '../../tests/helpers/lifecycle.ts';
+import { Element, browser, renderer, type TestAudio } from '../../tests/helpers/lifecycle.ts';
 import { createHouseScene, type HouseScene } from './house-build/scene.ts';
 import { createHouseSession } from './house-build/session.ts';
 import { createFireScene, type FireScene } from './fire-rescue/scene.ts';
@@ -29,6 +30,14 @@ import { createTransferScene, type TransferScene } from './passenger-transfer/sc
 import { createTransferSession } from './passenger-transfer/session.ts';
 
 const audioFake = () => ({ setMuted() {}, setSpraying(_value: boolean) {}, unlock: async () => {}, play(_cue: string) {}, dispose: async () => {} });
+function assertNarrationReleased(id: MissionId, media: TestAudio[]) {
+  if (id !== 'fire-rescue') return;
+  assert.equal(media.length, 1, `${id}: the connection owns one narration player`);
+  assert.equal(media[0].src, ''); assert.equal(media[0].loads, 1);
+  assert.ok(media[0].pauses > 0);
+  assert.equal(getEventListeners(media[0], 'ended').length, 0);
+  assert.equal(getEventListeners(media[0], 'error').length, 0);
+}
 type MissionCase = {
   id: MissionId;
   scene: (host: HTMLElement, make: () => THREE.WebGLRenderer) => Effect.Effect<{ canvas: HTMLCanvasElement }, never, Scope.Scope>;
@@ -105,6 +114,7 @@ for (const mission of missions) {
     assert.ok(app.querySelector('.world')!.children.length > 0);
     assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
     assert.equal(env.frames.size, 0);
+    assertNarrationReleased(mission.id, env.media);
   });
 
   test(`${mission.id}: cancellation survives failed final save and audio close in resource order`, async t => {
@@ -144,6 +154,7 @@ for (const mission of missions) {
     const error = logged.mock.calls[0].arguments[1] as AudioCloseError;
     assert.ok(error instanceof AudioCloseError);
     assert.equal(error.mission, mission.id); assert.equal(error.cause, closeFailure);
+    assertNarrationReleased(mission.id, env.media);
   });
   for (const boundary of ['render', 'hud'] as const) {
     test(`${mission.id}: ${boundary} failure stops frames and releases the running mission`, async t => {
@@ -174,6 +185,7 @@ for (const mission of missions) {
       assert.ok(app.querySelector('.world')!.children.length > 0);
       assert.ok(app.querySelector('.world')!.children.every(node => node.removed));
       if (mission.id === 'fire-rescue') assert.deepEqual(water.mock.calls.at(-1)!.arguments, [false]);
+      assertNarrationReleased(mission.id, env.media);
     });
   }
 

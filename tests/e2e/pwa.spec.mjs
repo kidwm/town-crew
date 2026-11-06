@@ -104,6 +104,12 @@ test('menu reloads and all previously unopened missions load offline', async ({ 
       await expect(page.locator('#app')).toHaveAttribute('data-mission', mission);
       await expect(page.locator('canvas')).toBeVisible();
       await expect(page.locator('.loading')).toBeHidden();
+      if (mission === 'fire-rescue') {
+        // Fire recordings must be precached before this mission is opened.
+        const replay = page.getByRole('button', { name: '再聽一次提示' });
+        await replay.click();
+        await expect(replay).toHaveAttribute('data-status', 'playing');
+      }
       await page.reload();
       await expect(page.locator('canvas')).toBeVisible();
       await expect(page.locator('.loading')).toBeHidden();

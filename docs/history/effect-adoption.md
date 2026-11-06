@@ -570,3 +570,24 @@ E01～E09 及 scene／connection 資源所有權無變更；沒有新增背景 t
 - Vite 1280×720 實際完成 `hsr-tram/layout=1` 的高鐵 → 輕軌 → 區間車 → 捷運，100% 完成、canvas 一個、無 warning／error。其餘組合沒有逐組瀏覽器通關。
 
 詳細玩法、四邊取景、混合組合的瀏覽器範圍及限制見[本次紀錄](../rail-transfer.md#2026-11-01-出發中斷修復與六組入場)。未重跑四個 Effect 手動故障入口、PWA 離線／更新生命週期、全部組合瀏覽器通關、實機觸控或可聽音訊；前次故障驗證仍是前次結果，沒有改寫既有歷史數字。未 commit、push 或部署。
+
+### 2026-11-05 消防預錄語音的 Scope 與離線核對
+
+基準 `fd3608b` 加本次未提交內容。消防 connection 以 `Effect.acquireRelease` 擁有單一 HTML Audio 播放器，沿用 E01／E04：獨立 finalizer、手勢內同步 play、立即觀察 Promise、可選播放失敗及取消後忽略晚到結果。移除事件、停止、清除 src、load 中止載入以 `releaseAll` 全部嘗試，錯誤不跳過其他資源釋放。phase 替換、靜音、hidden／pagehide、重玩與 Scope 離場皆有明確處理；到場／收梯／出發旁白可念完後接最新提示。閒置提醒沿用 frame 的 dt，沒有新 timer／Fiber；目前 v1 存檔、800 ms autosave、同步保存、domain 邊界及其他九關聲音行為不變。
+
+17 句 Gemini `gemini-3.8-flash-tts`／`Sulafat`，共 68.00 秒、3,367,972 bytes WAV，涵蓋 13 階段、介紹、閒置教學及剩餘救援對象。台詞／設定／cue／音檔 SHA-256 與獨立轉錄證據綁定；CI 不讀 key、不連網、不重錄。轉錄使用 Gemini `gemini-3.1-flash-lite`，擔架與上車兩句另以 OpenAI `gpt-transcribe` 複核同音詞，皆未提供原台詞；「屋簷」與收梯句的疑義候選未採用，補讀音指令後重錄通過。流程與限制見[語音核對指南](../effect-verification.md#消防預錄語音與-ci)。
+
+- 最後一次 `npm run check`：**797 tests，797 pass，0 fail**；TypeScript 與正式 build 通過。17 句離線核對 **23 ms**（不含 Node／npm 啟動，依機器變動）。新增錯誤注入涵蓋台詞／設定／音檔變更、缺檔及過期轉錄；Scope 整合測試確認部分 connection 初始化、取消且保存／音效清理失敗、frame／HUD 失敗均釋放語音 src 及監聽。播放器另驗 pause 失敗仍完成其他清理、同步失敗、autoplay 拒絕、晚到結果、靜音／hidden、提示去重與自動旁白交接。
+- Codex 內建瀏覽器 Vite `127.0.0.1:5174`、390×844：完成旁白重播、靜音、重播開聲、重玩介紹、實際拖消防車、接水、按住滅掉一個地面火點、重載保留目前步驟。旁白顯示 playing／muted，無 warning／error；沒有宣稱本次重新完整通關。
+- 正式 preview `127.0.0.1:4174`、1280×720：DOM 入口 `/assets/index-Jz6fWjur.js` 與 dist 相符；確認所有 17 WAV 都在 precache。**停止該預覽伺服器後**重載、重播消防介紹，實際拖車進入 hose，再播放原先未播放的水管提示，狀態 playing；回選單後 canvas 0，無 warning／error。結束後恢復預覽服務。桌面與手機提示按鈕／文字皆無遮擋；相機、模型及四邊裁切沒有改動。
+- fire／PWA Playwright CI 案例已維護，`node --check` 通過；本機依專案規定沒有執行 Playwright。建置保留既有共用 Three.js chunk 大於 500 kB 提醒。
+
+限制：未驗實體裝置觸控／喇叭輸出、Safari 媒體政策、全部救援順序完整通關、PWA 更新生命週期、全部四個手動故障頁或幼兒試玩。ASR 匹配與瀏覽器 playing 不代表人耳已驗收口音／聲調／溫柔程度；雜湊也不能自動理解未改 cue 的玩法語意變更。未 commit、push 或部署，既有歷史結果未改寫。
+
+### 2026-11-07 消防語音獨立提交驗證
+
+以 `b1d57db` 為基準整理消防單關提交，包含 19 句已核對的 Gemini／Sulafat 預錄語音（含滅火與上籃成功回饋）、connection Scope 播放、重播／靜音、獨立轉錄證據、離線雜湊 CI 及 WAV 預快取。提交範圍只登記消防語音；其他九關的擴充與待錄資源保留在工作區，不混入本次提交。本次分拆沒有更改既有 E01／E04 行為、Schema 或 autosave 策略，前述歷史驗證數字保持原樣。
+
+對與提交內容相同的獨立檔案樹執行 `npm run check`：19 句離線雜湊核對通過（20 ms）、805 tests／805 pass／0 fail，TypeScript 與正式建置通過；入口為 `index-74ulUxna.js`，預快取 86 項、4820.46 KiB，19 個 WAV 全數列入。生成指令與 fire／development／PWA 測試檔的語法、設計文件本機連結也已核對。
+
+Codex 內建瀏覽器在正式 preview `127.0.0.1:4176` 確認上述入口，重播為 `playing`、靜音為 `muted`；停止 preview 伺服器後重載並重播，仍為 `playing`，回選單後 canvas 為 0，無 warning／error。本次未重新執行 Playwright、全部救援順序、實機觸控／喇叭或人工口音試聽；既有較完整互動證據與限制仍見 2026-11-05 紀錄。
