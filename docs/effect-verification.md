@@ -13,7 +13,7 @@
 | 固定取景／相機範圍／進出場 | 沿用幾何變更檢查，核對全階段與配置的投影範圍、整車／工具極限、手動起終點及自動離場距離；只做文件評估則依純文件列。 | 按[取景驗收](mission-design.md#取景驗收)比較同畫布尺寸前後主體大小，逐邊說明保留／裁減；實際操作、取消、部分工作重載與交接，不能只拍停車畫面。 |
 | E01／E02 資源／初始化 | scene、connection 的部分初始化與獨立清理；分類錯誤、純取消與混合 cleanup defect。 | 啟動失敗、離場、單一 canvas、音效 close 失敗後仍清理。 |
 | E03／E04 frame／音效 | 首次及後續排程、frame／HUD 拋錯；同步／非同步 unlock 失敗、pending 合併與取消。 | 手勢內解鎖、重試、故障離場；消防另驗水聲部分初始化回滾。 |
-| 消防預錄語音／台詞 | `voice:check`、runtime／消防 narration、共用 lifecycle；缺檔、台詞／設定／cue／音檔修改及過期轉錄紀錄拒絕。 | 介紹／提示交接、重播、靜音、續玩、離場、直向手機及正式離線播放。 |
+| 消防／修路預錄語音／台詞 | `voice:check`、runtime／各關 narration、共用及修路 lifecycle；缺檔、台詞／設定／cue／音檔修改及過期轉錄紀錄拒絕。 | 介紹／提示交接、重播、靜音、續玩、離場、直向手機及正式離線播放。 |
 | E05／E06 存檔 | storage／snapshot、任務 persistence；正式／開發部分進度、memory 優先、刪除遮蔽、同步 pagehide。 | 當前格式續玩、舊／缺欄位／矛盾格式開新局、storage 拒絕、重新選關與重載。 |
 | E07／E08 組裝／診斷 | service 隔離、audio Layer 生命週期、四階段故障、平行載入、summary／logger／clock 失敗。 | success／failure／cancelled 摘要、快速導航、reload／HMR、正式 lazy 載入。 |
 | E09 autosave | TestClock 首次等待、正常週期、hidden、取消、save／frame 互相監督；正式／開發 session。 | 凍結 rAF 仍存檔、hidden 不定期寫、pagehide 同步、離場停止、故障清理。 |
@@ -67,7 +67,11 @@ npm run check
 TestClock 適合精準檢查 `interval - 1` 尚未寫入、再前進 1 ms 首次寫入，及取消後零寫入；不以真實 timer 的精準毫秒斷言代替。
 時間測試不控制 rAF、performance.now、Web Audio 或真實 storage；這些仍需對應的整合與瀏覽器檢查。
 
-## 消防預錄語音與 CI
+## 各關預錄語音與 CI
+
+目前已登記消防與修路的完整錄音。來源、補錄及新關卡必要清單見[語音指南](voice-narration.md)；CI 離線核對全部已登記台詞，不放行缺檔或未核對候選。修路使用共用控制器、cue 與 lifecycle 測試，以及 narration spec；PWA 案例核對消防與修路未開啟前即已預快取語音。
+
+### 消防預錄語音與 CI
 
 [domain/narration.ts](../src/missions/fire-rescue/domain/narration.ts) 是基本畫面提示及配音的共同來源，共 19 句；設定為 Gemini `gemini-3.8-flash-tts`／`Sulafat`、臺灣華語、溫柔適合幼兒。13 個階段、開場、閒置教學、剩餘救援對象及滅火完成／角色上籃的 cue 對應納入來源雜湊。成功回饋只在狀態轉換時觸發，操作中的其他短暫視覺回饋不逐幀朗讀。
 

@@ -82,6 +82,11 @@ saved state; mute, hidden/pagehide and navigation stop playback. No narration ti
 Recorded WAVs are precached for offline play. The [voice verification guide](effect-verification.md#消防預錄語音與-ci)
 documents authoring, independent transcription and the offline CI hash gate.
 
+Road narration uses the same media lifecycle through `runtime/voice-controls.ts` and
+`mission-narration.ts`. Its pure plan selects drag and keyboard instructions plus committed
+success feedback; snapshot restoration does not replay old events. The [voice guide](voice-narration.md)
+documents the currently released fire and road recordings and the requirements for future missions.
+
 Persistence accepts complete current-version snapshots, then checks domain invariants and
 cancels stale input. Storage remains optional and synchronous, with caller-owned memory fallback;
 pagehide and final saves do not wait for asynchronous work. Optional gesture audio and PWA

@@ -591,3 +591,13 @@ E01～E09 及 scene／connection 資源所有權無變更；沒有新增背景 t
 對與提交內容相同的獨立檔案樹執行 `npm run check`：19 句離線雜湊核對通過（20 ms）、805 tests／805 pass／0 fail，TypeScript 與正式建置通過；入口為 `index-74ulUxna.js`，預快取 86 項、4820.46 KiB，19 個 WAV 全數列入。生成指令與 fire／development／PWA 測試檔的語法、設計文件本機連結也已核對。
 
 Codex 內建瀏覽器在正式 preview `127.0.0.1:4176` 確認上述入口，重播為 `playing`、靜音為 `muted`；停止 preview 伺服器後重載並重播，仍為 `playing`，回選單後 canvas 為 0，無 warning／error。本次未重新執行 Playwright、全部救援順序、實機觸控／喇叭或人工口音試聽；既有較完整互動證據與限制仍見 2026-11-05 紀錄。
+
+### 2026-11-09 修路語音獨立提交驗證
+
+以 `41c5bbd` 為基準整理修路單關提交，包含修路 13 句、共用 scoped 語音控制器、修路 cue／事件、重播與音效偏好、獨立轉錄與離線雜湊核對，另保留已發布的消防 19 句。其他八關的擴充與不完整資產留在工作區。提交版本的 `npm run check` 通過：32 句離線核對（13 ms）、816 tests／816 pass／0 fail、TypeScript 與正式 build；入口 `index-CTNvdV12.js`，預快取 100 項、7037.49 KiB，32 個 WAV 全數列入。narration／PWA CI 測試語法通過；本機未啟動 Playwright。
+
+Codex 內建瀏覽器在正式 preview `127.0.0.1:4177` 驗證新版入口、介紹重播 `playing`、鍵盤挖起／裝車，以及完成時出現「成功了！」後切回挖土提示。首次開頁沿用舊 worker；關閉舊頁再開啟後正常換成新版。停止 preview 伺服器後重載仍保留已裝車進度，提示重播為 `playing`，並能繼續挖起、裝入下一塊。靜音為 `muted`，離場後零 canvas，無 console warning／error。工具在第二次裝車的短回饋觀測時逾時，因此沒有聲稱已捕捉該句與 `playing` 同時存在的離線畫面；成功事件及播放排程另由 Node 測試核對。
+
+限制：本次未重跑整關通關、手機／真實觸控硬體、Safari 媒體政策或人工口音試聽。本次沒有改相機、模型、動線或四邊裁切，新增按鈕沿用 44×44 規格。ASR 與 `playing` 狀態不等同人工聽感驗收。
+
+本次發佈的修路 session 新增 connection Scope 語音資源，透過 `voice-controls` 的 `Effect.acquireRelease` 與 `mission-narration` 沿用 E01／E02 獨立清理及 E04 可選播放降級。純 domain plan 選擇拖曳／鍵盤提示與已提交成功；背景、靜音、取消和重載不補播歷史回饋。沒有新 timer／Fiber、存檔欄位、Schema、autosave 或既有消防控制器變更；任務差異表、設計清單及驗證入口已同步。原有歷史結果保留。

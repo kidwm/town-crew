@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checkVoiceAssets, sha256 } from './voice-assets.mjs';
 
-for (const mission of ['fire-rescue']) test(`${mission}: offline CI rejects stale text, settings, bytes, missing clips and stale ASR evidence`, async t => {
+for (const mission of ['fire-rescue', 'road-repair']) test(`${mission}: offline CI rejects stale text, settings, bytes, missing clips and stale ASR evidence`, async t => {
   const root = await mkdtemp(join(tmpdir(), 'fire-voice-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   await mkdir(join(root, `public/voice/${mission}`), { recursive: true });

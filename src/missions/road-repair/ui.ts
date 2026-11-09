@@ -1,3 +1,4 @@
+import { voiceButtonMarkup } from '../../runtime/voice-controls.ts';
 import { DAMAGE, DAMAGE_PATTERNS } from './domain/round.ts';
 
 import { icons } from '../../app/road-vehicle-art.ts';
@@ -11,7 +12,7 @@ export function mountUI(app: HTMLElement, dev: boolean) {
     <span id="excavator-keyboard-help" class="visually-hidden">按 Enter 或空白鍵選取挖斗，再按一次前往亮起的目的地。Escape 取消選取。</span>
     <header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header>
     <div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始修路任務">↻</button></div>
-    <div class="gesture-caption" hidden><span class="gesture-instruction"></span></div>
+    <div class="gesture-caption voice-caption" hidden>${voiceButtonMarkup}<span class="gesture-instruction"></span></div>
     <div class="mission-badge"><span class="badge-icon">${icons.excavator}</span><div><span class="eyebrow">道路修復</span><strong id="vehicle-name">挖土機</strong></div></div>
     <div class="road-progress">
       <div class="mission-steps" aria-label="修路四階段">${Object.entries(icons).map(([key, icon]) => `<span data-step="${key}" aria-label="${key === 'excavator' ? '清除舊路面' : key === 'haul-away' ? '裝車清運' : key === 'dump-truck' ? '填入材料' : '整平路面'}">${icon}</span>`).join('')}</div>

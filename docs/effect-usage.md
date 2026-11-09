@@ -47,7 +47,7 @@ flowchart TD
   K --> L[清理後判斷 Exit 與最新導航]
 ```
 
-消防在最後存檔後、移除提示前另執行停止水聲及釋放預錄語音；失敗不跳過其他 finalizer。
+修路與消防在最後存檔後、移除提示前釋放預錄語音；消防另停止水聲。失敗不跳過其他 finalizer。
 選單 disposer 也加入導航 scope。快速 A → B → C，即使 B 在等 A 時被取消，C 仍須等 A 清理完。
 HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise。
 從選單進入先等舊 scope 最後存檔，再清除所選關卡進度並開新局；重載／HMR 恢復同局，徽章與靜音不隨新局清除。
@@ -89,6 +89,7 @@ HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise�
 - 立即觀察 Promise 拒絕，合併 pending 呼叫；同步拋錯／非同步拒絕皆可選降級，後續手勢可重試。
 - 使用 connection signal 取消觀察；開發工具模式每個 connection 最多一次解鎖警告，診斷失敗不回拋 DOM handler。
 - [消防 sounds.ts](../src/missions/fire-rescue/sounds.ts) 另追蹤水聲 source／filter／gain：部分初始化失敗回滾節點，下一手勢沿用 context 重建；停止／斷開失敗仍嘗試關閉 context，保留所有原因。
+- 修路使用 [voice-controls](../src/runtime/voice-controls.ts) 的 `Effect.acquireRelease` 與 [共用控制器](../src/runtime/mission-narration.ts)，由 connection Scope 擁有單一播放器；純 domain plan 決定拖曳／點選提示及已提交成功，靜音／背景不累積事件，重載不補播歷史回饋。製作及新關卡規則見[語音指南](voice-narration.md)。
 - 消防預錄語音由 [session](../src/missions/fire-rescue/session.ts) 的 `Effect.acquireRelease` 取得與釋放，與 connection 同壽命；[共用播放器](../src/runtime/narration.ts) 只處理瀏覽器媒體，[消防控制器](../src/missions/fire-rescue/narration.ts) 決定提示，不讓 domain 依賴 Effect／DOM。單一 Audio、不另開 timer／Fiber；閒置提醒使用既有 frame 的 dt。
 - 語音 `play()` 在手勢內同步呼叫並立即觀察拒絕；自動播放受阻或載入／解碼失敗為可選降級，按喇叭或後續手勢可重試。操作提示替換、靜音、hidden／pagehide 會停止舊播放，晚到 Promise／ended 不得復活已取消或釋放的提示。短自動動畫的到場／收梯／出發旁白可念完後接最新提示；重玩仍立即替換。
 - 語音釋放以 `releaseAll` 獨立移除監聽、pause、清除 src 及 load 中止媒體載入；即使其中一項拋錯也嘗試其餘清理，缺陷保留給 Scope。語音播放進度不寫存檔，重載依目前關卡狀態選提示；各關既有 Schema 與 autosave 間隔不變。
@@ -144,7 +145,7 @@ HMR 透過 `import.meta.hot.data.cleanup` 傳遞導航與 PWA 的清理 Promise�
 
 | 任務／快照 Schema | version | 定期存檔 | 啟動階段 | 開發前綴 | 組裝入口與必要差異 |
 | --- | --- | --- | --- | --- | --- |
-| [修路](../src/missions/road-repair/persistence.ts) | 1 | 800 ms | 7 | road（特別 key） | [startup](../src/missions/road-repair/startup.ts)；envelope、調校參數、hot.data、貨物所有權與施工順序。 |
+| [修路](../src/missions/road-repair/persistence.ts) | 1 | 800 ms | 7 | road（特別 key） | [startup](../src/missions/road-repair/startup.ts)；envelope、調校參數、hot.data、貨物所有權與施工順序；connection Scope 擁有預錄語音，沿用共用 voice-controls／mission-narration，點選挖斗狀態只作瞬時提示、不寫入存檔。 |
 | [蓋房子](../src/missions/house-build/persistence.ts) | 6 | 800 ms | 6 | house | [startup](../src/missions/house-build/startup.ts)；屋型／家庭摘要、attached 與部分澆灌／吊裝。 |
 | [消防](../src/missions/fire-rescue/persistence.ts) | 1 | 800 ms | 7 | fire | [startup](../src/missions/fire-rescue/startup.ts)；無上一回合隨機摘要，另有持續水聲及停止 finalizer；connection Scope 擁有單一預錄語音播放器，靜音／hidden 停播、離場釋放，閒置提醒沿用 frame。 |
 | [交通](../src/missions/traffic-rescue/persistence.ts) | 3 | 800 ms | 6 | traffic | [startup](../src/missions/traffic-rescue/startup.ts)；上一組雙車顏色、拖吊車型與先後順序。 |

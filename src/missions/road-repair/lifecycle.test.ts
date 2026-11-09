@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { getEventListeners } from 'node:events';
 import { Element, browser, renderer } from '../../../tests/helpers/lifecycle.ts';
 import { Effect, Exit } from 'effect';
 import * as THREE from 'three';
@@ -55,8 +56,8 @@ function connection() {
   return { app, canvas, session, audio, effect: () => session.connect({ canvas } as unknown as RoadScene, audio) };
 }
 
-test('connect failure after pointer listeners were added removes listeners and hint', async t => {
-  const { document, window, frames } = browser(t);
+test('connect failure after pointer listeners were added removes listeners, voice and hint', async t => {
+  const { document, window, frames, media } = browser(t);
   const { app, canvas, effect } = connection();
   const original = new Error('sound control failed');
   t.mock.method(app.querySelector('.sound')!, 'addEventListener', () => { throw original; });
@@ -71,6 +72,9 @@ test('connect failure after pointer listeners were added removes listeners and h
   assert.ok(signals.every(signal => signal.aborted));
   assert.equal(app.querySelector('.world')!.children[0].removed, true);
   assert.equal(frames.size, 0);
+  assert.equal(media.length, 1); assert.equal(media[0].src, ''); assert.equal(media[0].loads, 1);
+  assert.equal(getEventListeners(media[0], 'ended').length, 0);
+  assert.equal(getEventListeners(media[0], 'error').length, 0);
 });
 
 test('failed final save cannot leave an animation frame, hint or event listeners alive', async t => {
@@ -149,6 +153,8 @@ for (const boundary of ['render', 'hud'] as const) {
     assert.equal(env.frames.size, 0); assert.equal(canvas.removed, true); assert.equal(env.resize.disconnected, true);
     assert.ok([...canvas.signals, ...env.document.signals, ...env.window.signals].every(s => s.aborted));
     assert.equal(app.querySelector('.world')!.children[0].removed, true);
+    assert.equal(env.media.length, 1); assert.equal(env.media[0].src, ''); assert.equal(env.media[0].loads, 1);
+    assert.equal(getEventListeners(env.media[0], 'ended').length, 0);
   });
 }
 
