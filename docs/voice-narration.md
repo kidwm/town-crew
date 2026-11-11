@@ -2,12 +2,13 @@
 
 ## 目前進度
 
-2026-11-09：本版完成消防 19 句與修路 13 句，共 32 句 Gemini／Sulafat 預錄語音。全部綁定台詞、配音設定、cue、音檔雜湊及獨立轉錄紀錄，已接上 Effect 播放與 PWA 預快取。其他關卡仍分批製作，完成核對後再納入發佈；不把候選音檔或空 manifest 當作完成。
+2026-11-11：本版完成消防 19 句、修路 13 句與蓋房子 10 句，共 42 個 Gemini／Sulafat 預錄語音條目。全部綁定台詞、配音設定、cue、音檔雜湊及獨立轉錄紀錄，已接上 Effect 播放與 PWA 預快取。其他關卡仍分批製作，完成核對後再納入發佈；不把候選音檔或空 manifest 當作完成。
 
 | 關卡 | 台詞條目 | 核對範圍 |
 | --- | ---: | --- |
 | [消防](../src/missions/fire-rescue/domain/narration.ts) | 19，已核對 | 介紹、所有階段、閒置教學、剩餘對象、滅火及上籃完成 |
 | [修路](../src/missions/road-repair/domain/narration.ts) | 13，已核對 | 介紹、挖起／裝車、拖曳／點選、清運、車斗上拉、壓平及完成 |
+| [蓋房子](../src/missions/house-build/domain/narration.ts) | 10，已核對 | 介紹、澆灌、送貨、吊鉤取貨／放置、各區填滿、材料安裝、停車及完成 |
 
 相同台詞與配音設定可重用已核對的錄音，每個關卡仍保留自己的 cue 來源雜湊；重用證據應標明原始來源，不能冒充新做了一次轉錄。
 
@@ -50,15 +51,15 @@ ASR 輔助核對內容，不保證口音、聲調、音量或幼兒理解度。�
 
 ## Effect 與驗證入口
 
-修路由 [voice-controls.ts](../src/runtime/voice-controls.ts) 用 `Effect.acquireRelease` 取得單一播放器；[mission-narration.ts](../src/runtime/mission-narration.ts) 選取目前提示及一次性事件，沿用消防的 [narration.ts](../src/runtime/narration.ts) 播放與獨立清理。DOM listener 沿用 connection 的 AbortSignal；不另開 timer／Fiber，不改存檔 Schema。重玩與開發重設走 `restart`，狀態推進走 `update`，不能把載入快照當作進度變化。
+修路與蓋房子由 [voice-controls.ts](../src/runtime/voice-controls.ts) 用 `Effect.acquireRelease` 取得單一播放器；[mission-narration.ts](../src/runtime/mission-narration.ts) 選取目前提示及一次性事件，沿用消防的 [narration.ts](../src/runtime/narration.ts) 播放與獨立清理。DOM listener 沿用 connection 的 AbortSignal；不另開 timer／Fiber，不改存檔 Schema。重玩與開發重設走 `restart`，狀態推進走 `update`，不能把載入快照當作進度變化。
 
 `npm run voice:check` 只做本機核對：全部註冊 ID、台詞／設定／cue／WAV 雜湊、路徑、檔名與轉錄紀錄。CI 的 `npm run check` 先跑它，**不連 API、不生成、不自動更新 manifest、不需秘密金鑰**。新增語音關卡必須同步登記 registry、manifest 與適用的測試入口。沒有錄音時不可放寬檢查或把空 manifest 當通過。
 
-- [關卡 cue 測試](../src/missions/narration.test.ts)：修路階段、拖曳／點選及帶貨提示、重載與裝車成功條件。
+- [關卡 cue 測試](../src/missions/narration.test.ts)：修路與蓋房子階段、拖曳／點選及帶貨提示、重載與已提交成功條件。
 - [共用控制器測試](../src/runtime/mission-narration.test.ts)：介紹交接、最新提示、單次回饋、手勢打斷、靜音／背景／重載／缺檔及晚到結果。
 - [共用 lifecycle](../src/missions/lifecycle.test.ts)／[修路 lifecycle](../src/missions/road-repair/lifecycle.test.ts)：部分初始化、取消與 frame 故障後釋放語音。
 - [離線雜湊測試](../scripts/voice-assets.test.mjs)：台詞、設定、bytes、缺檔、跨關路徑與過期／提供答案的轉錄紀錄不得通過。
-- [瀏覽器 CI](../tests/e2e/narration.spec.mjs) 與既有 fire spec：各關重播、靜音與離場；[PWA](../tests/e2e/pwa.spec.mjs) 對消防與修路核對未開啟關卡的離線播放。登記不等於已執行，實際結果另記。
+- [瀏覽器 CI](../tests/e2e/narration.spec.mjs) 與既有 fire spec：各關重播、靜音與離場；[PWA](../tests/e2e/pwa.spec.mjs) 對消防、修路與蓋房子核對未開啟關卡的離線播放。登記不等於已執行，實際結果另記。
 
 ## 新增關卡必做
 
@@ -81,3 +82,17 @@ ASR 輔助核對內容，不保證口音、聲調、音量或幼兒理解度。�
 Codex 內建瀏覽器在正式 preview `127.0.0.1:4177` 驗證新版入口、介紹重播 `playing`、鍵盤挖起／裝車，以及完成時出現「成功了！」後切回挖土提示。首次開頁沿用舊 worker；關閉舊頁再開啟後正常換成新版。停止 preview 伺服器後重載仍保留已裝車進度，提示重播為 `playing`，並能繼續挖起、裝入下一塊。靜音為 `muted`，離場後零 canvas，無 console warning／error。工具在第二次裝車的短回饋觀測時逾時，因此沒有聲稱已捕捉該句與 `playing` 同時存在的離線畫面；成功事件及播放排程另由 Node 測試核對。
 
 限制：本次未重跑整關通關、手機／真實觸控硬體、Safari 媒體政策或人工口音試聽。本次沒有改相機、模型、動線或四邊裁切，新增按鈕沿用 44×44 規格。ASR 與 `playing` 狀態不等同人工聽感驗收。
+
+## 2026-11-11 補齊蓋房子並獨立提交
+
+蓋房子從 8／10 補齊為 10／10。本日使用 3 次 Gemini TTS：吊鉤取貨一次，以及澆灌兩次；沿用 `gemini-3.8-flash-tts`／`Sulafat` 與共用臺灣華語、溫柔幼兒指令。`pickup`「把吊鉤拖到車上的材料，停一下。」為 4.12 秒；`concrete` 最終採用「拖動出料口，對準光圈，慢慢填滿三個地方。」為 5.40 秒，兩句均通過 `gemini-3.1-flash-lite` 的獨立轉錄。
+
+澆灌增加「出料口」第一聲的個別讀音提示，但第一次原句仍被 Gemini 與 OpenAI 轉錄成「打出料口…」，未採用；改成上述拖動句後重新生成、第一次轉錄即通過。讀音提示只給 TTS，不給 ASR；新的台詞、讀音設定、來源雜湊、WAV 與 review 一起更新。11 月 9 日舊候選與本日第一版分別保留於 `output/voice-candidates/house-build/archive-2026-11-09-concrete/`、`archive-2026-11-11-concrete-first/`，沒有修改原始逐字稿或放寬規則。既有八句保留原 generation／review，材料安裝的「成功了！」仍沿用先前核對的錄音。
+
+以 `e715442` 為基準整理蓋房子單關提交，包含 10 句、純 domain 的 cue／成功事件、connection Scope 播放、重播／靜音，以及台詞／配音設定／音檔雜湊與獨立轉錄證據；消防與修路維持原本的 32 句。其他七關的擴充及不完整資產留在工作區，不混入提交。
+
+與提交相同的獨立檔案樹通過 `npm run check`：42 個語音條目離線核對（22 ms）、818 tests／818 pass／0 fail、TypeScript 與正式 build。入口 `index-Blx0CZJ9.js`，預快取 111 項、8843.12 KiB，包含全部 42 個正式 WAV。narration／PWA CI 入口已加入蓋房子並通過語法核對；本機依專案規定未執行 Playwright。
+
+Codex 內建瀏覽器在 Vite `127.0.0.1:5186` 驗證新的澆灌句與吊鉤取貨句重播為 `playing`，靜音為 `muted`，由澆灌切到吊裝後提示正確；390×844 手機的重播按鈕為 44×44 且在畫面內。原 5175 來源載入舊快取，因此改用乾淨測試來源，沒有刪除原來源資料，也沒有把舊畫面當成新版本結果。正式 preview `127.0.0.1:4178` 的 DOM 入口與上述 build 相符，介紹可重播；停止該 preview 伺服器後重載，保留砂石階段並播放先前未播放的操作提示，狀態 `playing`，靜音為 `muted`。開發及正式頁離場後皆零 canvas、無 console warning／error；測試尺寸已還原，測試服務已停止。
+
+限制：本次沒有重跑整關通關、全部房型／配置、快速換關矩陣、四個手動故障入口、實機觸控／喇叭、Safari 媒體政策、PWA 更新生命週期或人工口音試聽。開發跳階不代表完整通關，ASR 與 `playing` 不等同人耳驗收。相機、模型、動線及上／下／左／右裁切未改，桌面與手機主體大小沿用原設計。

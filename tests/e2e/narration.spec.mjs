@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 // Registered narrated missions must pass the offline asset gate before browser CI.
-const missions = ['road-repair'];
+const missions = ['road-repair', 'house-build'];
 for (const mission of missions) test(`${mission}: narration replays, shares mute, and releases on navigation`, async ({ page }, info) => {
   if (info.project.use.hasTouch) await page.setViewportSize({ width: 390, height: 844 });
   const errors = []; page.on('pageerror', error => errors.push(error.message));

@@ -601,3 +601,15 @@ Codex 內建瀏覽器在正式 preview `127.0.0.1:4177` 驗證新版入口、介
 限制：本次未重跑整關通關、手機／真實觸控硬體、Safari 媒體政策或人工口音試聽。本次沒有改相機、模型、動線或四邊裁切，新增按鈕沿用 44×44 規格。ASR 與 `playing` 狀態不等同人工聽感驗收。
 
 本次發佈的修路 session 新增 connection Scope 語音資源，透過 `voice-controls` 的 `Effect.acquireRelease` 與 `mission-narration` 沿用 E01／E02 獨立清理及 E04 可選播放降級。純 domain plan 選擇拖曳／鍵盤提示與已提交成功；背景、靜音、取消和重載不補播歷史回饋。沒有新 timer／Fiber、存檔欄位、Schema、autosave 或既有消防控制器變更；任務差異表、設計清單及驗證入口已同步。原有歷史結果保留。
+
+### 2026-11-11 蓋房子語音獨立提交驗證
+
+以 `e715442` 為基準整理蓋房子單關提交，包含 10 句、純 domain 的 cue／成功事件、connection Scope 播放、重播／靜音，以及台詞／配音設定／音檔雜湊與獨立轉錄證據；消防與修路維持原本的 32 句。其他七關的擴充及不完整資產留在工作區，不混入提交。
+
+與提交相同的獨立檔案樹通過 `npm run check`：42 個語音條目離線核對（22 ms）、818 tests／818 pass／0 fail、TypeScript 與正式 build。入口 `index-Blx0CZJ9.js`，預快取 111 項、8843.12 KiB，包含全部 42 個正式 WAV。narration／PWA CI 入口已加入蓋房子並通過語法核對；本機依專案規定未執行 Playwright。
+
+Codex 內建瀏覽器在 Vite `127.0.0.1:5186` 驗證新的澆灌句與吊鉤取貨句重播為 `playing`，靜音為 `muted`，由澆灌切到吊裝後提示正確；390×844 手機的重播按鈕為 44×44 且在畫面內。原 5175 來源載入舊快取，因此改用乾淨測試來源，沒有刪除原來源資料，也沒有把舊畫面當成新版本結果。正式 preview `127.0.0.1:4178` 的 DOM 入口與上述 build 相符，介紹可重播；停止該 preview 伺服器後重載，保留砂石階段並播放先前未播放的操作提示，狀態 `playing`，靜音為 `muted`。開發及正式頁離場後皆零 canvas、無 console warning／error；測試尺寸已還原，測試服務已停止。
+
+限制：本次沒有重跑整關通關、全部房型／配置、快速換關矩陣、四個手動故障入口、實機觸控／喇叭、Safari 媒體政策、PWA 更新生命週期或人工口音試聽。開發跳階不代表完整通關，ASR 與 `playing` 不等同人耳驗收。相機、模型、動線及上／下／左／右裁切未改，桌面與手機主體大小沿用原設計。
+
+本次發佈的蓋房子 session 透過既有 `voice-controls` 的 `Effect.acquireRelease` 取得單一播放器，由 connection Scope 擁有，沿用 E01／E02 獨立清理與 E04 可選播放降級。最後存檔後釋放媒體，DOM 監聽依 AbortSignal 清理；純 domain plan 分辨吊鉤取貨／帶貨放置，以及澆灌、安裝、停車的已提交成功。重玩、背景、靜音與重載不補播歷史回饋；沒有新 timer／Fiber、存檔欄位、Schema 遷移、autosave 策略或共用播放器契約變更。任務差異表與驗證入口已同步，既有歷史數字保留。

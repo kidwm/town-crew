@@ -31,7 +31,7 @@ import { createTransferSession } from './passenger-transfer/session.ts';
 
 const audioFake = () => ({ setMuted() {}, setSpraying(_value: boolean) {}, unlock: async () => {}, play(_cue: string) {}, dispose: async () => {} });
 function assertNarrationReleased(id: MissionId, media: TestAudio[]) {
-  if (id !== 'fire-rescue') return;
+  if (id !== 'fire-rescue' && id !== 'house-build') return;
   assert.equal(media.length, 1, `${id}: the connection owns one narration player`);
   assert.equal(media[0].src, ''); assert.equal(media[0].loads, 1);
   assert.ok(media[0].pauses > 0);

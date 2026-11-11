@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { VoicePlan } from '../runtime/voice-script.ts';
+import { voicePlan as house } from './house-build/domain/narration.ts';
+import { createHouse, stages as houseStages } from './house-build/domain/house.ts';
 import { voicePlan as road } from './road-repair/domain/narration.ts';
 import { createRoad, advanceRoad, stages as roadStages } from './road-repair/domain/road.ts';
 
@@ -29,4 +31,14 @@ test('road keyboard selection and carrying choose the corresponding action witho
   const dumping = { ...carry, excavator: { ...carry.excavator, action: 'unloading' as const, elapsed: 0.89 } };
   assert.equal(road.feedback(dumping, advanceRoad(dumping, 0.1)), 'loaded');
   assert.equal('bucketSelected' in s, false);
+});
+
+coverage(house, houseStages.map(p => ({ ...createHouse(p), action: 'ready' as const })), houseStages, s => !['roof-color', 'decorate', 'complete'].includes(s.phase));
+
+test('house crane prompts distinguish pickup and placement; pickup alone is not installation', () => {
+  const state = { ...createHouse('crane-one'), action: 'ready' as const };
+  assert.equal(house.instruction({ ...state, attached: false }), 'pickup');
+  assert.equal(house.instruction({ ...state, attached: true }), 'place');
+  assert.equal(house.feedback(state, { ...state, attached: true }), undefined);
+  assert.equal(house.feedback(state, { ...state, placed: state.placed + 1 }), 'placed');
 });

@@ -1,0 +1,615 @@
+{
+  "version": 1,
+  "clips": {
+    "gravel": {
+      "file": "voice/house-build/gravel.da7cd1e3c135.wav",
+      "textHash": "b24896fee5843b01495d2b831940ae78e9325994639408e3e0d42279b3cd6013",
+      "sourceHash": "b27b3adc89fb8b1a965a87e7adc1d4b91cba0efe4518f84a99fddc490e8cae20",
+      "audioHash": "da7cd1e3c135c447df348a8df2a6cfff41b029563b39d670e467385e6e89acc6",
+      "generation": {
+        "sourceHash": "6a6bdb99257166f97872d399b5387ffc857ce6c5114cebafb00c8dbd56b45363",
+        "speechHash": "6b3077624a6fab6fb5c22740566569626b34d30c8028a74276dcece83642ed0c",
+        "audioHash": "da7cd1e3c135c447df348a8df2a6cfff41b029563b39d670e467385e6e89acc6",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-06T11:23:50.904Z",
+        "usage": {
+          "total_tokens": 87,
+          "total_input_tokens": 11,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 11
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 76,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 76
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 198
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "按住車斗前端，往上拉。",
+        "sourceHash": "b27b3adc89fb8b1a965a87e7adc1d4b91cba0efe4518f84a99fddc490e8cae20",
+        "audioHash": "da7cd1e3c135c447df348a8df2a6cfff41b029563b39d670e467385e6e89acc6",
+        "reviewedAt": "2026-11-09T00:16:14.019Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 4
+        }
+      }
+    },
+    "placed": {
+      "file": "voice/house-build/placed.e64e227f4540.wav",
+      "textHash": "2cf3eef450f25ca7f9c454b895a583457c35aa18789822f9cda7a9d84d736fad",
+      "sourceHash": "473929c5fe1772a402032ccf637356e96931ba05971e27ae6cc7960d03d7d066",
+      "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+      "generation": {
+        "sourceHash": "5281622ebc54deeebc3d5563ad68e7cc9b97e5464bdc536750dcd54766aeb4ff",
+        "speechHash": "3662a720c4e148aecec44852acbec1b1974f3efac2154706ab4aecb8ccfb46fa",
+        "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:11:56.283Z",
+        "usage": {
+          "total_tokens": 47,
+          "total_input_tokens": 4,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 4
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 43,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 43
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 4
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "成功了。",
+        "sourceHash": "473929c5fe1772a402032ccf637356e96931ba05971e27ae6cc7960d03d7d066",
+        "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+        "reviewedAt": "2026-11-09T01:33:56.188Z",
+        "usage": {
+          "total_tokens": 101,
+          "total_input_tokens": 98,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 43
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 3,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 98
+        }
+      }
+    },
+    "intro": {
+      "file": "voice/house-build/intro.32f3a0b3089d.wav",
+      "textHash": "6a1d78d8496d1afe8dbe7933a2e2d631136ba63c92747a9833c473d8595621ae",
+      "sourceHash": "3628c1d0d61a7d928e6aca25a7fbeb2bd9b88e6a6fdbab7086955201714dc9d7",
+      "audioHash": "32f3a0b3089dae89ea734d2736aec839a2879db74fdc4404a3e2a058942819f2",
+      "generation": {
+        "sourceHash": "3628c1d0d61a7d928e6aca25a7fbeb2bd9b88e6a6fdbab7086955201714dc9d7",
+        "speechHash": "d2a8dc0b3c4f0f6dbc8dbb683393683c03be678b194438d477653ceed6e63aa3",
+        "audioHash": "32f3a0b3089dae89ea734d2736aec839a2879db74fdc4404a3e2a058942819f2",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:34:23.187Z",
+        "usage": {
+          "total_tokens": 135,
+          "total_input_tokens": 15,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 15
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 120,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 120
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 15
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "工程車出動，一起蓋一間溫暖的新家。",
+        "sourceHash": "3628c1d0d61a7d928e6aca25a7fbeb2bd9b88e6a6fdbab7086955201714dc9d7",
+        "audioHash": "32f3a0b3089dae89ea734d2736aec839a2879db74fdc4404a3e2a058942819f2",
+        "reviewedAt": "2026-11-09T01:34:25.049Z",
+        "usage": {
+          "total_tokens": 189,
+          "total_input_tokens": 175,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 120
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 14,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 175
+        }
+      }
+    },
+    "delivery": {
+      "file": "voice/house-build/delivery.707320ebf509.wav",
+      "textHash": "574bb1f66b54a1873e8a4494a8e1092a53ab67901e39ba4eda236f57ff314526",
+      "sourceHash": "52fb6733fe7dd7e7bdfdc05a7064f2185489d55b3e4e482c8f5afb827af8ce58",
+      "audioHash": "707320ebf5099b44e4c6c9d126073a1627a0aa36b33dd7d598a1db703d2bde6f",
+      "generation": {
+        "sourceHash": "52fb6733fe7dd7e7bdfdc05a7064f2185489d55b3e4e482c8f5afb827af8ce58",
+        "speechHash": "69e078eefd0785ab393d1306a5d0108f34a5c932aa42cd2237428e4fad8a0b96",
+        "audioHash": "707320ebf5099b44e4c6c9d126073a1627a0aa36b33dd7d598a1db703d2bde6f",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:35:04.290Z",
+        "usage": {
+          "total_tokens": 118,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 104,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 104
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 14
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "沿著箭頭，把平板車拖到停車位。",
+        "sourceHash": "52fb6733fe7dd7e7bdfdc05a7064f2185489d55b3e4e482c8f5afb827af8ce58",
+        "audioHash": "707320ebf5099b44e4c6c9d126073a1627a0aa36b33dd7d598a1db703d2bde6f",
+        "reviewedAt": "2026-11-09T01:35:05.974Z",
+        "usage": {
+          "total_tokens": 172,
+          "total_input_tokens": 159,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 104
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 13,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 159
+        }
+      }
+    },
+    "place": {
+      "file": "voice/house-build/place.758679778778.wav",
+      "textHash": "a88d1ca81e7b57c639ced6510a6e8d50f18025ef2d6cb45239d1fbff2e614652",
+      "sourceHash": "5fd5b0733ca7b6a177e9121ab34ae2a16d5e6938c840013bd3a01eae0a640a6b",
+      "audioHash": "75867977877819c9b725a401f04b716e59ac27fd73237b72e4ef432bcc233572",
+      "generation": {
+        "sourceHash": "5fd5b0733ca7b6a177e9121ab34ae2a16d5e6938c840013bd3a01eae0a640a6b",
+        "speechHash": "fecca1ecc13b3b230e396fdeabb5cb3fc900547155c324b26ae70eb2f24b877d",
+        "audioHash": "75867977877819c9b725a401f04b716e59ac27fd73237b72e4ef432bcc233572",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:35:47.599Z",
+        "usage": {
+          "total_tokens": 149,
+          "total_input_tokens": 16,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 16
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 133,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 133
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 16
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把吊鉤或材料拖到房子上的光圈停一下。",
+        "sourceHash": "5fd5b0733ca7b6a177e9121ab34ae2a16d5e6938c840013bd3a01eae0a640a6b",
+        "audioHash": "75867977877819c9b725a401f04b716e59ac27fd73237b72e4ef432bcc233572",
+        "reviewedAt": "2026-11-09T01:35:49.426Z",
+        "usage": {
+          "total_tokens": 202,
+          "total_input_tokens": 188,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 133
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 14,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 188
+        }
+      }
+    },
+    "poured": {
+      "file": "voice/house-build/poured.f6cd3b4b2258.wav",
+      "textHash": "095f694cab88f085bc83f53843a6a2dc31801de10f81772c23c1dbd821d0ea77",
+      "sourceHash": "4de547dd842a71f445c4b621f6875708128d9cc7e8f5f37549c675adee37a1a4",
+      "audioHash": "f6cd3b4b22588435199a6a882d976538009f4d35f01b8a3304bd5933492544d8",
+      "generation": {
+        "sourceHash": "4de547dd842a71f445c4b621f6875708128d9cc7e8f5f37549c675adee37a1a4",
+        "speechHash": "92cc29d7eee3a66636d6de4d099d80091368de64d1572a41ae6d8eef40960b2e",
+        "audioHash": "f6cd3b4b22588435199a6a882d976538009f4d35f01b8a3304bd5933492544d8",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:36:11.881Z",
+        "usage": {
+          "total_tokens": 58,
+          "total_input_tokens": 6,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 6
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 52,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 52
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 6
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "這一區填好了。",
+        "sourceHash": "4de547dd842a71f445c4b621f6875708128d9cc7e8f5f37549c675adee37a1a4",
+        "audioHash": "f6cd3b4b22588435199a6a882d976538009f4d35f01b8a3304bd5933492544d8",
+        "reviewedAt": "2026-11-09T01:36:40.689Z",
+        "usage": {
+          "total_tokens": 112,
+          "total_input_tokens": 107,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 52
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 5,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 107
+        }
+      }
+    },
+    "complete": {
+      "file": "voice/house-build/complete.538328c291fa.wav",
+      "textHash": "6b866962b6c19c4f52bfc61944047fa279f55bc41e996fce1a1cb4f78ac04deb",
+      "sourceHash": "72f4f306aea905ba942fbfae52aae8ac4872a9efe8e469304c9041574b9c639f",
+      "audioHash": "538328c291faec70ef007374d895c95eb1067d332927141ee16a7416b9e4397b",
+      "generation": {
+        "sourceHash": "72f4f306aea905ba942fbfae52aae8ac4872a9efe8e469304c9041574b9c639f",
+        "speechHash": "fc50a551fa92d21f4575cba9bd485dd0e572afb682607ca24f2dc5ae7bd82a60",
+        "audioHash": "538328c291faec70ef007374d895c95eb1067d332927141ee16a7416b9e4397b",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:37:04.857Z",
+        "usage": {
+          "total_tokens": 140,
+          "total_input_tokens": 16,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 16
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 124,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 124
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 16
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "新家蓋好了。謝謝你，一起歡迎大家搬進來。",
+        "sourceHash": "72f4f306aea905ba942fbfae52aae8ac4872a9efe8e469304c9041574b9c639f",
+        "audioHash": "538328c291faec70ef007374d895c95eb1067d332927141ee16a7416b9e4397b",
+        "reviewedAt": "2026-11-09T01:37:15.248Z",
+        "usage": {
+          "total_tokens": 194,
+          "total_input_tokens": 179,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 124
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 15,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 179
+        }
+      }
+    },
+    "parked": {
+      "file": "voice/house-build/parked.e8c6b45ae228.wav",
+      "textHash": "f5a52729ddd89d557387d6ad34c75dac70335b9fdae87d2110dcb136fc6a0c00",
+      "sourceHash": "e8d4b69b4bc928281ee954658e581fb3ad98814448174df9975076ede9f88d64",
+      "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+      "generation": {
+        "sourceHash": "e8d4b69b4bc928281ee954658e581fb3ad98814448174df9975076ede9f88d64",
+        "speechHash": "30351b95db17a71742575aaa72b538c2c0c78575fe3a11995a5b64f0f4aae9c5",
+        "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:36:42.833Z",
+        "usage": {
+          "total_tokens": 35,
+          "total_input_tokens": 4,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 4
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 31,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 31
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 4
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "停好了。",
+        "sourceHash": "e8d4b69b4bc928281ee954658e581fb3ad98814448174df9975076ede9f88d64",
+        "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+        "reviewedAt": "2026-11-09T01:39:05.542Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 2
+        }
+      }
+    },
+    "pickup": {
+      "file": "voice/house-build/pickup.86825bd92481.wav",
+      "textHash": "72859cad8431321e36e9176d14729777eb4299703a61c97f360e5a5f98c418d3",
+      "sourceHash": "c2b2f4533074499f9fb49a2f5413d643fb2cea092426b364a70bd8bc01e267d2",
+      "audioHash": "86825bd924811bfd8143d2c9f2156da9c7e609a9dee2a6c4bc2b262c9c84a81a",
+      "generation": {
+        "sourceHash": "c2b2f4533074499f9fb49a2f5413d643fb2cea092426b364a70bd8bc01e267d2",
+        "speechHash": "0563117e2f790565bd385f6ac6058c073bf74bcb22dade0268fe303dcd3e42a8",
+        "audioHash": "86825bd924811bfd8143d2c9f2156da9c7e609a9dee2a6c4bc2b262c9c84a81a",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-11T14:33:25.975Z",
+        "usage": {
+          "total_tokens": 116,
+          "total_input_tokens": 13,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 13
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 103,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 103
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 13
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把吊鉤拖到車上的材料，停一下。",
+        "sourceHash": "c2b2f4533074499f9fb49a2f5413d643fb2cea092426b364a70bd8bc01e267d2",
+        "audioHash": "86825bd924811bfd8143d2c9f2156da9c7e609a9dee2a6c4bc2b262c9c84a81a",
+        "reviewedAt": "2026-11-11T14:33:53.564Z",
+        "usage": {
+          "total_tokens": 170,
+          "total_input_tokens": 158,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 103
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 12,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 158
+        }
+      }
+    },
+    "concrete": {
+      "file": "voice/house-build/concrete.8e881bd82144.wav",
+      "textHash": "f16e1f41977f8b14dcb271436c566db0d07f9a3f46cda97617903e24f8f09825",
+      "sourceHash": "0e3297f0d7cbfa87ad77f8c5b5693ae7b92cc8e8bd8ee1558c74a10e3ef23e6c",
+      "audioHash": "8e881bd82144728969afc24b42bdd676cd6ff86313ac19e68b07d9077f5c57bb",
+      "generation": {
+        "sourceHash": "0e3297f0d7cbfa87ad77f8c5b5693ae7b92cc8e8bd8ee1558c74a10e3ef23e6c",
+        "speechHash": "4800e1d9e251d1bc58993d6956e19ec7d4e00a12764193ed91fa8d283827be3a",
+        "audioHash": "8e881bd82144728969afc24b42bdd676cd6ff86313ac19e68b07d9077f5c57bb",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-11T14:38:04.405Z",
+        "usage": {
+          "total_tokens": 153,
+          "total_input_tokens": 18,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 18
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 135,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 135
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 18
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "拖動出料口，對準光圈，慢慢填滿三個地方。",
+        "sourceHash": "0e3297f0d7cbfa87ad77f8c5b5693ae7b92cc8e8bd8ee1558c74a10e3ef23e6c",
+        "audioHash": "8e881bd82144728969afc24b42bdd676cd6ff86313ac19e68b07d9077f5c57bb",
+        "reviewedAt": "2026-11-11T14:38:06.406Z",
+        "usage": {
+          "total_tokens": 207,
+          "total_input_tokens": 190,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 135
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 17,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 190
+        }
+      }
+    }
+  }
+}

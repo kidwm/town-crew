@@ -1,3 +1,6 @@
+import { acquireVoiceControls, voiceButtonMarkup } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { housePersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -36,16 +39,19 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
   let state = restored ?? createHouse(stage, dev ? validRound(configured) ? configured : DEFAULT_ROUND : persistence.newRound());
   if (!dev) persistence.rememberRound(state.round);
   function save() { persistence.save(dev, devKey, state); }
-  app.innerHTML = `<main class="world house-world" aria-label="小小城市隊蓋房子任務"><div class="canvas-host"></div><svg class="crane-footprint" aria-hidden="true" hidden><polygon/></svg><div class="crane-target" role="img" aria-label="吊車放置位置" data-ready="false" hidden><svg class="crane-target-progress" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1"/></svg><svg class="crane-target-arrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5v21M7 17l9 9 9-9"/></svg><svg class="crane-target-check" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16l7 7L27 8"/></svg><span class="crane-drop-label" role="status">拖到房子上</span></div><header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header><div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始蓋房子任務">↻</button></div><div class="house-plan" role="img" aria-label="這次要蓋的兩層小樓"></div><div class="house-caption"><span class="house-instruction"></span><span class="house-detail"></span></div><div class="mission-badge"><span class="badge-icon">${icons.gravel}</span><div><span class="eyebrow">一起蓋兩層小樓</span><strong id="vehicle-name"></strong></div></div><div class="mission-steps house-steps" aria-label="蓋房子四種工程車">${Object.entries(icons).map(([id, icon]) => `<span data-step="${id}">${icon}</span>`).join('')}</div><div class="progress" role="progressbar" aria-label="蓋房子進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div><div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div><div class="loading" role="status">工程車準備出發…</div></main>${dev ? `<aside class="dev-panel"><div class="dev-heading">開發工具 · 蓋房子</div><h1>一起，蓋兩層小樓。</h1><p class="dev-intro">鋪基底 → 澆灌 → 兩次送貨 → 六次吊裝</p><label class="field">直達階段<select id="stage">${stages.filter(id => id !== 'roof-color').map(id => `<option value="${id}">${names[id]}</option>`).join('')}</select></label><button class="reset-stage">重設目前階段</button><label class="field">屋型<select id="house-roof">${ROOF_TYPES.map(roof => `<option value="${roof}">${ROOF_NAMES[roof]}</option>`).join('')}</select></label><label class="field">工地配置<select id="house-layout"><option value="0">房子在右，材料在左</option><option value="1">房子在左，材料在右</option></select></label><label class="field">房屋配色<select id="house-palette">${HOUSE_PALETTES.map((_, i) => `<option value="${i}">${['奶油', '青草', '天空', '珊瑚'][i]}</option>`).join('')}</select></label><label class="field">入住家庭<select id="house-family"><option value="0">兩位大人、一位小孩</option><option value="1">一位大人、兩位小孩</option><option value="2">兩位大人、兩位小孩</option></select></label><label class="field">寵物<select id="house-pet"><option value="none">沒有寵物</option><option value="cat">小貓</option><option value="dog">小狗</option></select></label><dl class="telemetry"><div><dt>目前階段</dt><dd id="phase"></dd></div><div><dt>動作</dt><dd id="action"></dd></div><div><dt>吊裝完成</dt><dd id="placed"></dd></div></dl><p class="dev-note">重載和 HMR 保留進度；拖曳取消後可接著玩。</p></aside>` : ''}`;
+  app.innerHTML = `<main class="world house-world" aria-label="小小城市隊蓋房子任務"><div class="canvas-host"></div><svg class="crane-footprint" aria-hidden="true" hidden><polygon/></svg><div class="crane-target" role="img" aria-label="吊車放置位置" data-ready="false" hidden><svg class="crane-target-progress" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1"/></svg><svg class="crane-target-arrow" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 5v21M7 17l9 9 9-9"/></svg><svg class="crane-target-check" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 16l7 7L27 8"/></svg><span class="crane-drop-label" role="status">拖到房子上</span></div><header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header><div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始蓋房子任務">↻</button></div><div class="house-plan" role="img" aria-label="這次要蓋的兩層小樓"></div><div class="house-caption voice-caption">${voiceButtonMarkup}<div class="voice-copy"><span class="house-instruction"></span><span class="house-detail"></span></div></div><div class="mission-badge"><span class="badge-icon">${icons.gravel}</span><div><span class="eyebrow">一起蓋兩層小樓</span><strong id="vehicle-name"></strong></div></div><div class="mission-steps house-steps" aria-label="蓋房子四種工程車">${Object.entries(icons).map(([id, icon]) => `<span data-step="${id}">${icon}</span>`).join('')}</div><div class="progress" role="progressbar" aria-label="蓋房子進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div><div class="finish-actions" hidden><button class="finish-restart">↻ 再玩一次</button><button class="finish-home">⌂ 回到選關</button></div><div class="loading" role="status">工程車準備出發…</div></main>${dev ? `<aside class="dev-panel"><div class="dev-heading">開發工具 · 蓋房子</div><h1>一起，蓋兩層小樓。</h1><p class="dev-intro">鋪基底 → 澆灌 → 兩次送貨 → 六次吊裝</p><label class="field">直達階段<select id="stage">${stages.filter(id => id !== 'roof-color').map(id => `<option value="${id}">${names[id]}</option>`).join('')}</select></label><button class="reset-stage">重設目前階段</button><label class="field">屋型<select id="house-roof">${ROOF_TYPES.map(roof => `<option value="${roof}">${ROOF_NAMES[roof]}</option>`).join('')}</select></label><label class="field">工地配置<select id="house-layout"><option value="0">房子在右，材料在左</option><option value="1">房子在左，材料在右</option></select></label><label class="field">房屋配色<select id="house-palette">${HOUSE_PALETTES.map((_, i) => `<option value="${i}">${['奶油', '青草', '天空', '珊瑚'][i]}</option>`).join('')}</select></label><label class="field">入住家庭<select id="house-family"><option value="0">兩位大人、一位小孩</option><option value="1">一位大人、兩位小孩</option><option value="2">兩位大人、兩位小孩</option></select></label><label class="field">寵物<select id="house-pet"><option value="none">沒有寵物</option><option value="cat">小貓</option><option value="dog">小狗</option></select></label><dl class="telemetry"><div><dt>目前階段</dt><dd id="phase"></dd></div><div><dt>動作</dt><dd id="action"></dd></div><div><dt>吊裝完成</dt><dd id="placed"></dd></div></dl><p class="dev-note">重載和 HMR 保留進度；拖曳取消後可接著玩。</p></aside>` : ''}`;
   const connect = (scene: HouseScene, audio: ReturnType<typeof createAudio<keyof typeof houseSounds>>) => Effect.gen(function* () {
     const events = yield* Effect.acquireRelease(Effect.sync(() => new AbortController()), value => Effect.sync(() => value.abort()));
     const options = { signal: events.signal };
     const dragHint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('house-build', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('house-build', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: HouseState) {
+      narration.update(next);
       if (next.placed > state.placed) audio.play(next.placed === 3 ? 'floor' : 'placed');
       if (next.pours.filter(v => v === 1).length > state.pours.filter(v => v === 1).length) audio.play('pour');
       if (isCrane(next) && isDelivery(state)) audio.play('delivered');
@@ -83,12 +89,15 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); state = createHouse('gravel', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
+    const restart = () => { unlock(); pointer.cancel(); state = createHouse('gravel', dev ? chooseRound(state.round) : persistence.newRound(state.round)); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(button => button.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(button => button.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     const syncSound = () => { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); };
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
     const fields = ['roof', 'layout', 'palette', 'family', 'pet'] as const;
     const resetStage = () => {
@@ -98,7 +107,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         return [key, ['layout', 'palette', 'family'].includes(key) ? Number(value) : value];
       }));
       const next = createHouse(select!.value as Stage, validRound(round) ? round : state.round);
-      state = { ...next, color: next.round.palette === state.round.palette ? state.color : next.color }; save();
+      state = { ...next, color: next.round.palette === state.round.palette ? state.color : next.color }; narration.restart(state); save();
     };
     select?.addEventListener('change', resetStage, options);
     app.querySelector('.reset-stage')?.addEventListener('click', resetStage, options);
@@ -143,7 +152,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         craneTarget.setAttribute('aria-label', state.attached ? '吊車放置位置' : '吊車取貨位置');
         label('.crane-drop-label', drop.accepted ? state.attached ? '停一下，幫你放好！' : '停一下，幫你吊起！' : state.attached ? '拖到房子上' : '吊起材料');
       }
-      label('.house-instruction', state.action === 'finishing'
+      label('.house-instruction', narration.text() ?? (state.action === 'finishing'
         ? ({ gravel: '補好車庫地基', concrete: '鋪好車庫地板與走道', 'crane-one': '補好車庫牆面', 'crane-two': '蓋好車庫屋頂' } as Partial<Record<Stage, string>>)[state.phase] ?? ''
         : state.phase === 'crane-one' && state.action === 'leaving'
         ? '一樓蓋好了！準備二樓的材料'
@@ -154,7 +163,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
         : state.action === 'pickup' ? '掛好材料，吊車幫你抬高'
         : state.action === 'unhooking' ? '放好材料，收回吊鉤'
         : isCrane(state) && !state.attached ? '把吊鉤拖到車上的材料'
-        : drop?.accepted ? '對準了！吊車幫你放好' : isCrane(state) && state.attached ? '拖吊鉤或材料到房子上，吊車幫你放好' : isDelivery(state) ? `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` : instructions[state.phase]);
+        : drop?.accepted ? '對準了！吊車幫你放好' : isCrane(state) && state.attached ? '拖吊鉤或材料到房子上，吊車幫你放好' : isDelivery(state) ? `按住車子，往${state.round.layout === 0 ? '右' : '左'}拖到停車位` : instructions[state.phase]));
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.placed = String(state.placed);
       app.dataset.attached = String(state.attached); app.dataset.load = JSON.stringify(state.load);
       app.dataset.pours = String(state.pours.filter(v => v === 1).length); app.dataset.color = String(state.color);
@@ -182,6 +191,7 @@ export function createHouseSession(app: HTMLDivElement, dev: boolean, onHome: ()
       }
       if (dev) { fields.forEach(key => { app.querySelector<HTMLSelectElement>(`#house-${key}`)!.value = String(state.round[key]); }); label('#phase', names[state.phase]); label('#action', state.action); label('#placed', `${state.placed} / 6`); }
     }
+    narration.start();
     return withAutosave('house-build', runFrameLoop('house-build', animate), save, 800);
   });
   return { connect, save };
