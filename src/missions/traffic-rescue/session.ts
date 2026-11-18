@@ -1,3 +1,6 @@
+import { acquireVoiceControls } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { trafficPersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -25,10 +28,13 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
     const options = { signal: events.signal };
     const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('traffic-rescue', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('traffic-rescue', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: TrafficState) {
+      narration.update(next);
       if (next === state) return;
       if (next.phase === 'collision' && state.elapsed < 1.45 && next.elapsed >= 1.45) audio.play('bump');
       if (next.phase === 'reopen' && state.elapsed < REOPEN_PASS_START && next.elapsed >= REOPEN_PASS_START) audio.play('depart');
@@ -61,14 +67,17 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
         const goal = scene.targets(state, held.screen, held.origin).find(t => t.accepted)?.id; update(release(state, cancelled, goal)); save(); },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); update(createTraffic('collision', dev ? chooseColors(state.colors) : persistence.newColors())); save(); };
+    const restart = () => { unlock(); pointer.cancel(); update(createTraffic('collision', dev ? chooseColors(state.colors) : persistence.newColors())); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage');
-    const resetStage = () => { pointer.cancel(); state = createTraffic(select!.value as Stage, state.colors, state.towTypes, state.firstTow); save(); };
+    const resetStage = () => { pointer.cancel(); state = createTraffic(select!.value as Stage, state.colors, state.towTypes, state.firstTow); narration.restart(state); save(); };
     select?.addEventListener('change', resetStage, options); app.querySelector('.reset-stage')?.addEventListener('click', resetStage, options);
     document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options); window.addEventListener('pagehide', save, options);
     app.querySelector('.loading')!.remove(); const targets = app.querySelector<HTMLElement>('.traffic-targets')!;
@@ -91,7 +100,7 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
       const towing = ['tow-arrival', 'hook', 'tow-exit'].includes(state.phase);
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.towed = String(state.towed.filter(Boolean).length); app.dataset.cleaned = String(state.cleaned); app.dataset.colors = state.colors.join(','); app.dataset.selected = String(state.selected); app.dataset.towTypes = state.towTypes.join(','); app.dataset.firstTow = String(state.firstTow); app.dataset.towType = towing ? towType(state) : ''; app.dataset.towSide = towing ? towDirection(state) < 0 ? 'left' : 'right' : '';
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-      label('.house-instruction', instruction(state, items.some(t => t.accepted)));
+      label('.house-instruction', narration.text() ?? instruction(state, items.some(t => t.accepted)));
       label('.house-detail', towing ? `送去修理 · ${state.towed.filter(Boolean).length} / 2` : state.phase === 'sweep' ? `道路清掃 · ${Math.round(state.cleaned / DEBRIS.length * 100)}%` : '');
       app.querySelectorAll<HTMLElement>('[data-car]').forEach((node, i) => { node.style.color = PALETTE[state.colors[i]]; node.dataset.done = String(state.towed[i]); node.querySelector('b')!.textContent = state.towed[i] ? '✓' : '○'; });
       app.querySelector<HTMLElement>('.traffic-tally')!.hidden = stages.indexOf(state.phase) < 3 || stages.indexOf(state.phase) > stages.indexOf('sweep');
@@ -106,6 +115,7 @@ export function createTrafficSession(app: HTMLDivElement, dev: boolean, onHome: 
       }
       if (dev) { label('#phase', names[state.phase]); label('#action', state.action); }
     }
+    narration.start();
     return withAutosave('traffic-rescue', runFrameLoop('traffic-rescue', animate), save, 800);
   });
   return { connect, save };

@@ -1,3 +1,5 @@
+import { voicePlan as traffic } from './traffic-rescue/domain/narration.ts';
+import { createTraffic, advance as advanceTraffic, stages as trafficStages } from './traffic-rescue/domain/traffic.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { VoicePlan } from '../runtime/voice-script.ts';
@@ -41,4 +43,15 @@ test('house crane prompts distinguish pickup and placement; pickup alone is not 
   assert.equal(house.instruction({ ...state, attached: true }), 'place');
   assert.equal(house.feedback(state, { ...state, attached: true }), undefined);
   assert.equal(house.feedback(state, { ...state, placed: state.placed + 1 }), 'placed');
+});
+
+coverage(traffic, trafficStages.flatMap(p => [0, 1].map(first => ({ ...createTraffic(p, [0, 2], first ? ['wheel-lift', 'flatbed'] : ['flatbed', 'wheel-lift'], first as 0 | 1), action: 'ready' as const }))), trafficStages, s => !['collision', 'tow-arrival', 'departure', 'reopen', 'complete'].includes(s.phase));
+
+test('traffic success waits for actual loading completion, and hook labels follow tow assignment', () => {
+  const flat = createTraffic('hook', [0, 1], ['flatbed', 'wheel-lift'], 0);
+  const wheel = { ...flat, firstTow: 1 as const };
+  assert.equal(traffic.instruction(flat), 'hook'); assert.equal(traffic.instruction(wheel), 'lift');
+  const working = { ...flat, action: 'working' as const, selected: 0 as const, elapsed: 4.45 };
+  assert.equal(traffic.feedback(flat, working), undefined);
+  assert.equal(traffic.feedback(working, advanceTraffic(working, 0.1)), 'loaded');
 });

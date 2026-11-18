@@ -613,3 +613,9 @@ Codex 內建瀏覽器在 Vite `127.0.0.1:5186` 驗證新的澆灌句與吊鉤取
 限制：本次沒有重跑整關通關、全部房型／配置、快速換關矩陣、四個手動故障入口、實機觸控／喇叭、Safari 媒體政策、PWA 更新生命週期或人工口音試聽。開發跳階不代表完整通關，ASR 與 `playing` 不等同人耳驗收。相機、模型、動線及上／下／左／右裁切未改，桌面與手機主體大小沿用原設計。
 
 本次發佈的蓋房子 session 透過既有 `voice-controls` 的 `Effect.acquireRelease` 取得單一播放器，由 connection Scope 擁有，沿用 E01／E02 獨立清理與 E04 可選播放降級。最後存檔後釋放媒體，DOM 監聽依 AbortSignal 清理；純 domain plan 分辨吊鉤取貨／帶貨放置，以及澆灌、安裝、停車的已提交成功。重玩、背景、靜音與重載不補播歷史回饋；沒有新 timer／Fiber、存檔欄位、Schema 遷移、autosave 策略或共用播放器契約變更。任務差異表與驗證入口已同步，既有歷史數字保留。
+
+## 2026-11-18 交通救援預錄語音整合
+
+基準 `e4be1c6` 加交通救援獨立提交：18 句 Gemini／Sulafat 語音、純 domain cue／成功事件、connection Scope 的既有 `voice-controls`／`mission-narration` 播放、手勢解鎖、靜音／背景取消、重載與離場清理。共用 E01～E09 契約不變；沒有新增 timer／Fiber 或存檔欄位，最後存檔後獨立釋放語音。任務差異表與 lifecycle／narration／PWA 入口同步登記。
+
+獨立提交樹 `npm run check` 通過：60 句離線雜湊核對、820 tests／820 pass／0 fail、TypeScript 與 build。內建瀏覽器驗證交通接送提示重播、手機 44×44、重載、靜音及零 canvas 離場；正式版本介紹與停止伺服器後的警車提示皆為 `playing`，無 console warning／error。未執行本機 Playwright、完整通關、全部故障／配置矩陣、真實觸控與人工口音試聽。完整版本、入口與限制見[語音紀錄](../voice-narration.md#2026-11-18-補齊交通救援並獨立提交)；其他六關的未完成語音不在此提交與核對範圍。
