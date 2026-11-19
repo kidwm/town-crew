@@ -1,3 +1,6 @@
+import { acquireVoiceControls } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { portPersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -26,10 +29,13 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
     const options = { signal: events.signal };
     const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('port-cargo', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('port-cargo', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: PortState) {
+      narration.update(next);
       if (next === state) return;
       const checkpoint = next.phase !== state.phase || next.action !== state.action || next.unloaded.length !== state.unloaded.length || next.loaded.length !== state.loaded.length;
       if (next.phase !== state.phase) audio.play(next.phase === 'complete' ? 'complete' : ['transport', 'ship-transport', 'departure'].includes(next.phase) ? 'depart' : 'parked');
@@ -54,15 +60,18 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       end(held, cancelled) { if (state.phase === held.phase) update(release(state, cancelled)); save(); },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); state = createPort('boat', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
+    const restart = () => { unlock(); pointer.cancel(); state = createPort('boat', dev ? chooseRound(state.round) : persistence.newRound(state.round)); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const stage = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), palette = app.querySelector<HTMLSelectElement>('#palette'), directionControl = app.querySelector<HTMLSelectElement>('#direction');
     if (directionControl) directionControl.value = state.round.direction;
-    const reset = () => { pointer.cancel(); state = createPort(stage!.value as Stage, { layout: Number(layout!.value) as 0 | 1, palette: Number(palette!.value), direction: directionControl!.value === 'load' ? 'load' : 'unload' }); save(); };
+    const reset = () => { pointer.cancel(); state = createPort(stage!.value as Stage, { layout: Number(layout!.value) as 0 | 1, palette: Number(palette!.value), direction: directionControl!.value === 'load' ? 'load' : 'unload' }); narration.restart(state); save(); };
     [stage, layout, palette, directionControl].forEach(node => node?.addEventListener('change', reset, options)); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
     document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options); window.addEventListener('pagehide', save, options);
     app.querySelector('.loading')!.remove();
@@ -89,7 +98,7 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       app.dataset.work = JSON.stringify({ boat: state.boat, truck: state.truck, haul: state.haul, fork: state.forkTravel }); app.dataset.load = JSON.stringify(state.load);
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
       const outgoing = state.round.direction === 'load';
-      label('.house-instruction', instruction(state)); label('.house-detail', isCraneStage(state) || state.phase === 'crane-exit' ? outgoing ? `裝上貨船 · ${state.loaded.length} / 2` : `卸貨到岸 · ${state.unloaded.length} / 2` : state.phase === 'forklift' || state.phase === 'forklift-exit' ? `${outgoing ? '卸車到岸' : '裝好物資'} · ${forkCount(state)} / 2` : outgoing ? '裝船送出去 · 平板車 → 碼頭 → 貨船' : '卸船送進城 · 貨船 → 碼頭 → 平板車');
+      label('.house-instruction', narration.text() ?? instruction(state)); label('.house-detail', isCraneStage(state) || state.phase === 'crane-exit' ? outgoing ? `裝上貨船 · ${state.loaded.length} / 2` : `卸貨到岸 · ${state.unloaded.length} / 2` : state.phase === 'forklift' || state.phase === 'forklift-exit' ? `${outgoing ? '卸車到岸' : '裝好物資'} · ${forkCount(state)} / 2` : outgoing ? '裝船送出去 · 平板車 → 碼頭 → 貨船' : '卸船送進城 · 貨船 → 碼頭 → 平板車');
       app.querySelectorAll<HTMLElement>('[data-cargo-status]').forEach(node => { const id = Number(node.dataset.cargoStatus) as Cargo; node.dataset.done = String(state.loaded.includes(id)); node.querySelector('b')!.textContent = state.loaded.includes(id) ? '✓' : state.unloaded.includes(id) ? '↓' : ''; });
       app.querySelector<HTMLElement>('.finish-actions')!.hidden = state.phase !== 'complete';
       const arrival = app.querySelector<HTMLElement>(outgoing ? '.port-boat-arrival' : '.port-truck-arrival')!;
@@ -112,6 +121,7 @@ export function createPortSession(app: HTMLDivElement, dev: boolean, onHome: () 
       scene.canvas.style.cursor = state.action === 'dragging' ? 'grabbing' : info ? 'grab' : 'default';
       if (dev) { label('#phase', phaseName(state.phase, state.round.direction)); label('#action', state.action); layout!.value = String(state.round.layout); palette!.value = String(state.round.palette); directionControl!.value = state.round.direction; }
     }
+    narration.start();
     return withAutosave('port-cargo', runFrameLoop('port-cargo', animate), save, 700);
   });
   return { connect, save };

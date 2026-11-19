@@ -619,3 +619,9 @@ Codex 內建瀏覽器在 Vite `127.0.0.1:5186` 驗證新的澆灌句與吊鉤取
 基準 `e4be1c6` 加交通救援獨立提交：18 句 Gemini／Sulafat 語音、純 domain cue／成功事件、connection Scope 的既有 `voice-controls`／`mission-narration` 播放、手勢解鎖、靜音／背景取消、重載與離場清理。共用 E01～E09 契約不變；沒有新增 timer／Fiber 或存檔欄位，最後存檔後獨立釋放語音。任務差異表與 lifecycle／narration／PWA 入口同步登記。
 
 獨立提交樹 `npm run check` 通過：60 句離線雜湊核對、820 tests／820 pass／0 fail、TypeScript 與 build。內建瀏覽器驗證交通接送提示重播、手機 44×44、重載、靜音及零 canvas 離場；正式版本介紹與停止伺服器後的警車提示皆為 `playing`，無 console warning／error。未執行本機 Playwright、完整通關、全部故障／配置矩陣、真實觸控與人工口音試聽。完整版本、入口與限制見[語音紀錄](../voice-narration.md#2026-11-18-補齊交通救援並獨立提交)；其他六關的未完成語音不在此提交與核對範圍。
+
+## 2026-11-19 碼頭搬貨預錄語音整合
+
+基準 `722dfca` 加入碼頭 17 個語音條目。碼頭 session 透過既有 `acquireVoiceControls` 取得播放器，由 connection Scope 在最後存檔後釋放。純 domain plan 依裝卸方向、吊鉤及堆高機的載貨狀態選句，停妥、吊起與放妥按已提交的事件播報。沿用重播、取消、共用靜音與失敗降級契約。存檔版本及排程沿用原設計。
+
+提交版本的 77 個語音條目、822 項 Node 測試、型別檢查與建置均通過。瀏覽器實測涵蓋裝卸提示、重載、靜音、離場及正式版本離線重播。Playwright 入口已登記供 CI 執行。詳見[本次語音驗證](../voice-narration.md#2026-11-19-碼頭搬貨)。

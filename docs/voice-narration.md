@@ -2,7 +2,7 @@
 
 ## 目前進度
 
-2026-11-18：本版完成消防 19 句、修路 13 句、蓋房子 10 句與交通救援 18 句，共 60 個 Gemini／Sulafat 預錄語音條目。全部綁定台詞、配音設定、cue、音檔雜湊及獨立轉錄紀錄，已接上 Effect 播放與 PWA 預快取。其他關卡仍分批製作，完成核對後再納入發佈；不把候選音檔或空 manifest 當作完成。
+2026-11-19 完成碼頭 17 句。加上消防 19 句、修路 13 句、蓋房子 10 句與交通救援 18 句，共 77 個 Gemini／Sulafat 預錄語音條目。全部綁定台詞、配音設定、cue、音檔雜湊及獨立轉錄紀錄，已接上 Effect 播放與 PWA 預快取。其他關卡仍分批製作，完成核對後再納入發佈；不把候選音檔或空 manifest 當作完成。
 
 | 關卡 | 台詞條目 | 核對範圍 |
 | --- | ---: | --- |
@@ -10,6 +10,7 @@
 | [修路](../src/missions/road-repair/domain/narration.ts) | 13，已核對 | 介紹、挖起／裝車、拖曳／點選、清運、車斗上拉、壓平及完成 |
 | [蓋房子](../src/missions/house-build/domain/narration.ts) | 10，已核對 | 介紹、澆灌、送貨、吊鉤取貨／放置、各區填滿、材料安裝、停車及完成 |
 | [交通救援](../src/missions/traffic-rescue/domain/narration.ts) | 18，已核對 | 介紹、任選小車、掛鉤／托輪架、兩趟拖吊、清掃、居民接送及成功回饋 |
+| [碼頭](../src/missions/port-cargo/domain/narration.ts) | 17，已核對 | 介紹、靠岸停車、裝卸兩方向的取放貨、吊起及放妥、船車出發與完成 |
 
 相同台詞與配音設定可重用已核對的錄音，每個關卡仍保留自己的 cue 來源雜湊；重用證據應標明原始來源，不能冒充新做了一次轉錄。
 
@@ -52,15 +53,15 @@ ASR 輔助核對內容，不保證口音、聲調、音量或幼兒理解度。�
 
 ## Effect 與驗證入口
 
-修路、蓋房子與交通救援由 [voice-controls.ts](../src/runtime/voice-controls.ts) 用 `Effect.acquireRelease` 取得單一播放器；[mission-narration.ts](../src/runtime/mission-narration.ts) 選取目前提示及一次性事件，沿用消防的 [narration.ts](../src/runtime/narration.ts) 播放與獨立清理。DOM listener 沿用 connection 的 AbortSignal；不另開 timer／Fiber，不改存檔 Schema。重玩與開發重設走 `restart`，狀態推進走 `update`，不能把載入快照當作進度變化。
+修路、蓋房子、交通救援與碼頭由 [voice-controls.ts](../src/runtime/voice-controls.ts) 用 `Effect.acquireRelease` 取得單一播放器；[mission-narration.ts](../src/runtime/mission-narration.ts) 選取目前提示及一次性事件，沿用消防的 [narration.ts](../src/runtime/narration.ts) 播放與獨立清理。DOM listener 沿用 connection 的 AbortSignal；不另開 timer／Fiber，不改存檔 Schema。重玩與開發重設走 `restart`，狀態推進走 `update`，不能把載入快照當作進度變化。
 
 `npm run voice:check` 只做本機核對：全部註冊 ID、台詞／設定／cue／WAV 雜湊、路徑、檔名與轉錄紀錄。CI 的 `npm run check` 先跑它，**不連 API、不生成、不自動更新 manifest、不需秘密金鑰**。新增語音關卡必須同步登記 registry、manifest 與適用的測試入口。沒有錄音時不可放寬檢查或把空 manifest 當通過。
 
-- [關卡 cue 測試](../src/missions/narration.test.ts)：修路、蓋房子與交通救援階段、拖曳／點選及帶貨提示、重載與已提交成功條件。
+- [關卡 cue 測試](../src/missions/narration.test.ts)：修路、蓋房子、交通救援與碼頭階段、拖曳／點選及帶貨提示、重載與已提交成功條件。
 - [共用控制器測試](../src/runtime/mission-narration.test.ts)：介紹交接、最新提示、單次回饋、手勢打斷、靜音／背景／重載／缺檔及晚到結果。
 - [共用 lifecycle](../src/missions/lifecycle.test.ts)／[修路 lifecycle](../src/missions/road-repair/lifecycle.test.ts)：部分初始化、取消與 frame 故障後釋放語音。
 - [離線雜湊測試](../scripts/voice-assets.test.mjs)：台詞、設定、bytes、缺檔、跨關路徑與過期／提供答案的轉錄紀錄不得通過。
-- [瀏覽器 CI](../tests/e2e/narration.spec.mjs) 與既有 fire spec：各關重播、靜音與離場；[PWA](../tests/e2e/pwa.spec.mjs) 對消防、修路、蓋房子與交通救援核對未開啟關卡的離線播放。登記不等於已執行，實際結果另記。
+- [瀏覽器 CI](../tests/e2e/narration.spec.mjs) 與既有 fire spec：各關重播、靜音與離場；[PWA](../tests/e2e/pwa.spec.mjs) 對消防、修路、蓋房子、交通救援與碼頭核對未開啟關卡的離線播放。登記不等於已執行，實際結果另記。
 
 ## 新增關卡必做
 
@@ -109,3 +110,11 @@ Codex 內建瀏覽器在 Vite `127.0.0.1:5186` 驗證新的澆灌句與吊鉤取
 Codex 內建瀏覽器在此獨立版本的 Vite `127.0.0.1:5190` 驗證新接送提示重播為 `playing`，重載保留 boarding 階段並可再次播放；390×844 手機提示完整可見，喇叭 44×44 且在畫面內。正式 preview `127.0.0.1:4179` 入口與上述 build 一致，介紹重播為 `playing`；停止 preview 伺服器後重載，恢復警車階段並播放操作提示，仍為 `playing`。開發及正式頁靜音為 `muted`、離場零 canvas，無 console warning／error；測試尺寸還原。
 
 限制：本次沒有重跑整關通關、兩種拖吊車的完整互動、全部快速換關／手動故障矩陣、真實觸控或喇叭、Safari 媒體政策、PWA 更新生命週期及人工口音試聽。開發跳階與 `playing` 狀態不等同完整遊戲流程或人耳驗收。相機、模型、動線與上／下／左／右裁切沒有修改，桌面及手機主體大小沿用原設計；新關台詞、cue、scoped 播放及 CI 核對仍依前述設計清單處理。
+
+## 2026-11-19 碼頭搬貨
+
+碼頭從 8／17 補至 17／17。本批以 Gemini `gemini-3.8-flash-tts` 的 `Sulafat` 聲線與共用幼兒臺灣華語指令產生 10 段 WAV，共 40.32 秒。採用 8 段新錄音，包含關卡介紹、船上及岸上的取貨、裝船放貨、從車上取貨、堆高機送到碼頭、貨船出航與吊起箱子的回饋。吊鉤與堆高機提示以「選一個」保留孩子任選貨箱的玩法。
+
+兩個初版成功回饋的盲轉錄都有字詞差異。最後一次改錄「看，箱子在半空中！」後通過。放妥回饋「成功了！」沿用交通救援 `loaded` 的同聲線音檔與獨立轉錄，並重新綁定碼頭放貨事件的來源雜湊。堆高機送到碼頭的一句使用同一份 WAV 交由 OpenAI 盲轉錄通過，其餘七段採用的新錄音由 Gemini 盲轉錄通過。原有八個條目的紀錄及音檔均已逐項比對。
+
+本次提交的五關共 77 個語音條目，離線雜湊與轉錄紀錄核對耗時 49 ms。`npm run check` 的 822 項 Node 測試、型別檢查與正式建置通過，77 個 WAV 都列入 PWA 預快取。內建瀏覽器實際拖吊鉤驗證裝卸船提示、重載懸吊狀態與裝船後的「成功了！」播放。正式預覽驗證介紹重播及停止伺服器後的靠岸提示重播，靜音後離場回到選關。此次瀏覽器抽查涵蓋操作交接與離線播放，口音未另做人工試聽。

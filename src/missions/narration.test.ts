@@ -8,6 +8,9 @@ import { createHouse, stages as houseStages } from './house-build/domain/house.t
 import { voicePlan as road } from './road-repair/domain/narration.ts';
 import { createRoad, advanceRoad, stages as roadStages } from './road-repair/domain/road.ts';
 
+import { voicePlan as port } from './port-cargo/domain/narration.ts';
+import { createPort, missionStages } from './port-cargo/domain/port.ts';
+
 function coverage<S extends { phase: string }, Id extends string>(plan: VoicePlan<S, Id>, states: S[], phases: readonly string[], manual: (s: S) => boolean) {
   test(`${plan.mission}: every phase and configuration has an explicit narration policy`, () => {
     assert.deepEqual(Object.keys(plan.cues).sort(), [...new Set(phases)].sort());
@@ -54,4 +57,19 @@ test('traffic success waits for actual loading completion, and hook labels follo
   const working = { ...flat, action: 'working' as const, selected: 0 as const, elapsed: 4.45 };
   assert.equal(traffic.feedback(flat, working), undefined);
   assert.equal(traffic.feedback(working, advanceTraffic(working, 0.1)), 'loaded');
+});
+
+coverage(port, (['load', 'unload'] as const).flatMap(direction => ([0, 1] as const).flatMap(layout => missionStages(direction).map(p => createPort(p, { layout, palette: 0, direction })))), [...new Set([...missionStages('load'), ...missionStages('unload')])], s => s.action === 'ready');
+
+test('port cues distinguish both cargo directions, attached hooks and carrying forklifts', () => {
+  for (const layout of [0, 1] as const) for (const direction of ['load', 'unload'] as const) {
+    const s = createPort(direction === 'load' ? 'load-ship' : 'unload', { layout, direction, palette: 0 });
+    assert.equal(port.instruction(s), direction === 'load' ? 'crane-quay' : 'crane-ship');
+    assert.equal(port.instruction({ ...s, craneAttached: true }), direction === 'load' ? 'place-ship' : 'place-quay');
+    const fork = createPort('forklift', s.round);
+    assert.equal(port.instruction(fork), direction === 'load' ? 'fork-truck' : 'fork-quay');
+    assert.equal(port.instruction({ ...fork, carrying: true }), direction === 'load' ? 'deliver-quay' : 'deliver-truck');
+    assert.equal(port.feedback(fork, { ...fork, carrying: true }), undefined, 'pickup is not delivery');
+    assert.equal(port.feedback(fork, { ...fork, loaded: [...fork.loaded, 0] }), 'loaded');
+  }
 });

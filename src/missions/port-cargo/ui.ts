@@ -1,3 +1,4 @@
+import { voiceButtonMarkup } from '../../runtime/voice-controls.ts';
 import { boatIcon, craneIcon, forkIcon, freightIcon } from '../../app/port-art.ts';
 import { missionStages, isCraneStage } from './domain/port.ts';
 import type { Stage, Direction, PortState } from './domain/port.ts';
@@ -31,7 +32,7 @@ export function mountPortUI(app: HTMLElement, dev: boolean, direction: Direction
     <div class="port-targets"><div class="fire-target port-target" hidden role="img" aria-label="運貨目的地"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" pathLength="1"/></svg><span></span></div><div class="port-sources"></div></div>
     <header class="masthead"><span class="brand-symbol" aria-hidden="true">▰</span><div><strong>小小城市隊</strong><span>TOWN CREW</span></div></header>
     <div class="controls"><button class="home" aria-label="回到選關">⌂</button><button class="sound" aria-label="關閉音效" aria-pressed="false">♪</button><button class="restart" aria-label="重新開始碼頭搬貨任務">↻</button></div>
-    <div class="house-caption"><span class="house-instruction"></span><span class="house-detail"></span></div><div class="mission-badge"><span class="badge-icon">${boatIcon}</span><div><span class="eyebrow">一起，把物資送進城</span><strong id="vehicle-name"></strong></div></div>
+    <div class="house-caption voice-caption">${voiceButtonMarkup}<div class="voice-copy"><span class="house-instruction"></span><span class="house-detail"></span></div></div><div class="mission-badge"><span class="badge-icon">${boatIcon}</span><div><span class="eyebrow">一起，把物資送進城</span><strong id="vehicle-name"></strong></div></div>
     <div class="mission-steps" aria-label="貨船、吊車、堆高機、平板車">${iconsFor(direction).map((icon, i) => `<span data-step="${i}">${icon}</span>`).join('')}</div>
     <div class="progress" role="progressbar" aria-label="碼頭搬貨進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
     <div class="port-tally" aria-label="兩箱貨物的搬運進度">${[0, 1].map(id => `<span data-cargo-status="${id}" aria-label="${id ? '玩具' : '食物'}貨箱"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 9h30v26H5Z" fill="${id ? '#b1c8b7' : '#e1c49a'}"/><path d="M2 36h36M9 9v26M31 9v26" stroke="#b69b70" stroke-width="3"/>${id ? '<path d="M12 21h8v8h-8Z M21 21h8v8h-8Z M17 12h8v8h-8Z" fill="#719da4"/>' : '<circle cx="20" cy="23" r="7" fill="#c98770"/><path d="M20 17v-5" stroke="#83a17c" stroke-width="3"/>'}</svg><b></b></span>`).join('')}</div>
