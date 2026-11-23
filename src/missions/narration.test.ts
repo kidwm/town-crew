@@ -11,6 +11,9 @@ import { createRoad, advanceRoad, stages as roadStages } from './road-repair/dom
 import { voicePlan as port } from './port-cargo/domain/narration.ts';
 import { createPort, missionStages } from './port-cargo/domain/port.ts';
 
+import { voicePlan as mountain } from './mountain-clearance/domain/narration.ts';
+import { advance as advanceMountain, createMountain, stages as mountainStages, type MountainState } from './mountain-clearance/domain/mountain.ts';
+
 function coverage<S extends { phase: string }, Id extends string>(plan: VoicePlan<S, Id>, states: S[], phases: readonly string[], manual: (s: S) => boolean) {
   test(`${plan.mission}: every phase and configuration has an explicit narration policy`, () => {
     assert.deepEqual(Object.keys(plan.cues).sort(), [...new Set(phases)].sort());
@@ -71,5 +74,33 @@ test('port cues distinguish both cargo directions, attached hooks and carrying f
     assert.equal(port.instruction({ ...fork, carrying: true }), direction === 'load' ? 'deliver-quay' : 'deliver-truck');
     assert.equal(port.feedback(fork, { ...fork, carrying: true }), undefined, 'pickup is not delivery');
     assert.equal(port.feedback(fork, { ...fork, loaded: [...fork.loaded, 0] }), 'loaded');
+  }
+});
+
+coverage(mountain, (['rocks-first', 'soil-first'] as const).flatMap(order => ([0, 1] as const).flatMap(layout => mountainStages.map(p => createMountain(p, { layout, pattern: 'spread' }, order)))), mountainStages, s => s.action === 'ready');
+
+test('mountain loader cues follow pickup, docking and delivery', () => {
+  const m = createMountain('load-soil');
+  assert.equal(mountain.instruction(m), 'scoop');
+  assert.equal(mountain.instruction({ ...m, loaderCarrying: true }), 'park');
+  assert.equal(mountain.instruction({ ...m, loaderCarrying: true, loaderDocked: true }), 'lift');
+  assert.equal(mountain.feedback(m, { ...m, loaderCarrying: true }), undefined);
+  assert.equal(mountain.feedback(m, { ...m, soilLoaded: [0] }), 'loaded');
+});
+
+test('mountain success cues play once when pushing, lifting, unloading and sweeping finish', () => {
+  const rock = createMountain('excavate');
+  const cases: [MountainState, string][] = [
+    [{ ...createMountain('push'), action: 'auto', motion: 'drive-finish', pushes: [0.97, 0] }, 'pushed'],
+    [{ ...rock, action: 'auto', motion: 'lift', carried: 0, elapsed: 1.35 }, 'picked'],
+    [{ ...rock, action: 'auto', motion: 'unload', carried: 0, elapsed: 1.1 }, 'loaded'],
+    [{ ...createMountain('sweep'), action: 'auto', motion: 'drive-finish', swept: 0.99 }, 'clean'],
+  ];
+  for (const [state, cue] of cases) {
+    const pending = advanceMountain(state, 0.01);
+    assert.equal(mountain.feedback(state, pending), undefined, cue);
+    const completed = advanceMountain(pending, 0.1);
+    assert.equal(mountain.feedback(pending, completed), cue);
+    assert.equal(mountain.feedback(completed, advanceMountain(completed, 0.1)), undefined, cue);
   }
 });

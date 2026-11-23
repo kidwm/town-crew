@@ -1,3 +1,6 @@
+import { acquireVoiceControls } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { mountainPersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -26,10 +29,13 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
     const options = { signal: events.signal };
     const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted();
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('mountain-clearance', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('mountain-clearance', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: MountainState) {
+      narration.update(next);
       if (next === state) return;
       const checkpoint = next.phase !== state.phase || next.motion !== state.motion || next.delivered.length !== state.delivered.length || next.carried !== state.carried || next.loaderCarrying !== state.loaderCarrying || next.soilLoaded.length !== state.soilLoaded.length;
       if (checkpoint) audio.play(next.phase === 'complete' ? 'complete' : next.phase === 'reopen' ? 'horn' : next.phase.endsWith('exit') ? 'depart' : 'work');
@@ -51,14 +57,17 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
       end(held, cancelled) { if (state.phase === held.phase) update(release(state, cancelled)); save(); },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); state = createMountain('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); save(); };
+    const restart = () => { unlock(); pointer.cancel(); state = createMountain('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), pattern = app.querySelector<HTMLSelectElement>('#pattern');
-    const reset = () => { pointer.cancel(); state = createMountain(select!.value as Stage, { layout: Number(layout!.value) as 0 | 1, pattern: pattern!.value as Pattern }); save(); };
+    const reset = () => { pointer.cancel(); state = createMountain(select!.value as Stage, { layout: Number(layout!.value) as 0 | 1, pattern: pattern!.value as Pattern }); narration.restart(state); save(); };
     select?.addEventListener('change', reset, options); layout?.addEventListener('change', reset, options); pattern?.addEventListener('change', reset, options); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
     document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options); window.addEventListener('pagehide', save, options);
     app.querySelector('.loading')!.remove();
@@ -76,7 +85,7 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.motion = state.motion; app.dataset.layout = String(state.round.layout); app.dataset.pattern = state.round.pattern; app.dataset.delivered = state.delivered.join(','); app.dataset.carried = state.carried === null ? '' : String(state.carried); app.dataset.work = JSON.stringify({ pushes: state.pushes, haul: state.haul, swept: state.swept });
       app.dataset.soilLoaded = state.soilLoaded.join(','); app.dataset.loaderCarrying = String(state.loaderCarrying); app.dataset.loaderSelected = state.loaderSelected === null ? '' : String(state.loaderSelected); app.dataset.loaderTravel = String(state.loaderTravel); app.dataset.loaderDocked = String(state.loaderDocked); app.dataset.workOrder = state.workOrder;
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-      label('.house-instruction', instruction(state)); label('.house-detail', state.phase === 'push' ? `集中土石 · ${state.pushIndex + 1} / 2` : state.phase === 'load-soil' ? `散土裝車 · ${state.soilLoaded.length} / 2` : state.phase === 'excavate' ? `大石頭裝車 · ${state.delivered.length} / 3` : '');
+      label('.house-instruction', narration.text() ?? instruction(state)); label('.house-detail', state.phase === 'push' ? `集中土石 · ${state.pushIndex + 1} / 2` : state.phase === 'load-soil' ? `散土裝車 · ${state.soilLoaded.length} / 2` : state.phase === 'excavate' ? `大石頭裝車 · ${state.delivered.length} / 3` : '');
       app.querySelector<HTMLElement>('.finish-actions')!.hidden = state.phase !== 'complete'; app.querySelector<HTMLElement>('.success')!.hidden = state.phase !== 'complete';
       scene.canvas.style.cursor = state.action === 'dragging' ? 'grabbing' : canGrab(state) ? 'grab' : 'default';
       const vehicles = vehicleSteps(state.workOrder), active = vehicles.indexOf(step(state));
@@ -90,6 +99,7 @@ export function createMountainSession(app: HTMLDivElement, dev: boolean, onHome:
       if (displayed !== state.phase) { label('#vehicle-name', names[state.phase]); app.querySelector('.badge-icon')!.innerHTML = mountainIcons[step(state)]; if (select) select.value = state.phase; displayed = state.phase; }
       if (dev) { label('#phase', names[state.phase]); label('#action', `${state.action} · ${state.motion}`); layout!.value = String(state.round.layout); pattern!.value = state.round.pattern; }
     }
+    narration.start();
     return withAutosave('mountain-clearance', runFrameLoop('mountain-clearance', animate), save, 700);
   });
   return { connect, save };

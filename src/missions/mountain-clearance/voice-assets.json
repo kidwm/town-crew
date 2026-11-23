@@ -1,0 +1,922 @@
+{
+  "version": 1,
+  "clips": {
+    "intro": {
+      "file": "voice/mountain-clearance/intro.39ac5a2d7af9.wav",
+      "textHash": "f4dfba9aeab6a55ac3ca96f803a9ea4444f7d8d5794f1d50a81250eac7de27dd",
+      "sourceHash": "8760a21c8bc4dcbbd24e05b4e14ae860fa5a443e880ba1781c23fd239bac8559",
+      "audioHash": "39ac5a2d7af97e528b0952edbb2a6ea4771c36e290eba292d4940fdf1ab13452",
+      "generation": {
+        "sourceHash": "8760a21c8bc4dcbbd24e05b4e14ae860fa5a443e880ba1781c23fd239bac8559",
+        "speechHash": "310817cc2251f29f4dabbd6197f1e7f0cfc7d364b0943c976173f607d7ebbced",
+        "audioHash": "39ac5a2d7af97e528b0952edbb2a6ea4771c36e290eba292d4940fdf1ab13452",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:52:55.568Z",
+        "usage": {
+          "total_tokens": 160,
+          "total_input_tokens": 21,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 21
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 139,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 139
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 21
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "土石擋住山路了，一起開工程車，把山路清乾淨。",
+        "sourceHash": "8760a21c8bc4dcbbd24e05b4e14ae860fa5a443e880ba1781c23fd239bac8559",
+        "audioHash": "39ac5a2d7af97e528b0952edbb2a6ea4771c36e290eba292d4940fdf1ab13452",
+        "reviewedAt": "2026-11-22T02:52:57.816Z",
+        "usage": {
+          "total_tokens": 214,
+          "total_input_tokens": 194,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 139
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 20,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 194
+        }
+      }
+    },
+    "push": {
+      "file": "voice/mountain-clearance/push.8d1bde2c4c2e.wav",
+      "textHash": "7c90f23cad638771d8e75a4a1d70717b0445a281f98a3ed3a56ea8d8790233fc",
+      "sourceHash": "abf9f1d5e66788c234013d992e27ed6a7e20c1fd969f4f605c647947efddd984",
+      "audioHash": "8d1bde2c4c2e8e3c73eab2f9c9f195768213201ea2fb3b7adb4071b16182fc0f",
+      "generation": {
+        "sourceHash": "abf9f1d5e66788c234013d992e27ed6a7e20c1fd969f4f605c647947efddd984",
+        "speechHash": "72cded5d063fcc0fb7d39cb413d18dd4cde9bc5f62caef9441e86fc63a3148c8",
+        "audioHash": "8d1bde2c4c2e8e3c73eab2f9c9f195768213201ea2fb3b7adb4071b16182fc0f",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:53:15.759Z",
+        "usage": {
+          "total_tokens": 141,
+          "total_input_tokens": 17,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 17
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 124,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 124
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 17
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "沿著箭頭拖推土機，把土石推到旁邊。",
+        "sourceHash": "abf9f1d5e66788c234013d992e27ed6a7e20c1fd969f4f605c647947efddd984",
+        "audioHash": "8d1bde2c4c2e8e3c73eab2f9c9f195768213201ea2fb3b7adb4071b16182fc0f",
+        "reviewedAt": "2026-11-22T02:53:17.629Z",
+        "usage": {
+          "total_tokens": 195,
+          "total_input_tokens": 179,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 124
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 16,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 179
+        }
+      }
+    },
+    "scoop": {
+      "file": "voice/mountain-clearance/scoop.b1f1b59b0df2.wav",
+      "textHash": "38f4163ba4bbfd49b7e2a1b1e7463eeb56b12088cc147a44893e49aefc88b1a7",
+      "sourceHash": "a3c36ebc5e2a6c9056b6544a1ed38fc41858dfbe754d3f12bd9cba3791b99f28",
+      "audioHash": "b1f1b59b0df294dd45c3126112a301397e57ff55b4a9e7bf02f81504114a4c46",
+      "generation": {
+        "sourceHash": "a3c36ebc5e2a6c9056b6544a1ed38fc41858dfbe754d3f12bd9cba3791b99f28",
+        "speechHash": "b9ee9340b89d3f8d4a295720faa14688d452b915c2120b5507d2bf15e206c7d5",
+        "audioHash": "b1f1b59b0df294dd45c3126112a301397e57ff55b4a9e7bf02f81504114a4c46",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:54:26.390Z",
+        "usage": {
+          "total_tokens": 106,
+          "total_input_tokens": 13,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 13
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 93,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 93
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 13
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把鏟裝機拖到想鏟的土堆。",
+        "sourceHash": "a3c36ebc5e2a6c9056b6544a1ed38fc41858dfbe754d3f12bd9cba3791b99f28",
+        "audioHash": "b1f1b59b0df294dd45c3126112a301397e57ff55b4a9e7bf02f81504114a4c46",
+        "reviewedAt": "2026-11-22T02:54:38.610Z",
+        "usage": {
+          "total_tokens": 160,
+          "total_input_tokens": 148,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 93
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 12,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 148
+        }
+      }
+    },
+    "park": {
+      "file": "voice/mountain-clearance/park.ab98d94862ed.wav",
+      "textHash": "2ede17891e10f7ea97ee1c96c2a8b2561296cfafb3e6ca0d081e594ca455e54a",
+      "sourceHash": "ccdd22854eae862d9642a5205b3bdceb411506a69006d2d7f731ae1c2bb9af3f",
+      "audioHash": "ab98d94862edb8dadfcf452e529b0256ec58375cde90c38257e1bd4d6e052a74",
+      "generation": {
+        "sourceHash": "ccdd22854eae862d9642a5205b3bdceb411506a69006d2d7f731ae1c2bb9af3f",
+        "speechHash": "f40117be2e63acfb2699df886513dd51d99376f12d16d8a4338e79665487127b",
+        "audioHash": "ab98d94862edb8dadfcf452e529b0256ec58375cde90c38257e1bd4d6e052a74",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:54:48.084Z",
+        "usage": {
+          "total_tokens": 111,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 97,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 97
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 14
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把鏟裝機拖到車斗後面的光圈。",
+        "sourceHash": "ccdd22854eae862d9642a5205b3bdceb411506a69006d2d7f731ae1c2bb9af3f",
+        "audioHash": "ab98d94862edb8dadfcf452e529b0256ec58375cde90c38257e1bd4d6e052a74",
+        "reviewedAt": "2026-11-22T02:54:53.776Z",
+        "usage": {
+          "total_tokens": 165,
+          "total_input_tokens": 152,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 97
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 13,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 152
+        }
+      }
+    },
+    "lift": {
+      "file": "voice/mountain-clearance/lift.2aed6ae75857.wav",
+      "textHash": "0ede818e0c536defd1d02466ae409ed57fb8a234410b358c3a7705709a718832",
+      "sourceHash": "0da7cb2437ca4e6ea26982345dc674b157165fd8040aa0f68306c316e4348078",
+      "audioHash": "2aed6ae758578895ae3040afed2434e7bf48ba47b14025b6bd009be54270fabc",
+      "generation": {
+        "sourceHash": "0da7cb2437ca4e6ea26982345dc674b157165fd8040aa0f68306c316e4348078",
+        "speechHash": "c99f451f22209f7f33c1e3f4acdc79d683f5ef87bd90486e36135002906b02f2",
+        "audioHash": "2aed6ae758578895ae3040afed2434e7bf48ba47b14025b6bd009be54270fabc",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:55:09.352Z",
+        "usage": {
+          "total_tokens": 120,
+          "total_input_tokens": 16,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 16
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 104,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 104
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 16
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "往上拖，把鏟斗抬高，倒進車斗。",
+        "sourceHash": "0da7cb2437ca4e6ea26982345dc674b157165fd8040aa0f68306c316e4348078",
+        "audioHash": "2aed6ae758578895ae3040afed2434e7bf48ba47b14025b6bd009be54270fabc",
+        "reviewedAt": "2026-11-22T02:55:10.597Z",
+        "usage": {
+          "total_tokens": 174,
+          "total_input_tokens": 159,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 104
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 15,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 159
+        }
+      }
+    },
+    "haul": {
+      "file": "voice/mountain-clearance/haul.0cdda41cfba6.wav",
+      "textHash": "d52e71d64eebc67215f72d2cf46752a36466c8a185258e34ae3dfc2f4bc4b196",
+      "sourceHash": "7d09194fc228c033c2aa650eabffcc77fd3f83c0f10b725f5891f1974cf8dcbc",
+      "audioHash": "0cdda41cfba6a741048592fc66d20425499609b264fc104678de8924e2d46d4b",
+      "generation": {
+        "sourceHash": "7d09194fc228c033c2aa650eabffcc77fd3f83c0f10b725f5891f1974cf8dcbc",
+        "speechHash": "1aba38dd9ce6b292309a15ac6a5f58c587c3157ce211c8c987decde3f27ab18b",
+        "audioHash": "0cdda41cfba6a741048592fc66d20425499609b264fc104678de8924e2d46d4b",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:55:30.184Z",
+        "usage": {
+          "total_tokens": 129,
+          "total_input_tokens": 16,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 16
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 113,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 113
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 16
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "沿著箭頭拖砂石車，把土石載走。",
+        "sourceHash": "7d09194fc228c033c2aa650eabffcc77fd3f83c0f10b725f5891f1974cf8dcbc",
+        "audioHash": "0cdda41cfba6a741048592fc66d20425499609b264fc104678de8924e2d46d4b",
+        "reviewedAt": "2026-11-22T02:55:47.518Z",
+        "usage": {
+          "total_tokens": 183,
+          "total_input_tokens": 168,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 113
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 15,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 168
+        }
+      }
+    },
+    "sweep": {
+      "file": "voice/mountain-clearance/sweep.9ebe6b6c89f7.wav",
+      "textHash": "b6a10855a7fbe1fe9667113bca8b7589e18f9056bb760edce5e02a8b414fd1f5",
+      "sourceHash": "4f2c5c8b520cdd1b72107af8bd1d5bf7a386c7116586eee8f423a54ea7eda62e",
+      "audioHash": "9ebe6b6c89f7aab193d6782bdd65a37596e9a3ba2eec093fa9021c7998d709d7",
+      "generation": {
+        "sourceHash": "4f2c5c8b520cdd1b72107af8bd1d5bf7a386c7116586eee8f423a54ea7eda62e",
+        "speechHash": "6385a549ff7f80a2b27ff345f289915dac889ceb12228eb4d3784193d970da11",
+        "audioHash": "9ebe6b6c89f7aab193d6782bdd65a37596e9a3ba2eec093fa9021c7998d709d7",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:55:51.409Z",
+        "usage": {
+          "total_tokens": 148,
+          "total_input_tokens": 17,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 17
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 131,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 131
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 17
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "沿著箭頭拖清掃車，把山路刷乾淨。",
+        "sourceHash": "4f2c5c8b520cdd1b72107af8bd1d5bf7a386c7116586eee8f423a54ea7eda62e",
+        "audioHash": "9ebe6b6c89f7aab193d6782bdd65a37596e9a3ba2eec093fa9021c7998d709d7",
+        "reviewedAt": "2026-11-22T02:56:01.605Z",
+        "usage": {
+          "total_tokens": 202,
+          "total_input_tokens": 186,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 131
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 16,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 186
+        }
+      }
+    },
+    "complete": {
+      "file": "voice/mountain-clearance/complete.efc7252bbc41.wav",
+      "textHash": "48bfc110611d738eca02b2f8c9ba5fa70aab4e9071d67f928925d91268f848af",
+      "sourceHash": "fca3273e7afcd7576af2983574bd6d8017a1dbcce83a3f5bf190c99a18b9328e",
+      "audioHash": "efc7252bbc41b11a97b5a1fe13f113ea7bb793219d5c0b43033d6b0b34e11cc3",
+      "generation": {
+        "sourceHash": "fca3273e7afcd7576af2983574bd6d8017a1dbcce83a3f5bf190c99a18b9328e",
+        "speechHash": "97e35bc5750d9db4928b57a6d1cf01d58c296262e32f6fcf82d93c212243ace9",
+        "audioHash": "efc7252bbc41b11a97b5a1fe13f113ea7bb793219d5c0b43033d6b0b34e11cc3",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:56:12.269Z",
+        "usage": {
+          "total_tokens": 146,
+          "total_input_tokens": 17,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 17
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 129,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 129
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 17
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "山路通了，謝謝你，大家又可以平安出發了。",
+        "sourceHash": "fca3273e7afcd7576af2983574bd6d8017a1dbcce83a3f5bf190c99a18b9328e",
+        "audioHash": "efc7252bbc41b11a97b5a1fe13f113ea7bb793219d5c0b43033d6b0b34e11cc3",
+        "reviewedAt": "2026-11-22T02:56:17.659Z",
+        "usage": {
+          "total_tokens": 200,
+          "total_input_tokens": 184,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 129
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 16,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 184
+        }
+      }
+    },
+    "excavate": {
+      "file": "voice/mountain-clearance/excavate.49133569d868.wav",
+      "textHash": "987cf0b6d69041f0bd93f21f158bce9f60470a37fd0de0b58b7540ea6cb1b7e1",
+      "sourceHash": "bd3455b6cd9e364ba81f30b02c025492a7831aa788b19e45b4a14f78e02b9a68",
+      "audioHash": "49133569d868fd491f51ab8d04d96980abecfd0c25055fb3f6d6b23ca33cdbc3",
+      "generation": {
+        "sourceHash": "bd3455b6cd9e364ba81f30b02c025492a7831aa788b19e45b4a14f78e02b9a68",
+        "speechHash": "29f73bc64f3ea05de561e820c74a65fa2e3f7b8de42ce110b08ef73fdd34d4fb",
+        "audioHash": "49133569d868fd491f51ab8d04d96980abecfd0c25055fb3f6d6b23ca33cdbc3",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:53:37.022Z",
+        "usage": {
+          "total_tokens": 116,
+          "total_input_tokens": 14,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 14
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 102,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 102
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 14
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把挖斗拖到想搬的大石頭，停一下。",
+        "sourceHash": "bd3455b6cd9e364ba81f30b02c025492a7831aa788b19e45b4a14f78e02b9a68",
+        "audioHash": "49133569d868fd491f51ab8d04d96980abecfd0c25055fb3f6d6b23ca33cdbc3",
+        "reviewedAt": "2026-11-22T02:57:14.247Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 5
+        }
+      }
+    },
+    "unload": {
+      "file": "voice/mountain-clearance/unload.af3f264cf3a9.wav",
+      "textHash": "f4fefab7f6836edfba004c7238c9c6cb293ae392463b456b80f1ca65e9ea2c78",
+      "sourceHash": "bf54d2f06fde3449a38f5df8bf64581d21c5f4aba9ad41117aa7361aac6456f2",
+      "audioHash": "af3f264cf3a9dc449cfeb6d1f87cf2eed4096ece8338f974ca15cb99096ac5fe",
+      "generation": {
+        "sourceHash": "bf54d2f06fde3449a38f5df8bf64581d21c5f4aba9ad41117aa7361aac6456f2",
+        "speechHash": "19f9447733102f13ffe5f15e279094a1c183e76dc09879e66748b9213c6247bd",
+        "audioHash": "af3f264cf3a9dc449cfeb6d1f87cf2eed4096ece8338f974ca15cb99096ac5fe",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-22T02:53:58.842Z",
+        "usage": {
+          "total_tokens": 138,
+          "total_input_tokens": 17,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 17
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 121,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 121
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 17
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "把挖斗或大石頭拖到砂石車的車斗。",
+        "sourceHash": "bf54d2f06fde3449a38f5df8bf64581d21c5f4aba9ad41117aa7361aac6456f2",
+        "audioHash": "af3f264cf3a9dc449cfeb6d1f87cf2eed4096ece8338f974ca15cb99096ac5fe",
+        "reviewedAt": "2026-11-22T02:57:14.923Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 5
+        }
+      }
+    },
+    "parked": {
+      "file": "voice/mountain-clearance/parked.e8c6b45ae228.wav",
+      "textHash": "f5a52729ddd89d557387d6ad34c75dac70335b9fdae87d2110dcb136fc6a0c00",
+      "sourceHash": "b35db28de745419288dbf510e0bb9a3f0ddd9953e60fd38e1bbc0943a293aa69",
+      "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+      "generation": {
+        "sourceHash": "e8d4b69b4bc928281ee954658e581fb3ad98814448174df9975076ede9f88d64",
+        "speechHash": "30351b95db17a71742575aaa72b538c2c0c78575fe3a11995a5b64f0f4aae9c5",
+        "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:36:42.833Z",
+        "usage": {
+          "total_tokens": 35,
+          "total_input_tokens": 4,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 4
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 31,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 31
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 4
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gpt-transcribe",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "停好了。",
+        "sourceHash": "b35db28de745419288dbf510e0bb9a3f0ddd9953e60fd38e1bbc0943a293aa69",
+        "audioHash": "e8c6b45ae2289e73e02594b34d4cbf90649301dc670950313089639d0442ec4a",
+        "reviewedAt": "2026-11-22T02:57:16.299Z",
+        "usage": {
+          "type": "duration",
+          "seconds": 2
+        }
+      }
+    },
+    "pushed": {
+      "file": "voice/mountain-clearance/pushed.704d9800c7ed.wav",
+      "textHash": "b6ad5761a18ba81e2bc1377e1a997aef341b64b95d6039cf42c99698a72a7132",
+      "sourceHash": "989c3bc22364e7a782bd33013a9b2481347803d8b4ff1f0e01ae4d00756308e0",
+      "audioHash": "704d9800c7ed62858f93a891f2d2f6215a11f09822a1f790aea2eaa0fede562a",
+      "generation": {
+        "sourceHash": "989c3bc22364e7a782bd33013a9b2481347803d8b4ff1f0e01ae4d00756308e0",
+        "speechHash": "904da3dcf4de69656d06498bddb545c3f4c030e806e7cb5b389585974eed69b7",
+        "audioHash": "704d9800c7ed62858f93a891f2d2f6215a11f09822a1f790aea2eaa0fede562a",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-23T11:22:15.305Z",
+        "usage": {
+          "total_tokens": 59,
+          "total_input_tokens": 7,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 7
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 52,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 52
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 7
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "土石推開了。",
+        "sourceHash": "989c3bc22364e7a782bd33013a9b2481347803d8b4ff1f0e01ae4d00756308e0",
+        "audioHash": "704d9800c7ed62858f93a891f2d2f6215a11f09822a1f790aea2eaa0fede562a",
+        "reviewedAt": "2026-11-23T11:22:17.624Z",
+        "usage": {
+          "total_tokens": 113,
+          "total_input_tokens": 107,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 52
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 6,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 107
+        }
+      }
+    },
+    "picked": {
+      "file": "voice/mountain-clearance/picked.1f7b24f6f947.wav",
+      "textHash": "0e8ca29b34ea82a989b6d0efefd2e1e89debed3c0ec0f8b134c6769ecf46249f",
+      "sourceHash": "0a8d15d1a0d83ceaf584bbee7400fc4d18dbfb0a8b5d204517f8111a2037eb7f",
+      "audioHash": "1f7b24f6f947f8ed6d7b2364fd81424bc6077327ed2e4aa6a8198ac7396a41c1",
+      "generation": {
+        "sourceHash": "7ce92aa88a2e339c8e90340167ba00be8ac976ff973cc775dca90b1e49f05104",
+        "speechHash": "49ef16c6e92fcd086f0a16f3fe95ba3b4a0d4961d89e89ad196b31aeb14b0eb9",
+        "audioHash": "1f7b24f6f947f8ed6d7b2364fd81424bc6077327ed2e4aa6a8198ac7396a41c1",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T00:05:58.627Z",
+        "usage": {
+          "total_tokens": 46,
+          "total_input_tokens": 5,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 5
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 41,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 41
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 5
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "挖起來了。",
+        "sourceHash": "0a8d15d1a0d83ceaf584bbee7400fc4d18dbfb0a8b5d204517f8111a2037eb7f",
+        "audioHash": "1f7b24f6f947f8ed6d7b2364fd81424bc6077327ed2e4aa6a8198ac7396a41c1",
+        "reviewedAt": "2026-11-09T00:05:59.990Z",
+        "usage": {
+          "total_tokens": 100,
+          "total_input_tokens": 96,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 41
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 4,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 96
+        },
+        "reusedFrom": "road-repair/picked"
+      }
+    },
+    "loaded": {
+      "file": "voice/mountain-clearance/loaded.e64e227f4540.wav",
+      "textHash": "2cf3eef450f25ca7f9c454b895a583457c35aa18789822f9cda7a9d84d736fad",
+      "sourceHash": "3611cf829dacb20197ac5f4afe7f952040e88f7d8147d241b8892fb1e1b67329",
+      "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+      "generation": {
+        "sourceHash": "5281622ebc54deeebc3d5563ad68e7cc9b97e5464bdc536750dcd54766aeb4ff",
+        "speechHash": "3662a720c4e148aecec44852acbec1b1974f3efac2154706ab4aecb8ccfb46fa",
+        "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-09T01:11:56.283Z",
+        "usage": {
+          "total_tokens": 47,
+          "total_input_tokens": 4,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 4
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 43,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 43
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 4
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "成功了。",
+        "sourceHash": "3611cf829dacb20197ac5f4afe7f952040e88f7d8147d241b8892fb1e1b67329",
+        "audioHash": "e64e227f4540c0da7396a3f667ba6470982b13d37c5af3ff49c36f84c817a8f0",
+        "reviewedAt": "2026-11-09T01:33:56.188Z",
+        "usage": {
+          "total_tokens": 101,
+          "total_input_tokens": 98,
+          "input_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 43
+            },
+            {
+              "modality": "text",
+              "tokens": 55
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 3,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 98
+        },
+        "reusedFrom": "port-cargo/loaded"
+      }
+    },
+    "clean": {
+      "file": "voice/mountain-clearance/clean.99e5ecc00560.wav",
+      "textHash": "dfef180683fd6e0e00c3ab50fd13846040bb4455398a834c1c80bc81ec06f0b2",
+      "sourceHash": "01b7088a5d50f6b087f46687e4d9000af9dca129b7601ab2e069e6c5ab9319be",
+      "audioHash": "99e5ecc0056006638eba340af44cc5ccd3b0633acc449b8101df8c232735cfb7",
+      "generation": {
+        "sourceHash": "01b7088a5d50f6b087f46687e4d9000af9dca129b7601ab2e069e6c5ab9319be",
+        "speechHash": "c100de7771dbaeea8de7ebea0b25196d901c0e823b7e76c607bfc400b7f2a745",
+        "audioHash": "99e5ecc0056006638eba340af44cc5ccd3b0633acc449b8101df8c232735cfb7",
+        "model": "gemini-3.8-flash-tts",
+        "voice": "Sulafat",
+        "generatedAt": "2026-11-23T11:25:06.074Z",
+        "usage": {
+          "total_tokens": 60,
+          "total_input_tokens": 7,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 7
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 53,
+          "output_tokens_by_modality": [
+            {
+              "modality": "audio",
+              "tokens": 53
+            }
+          ],
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 7
+        }
+      },
+      "review": {
+        "method": "independent-asr",
+        "model": "gemini-3.1-flash-lite",
+        "prompt": "這是一段幼兒城市遊戲的旁白。將音檔實際聽到的全部語音以繁體中文逐字轉錄，保留語助詞，不要猜測、改寫、加前言或說明。只回傳逐字稿。",
+        "referenceTextSupplied": false,
+        "transcript": "山路好乾淨。",
+        "sourceHash": "01b7088a5d50f6b087f46687e4d9000af9dca129b7601ab2e069e6c5ab9319be",
+        "audioHash": "99e5ecc0056006638eba340af44cc5ccd3b0633acc449b8101df8c232735cfb7",
+        "reviewedAt": "2026-11-23T11:25:07.736Z",
+        "usage": {
+          "total_tokens": 114,
+          "total_input_tokens": 108,
+          "input_tokens_by_modality": [
+            {
+              "modality": "text",
+              "tokens": 55
+            },
+            {
+              "modality": "audio",
+              "tokens": 53
+            }
+          ],
+          "total_cached_tokens": 0,
+          "total_output_tokens": 6,
+          "total_tool_use_tokens": 0,
+          "total_thought_tokens": 0,
+          "initial_input_tokens": 108
+        }
+      }
+    }
+  }
+}
