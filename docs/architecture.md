@@ -82,10 +82,10 @@ saved state; mute, hidden/pagehide and navigation stop playback. No narration ti
 Recorded WAVs are precached for offline play. The [voice verification guide](effect-verification.md#消防預錄語音與-ci)
 documents authoring, independent transcription and the offline CI hash gate.
 
-Road, house, traffic, port and mountain narration use the same media lifecycle through `runtime/voice-controls.ts` and
+Road, house, traffic, port, mountain and passenger transfer narration use the same media lifecycle through `runtime/voice-controls.ts` and
 `mission-narration.ts`. Their pure plans select drag and keyboard instructions plus committed
 success feedback; snapshot restoration does not replay old events. The [voice guide](voice-narration.md)
-documents the currently released fire, road, house, traffic, port and mountain recordings and the requirements for future missions.
+documents the currently released fire, road, house, traffic, port, mountain and passenger transfer recordings and the requirements for future missions.
 
 Persistence accepts complete current-version snapshots, then checks domain invariants and
 cancels stale input. Storage remains optional and synchronous, with caller-owned memory fallback;

@@ -1,3 +1,6 @@
+import { acquireVoiceControls } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { transferPersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -27,10 +30,13 @@ export function createTransferSession(app: HTMLDivElement, dev: boolean, onHome:
     const options = { signal: events.signal };
     const hint = yield* Effect.acquireRelease(Effect.sync(() => createDragHint(app.querySelector<HTMLElement>('.world')!)), value => Effect.sync(() => value.dispose()));
     let previous = performance.now(), time = 0, muted = persistence.isMuted(), preferred: Vehicle | undefined;
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('passenger-transfer', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('passenger-transfer', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: TransitState) {
+      narration.update(next);
       if (next === state) return;
       if (next.phase !== state.phase) {
         if (next.phase === 'choose') preferred = undefined;
@@ -63,16 +69,19 @@ export function createTransferSession(app: HTMLDivElement, dev: boolean, onHome:
       end(held, cancelled) { if (held.phase === state.phase) update(release(state, cancelled)); save(); },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); state = createTransit('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); preferred = undefined; save(); };
+    const restart = () => { unlock(); pointer.cancel(); state = createTransit('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); preferred = undefined; narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     app.querySelectorAll<HTMLButtonElement>('[data-vehicle]').forEach(b => b.addEventListener('click', () => { preferred = b.dataset.vehicle as Vehicle; unlock(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), palette = app.querySelector<HTMLSelectElement>('#palette'), paired = app.querySelector<HTMLSelectElement>('#companion');
     if (paired) paired.value = companion(state.round);
-    const reset = () => { pointer.cancel(); state = createTransit(select!.value as Stage, { ...state.round, layout: Number(layout!.value) as 0 | 1, palette: Number(palette!.value), companion: paired!.value as 'school' | 'coach' }); preferred = undefined; save(); };
+    const reset = () => { pointer.cancel(); state = createTransit(select!.value as Stage, { ...state.round, layout: Number(layout!.value) as 0 | 1, palette: Number(palette!.value), companion: paired!.value as 'school' | 'coach' }); preferred = undefined; narration.restart(state); save(); };
     select?.addEventListener('change', reset, options); layout?.addEventListener('change', reset, options); palette?.addEventListener('change', reset, options); paired?.addEventListener('change', reset, options); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
     document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options); window.addEventListener('pagehide', save, options);
     app.querySelector('.loading')!.remove();
@@ -94,7 +103,7 @@ export function createTransferSession(app: HTMLDivElement, dev: boolean, onHome:
       }
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.layout = String(state.round.layout); app.dataset.palette = String(state.round.palette); app.dataset.companion = companion(state.round); app.dataset.order = state.order.join(','); app.dataset.vehicle = currentVehicle(state); app.dataset.travel = String(state.travel); app.dataset.doors = JSON.stringify(state.doors); app.dataset.luggage = JSON.stringify(state.luggage); app.dataset.elapsed = String(state.elapsed);
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-      label('.house-instruction', instruction(state)); label('.house-detail', choosing ? `計程車到專屬載客區・${vehicleNames[companion(state.round)]}到大型車月台` : state.phase === 'luggage' ? '對準敞開的行李艙，就會自動放好' : '');
+      label('.house-instruction', narration.text() ?? instruction(state)); label('.house-detail', choosing ? `計程車到專屬載客區・${vehicleNames[companion(state.round)]}到大型車月台` : state.phase === 'luggage' ? '對準敞開的行李艙，就會自動放好' : '');
       const picker = app.querySelector<HTMLElement>('.transfer-picker')!; picker.hidden = state.phase !== 'choose' || state.action !== 'ready' || eligible.length < 2;
       picker.querySelectorAll<HTMLButtonElement>('button').forEach(b => {
         const v = b.dataset.vehicle as 'taxi' | 'school' | 'coach', p = scene.choice(state, v), ring = app.querySelector<HTMLElement>(`[data-choice="${v}"]`)!;
@@ -110,6 +119,7 @@ export function createTransferSession(app: HTMLDivElement, dev: boolean, onHome:
       if (displayed !== key) { label('#vehicle-name', state.phase.startsWith('transfer-') && state.phase !== 'transfer-entrance' ? `${vehicleNames[shown]} · ${state.phase.endsWith('-door') ? '打開車門' : state.phase.endsWith('-exit') ? '出發' : state.phase.endsWith('-departure') ? '離站中' : '接送乘客'}` : stageName(state.phase, state.round)); const badge = app.querySelector<HTMLElement>('.badge-icon')!; badge.innerHTML = choosing ? transferIcons.taxi + transferIcons[companion(state.round)] : transferIcons[shown]; badge.dataset.choice = String(choosing); if (select) { select.value = state.phase; for (const option of select.options) option.textContent = stageName(option.value as Stage, state.round); } displayed = key; }
       if (dev) { label('#phase', stageName(state.phase, state.round)); label('#action', state.action); layout!.value = String(state.round.layout); palette!.value = String(state.round.palette); paired!.value = companion(state.round); }
     }
+    narration.start();
     return withAutosave('passenger-transfer', runFrameLoop('passenger-transfer', animate), save, 700);
   });
   return { connect, save };

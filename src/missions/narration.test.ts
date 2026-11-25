@@ -14,6 +14,9 @@ import { createPort, missionStages } from './port-cargo/domain/port.ts';
 import { voicePlan as mountain } from './mountain-clearance/domain/narration.ts';
 import { advance as advanceMountain, createMountain, stages as mountainStages, type MountainState } from './mountain-clearance/domain/mountain.ts';
 
+import { voicePlan as transit } from './passenger-transfer/domain/narration.ts';
+import { advance as advanceTransit, createTransit, currentVehicle, stages as transitStages, grab as grabTransit, drive as driveTransit } from './passenger-transfer/domain/transit.ts';
+
 function coverage<S extends { phase: string }, Id extends string>(plan: VoicePlan<S, Id>, states: S[], phases: readonly string[], manual: (s: S) => boolean) {
   test(`${plan.mission}: every phase and configuration has an explicit narration policy`, () => {
     assert.deepEqual(Object.keys(plan.cues).sort(), [...new Set(phases)].sort());
@@ -103,4 +106,28 @@ test('mountain success cues play once when pushing, lifting, unloading and sweep
     assert.equal(mountain.feedback(pending, completed), cue);
     assert.equal(mountain.feedback(completed, advanceMountain(completed, 0.1)), undefined, cue);
   }
+});
+
+coverage(transit, (['school', 'coach'] as const).flatMap(companion => ([0, 1] as const).flatMap(layout => transitStages.map(p => createTransit(p, { layout, palette: 0, cast: 0, companion })))), transitStages, s => s.action === 'ready');
+
+test('transfer arrival instructions name the assigned vehicle', () => {
+  for (const companion of ['school', 'coach'] as const) for (const phase of ['transfer-arrival', 'coach-arrival'] as const) {
+    const s = createTransit(phase, { layout: 1, palette: 0, cast: 0, companion });
+    assert.equal(transit.instruction(s), currentVehicle(s));
+  }
+});
+
+test('transfer door feedback waits for the completed gesture', () => {
+  const t = createTransit('bus-door'), dragging = grabTransit(t, 'bus');
+  assert.equal(transit.feedback(dragging, driveTransit(dragging, 0.5)), undefined);
+  assert.equal(transit.feedback(dragging, driveTransit(dragging, 1)), 'opened');
+});
+
+test('transfer luggage feedback waits for the suitcase to finish loading', () => {
+  const loading = createTransit('loading');
+  const moving = advanceTransit(loading, 0.5);
+  assert.equal(transit.feedback(loading, moving), undefined);
+  const stowed = advanceTransit(moving, 0.7);
+  assert.equal(transit.feedback(moving, stowed), 'loaded');
+  assert.equal(transit.feedback(stowed, advanceTransit(stowed, 0.1)), undefined);
 });

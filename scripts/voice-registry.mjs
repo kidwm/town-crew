@@ -7,9 +7,11 @@ import { voicePlan as traffic } from '../src/missions/traffic-rescue/domain/narr
 import { voicePlan as port } from '../src/missions/port-cargo/domain/narration.ts';
 import { voicePlan as mountain } from '../src/missions/mountain-clearance/domain/narration.ts';
 
+import { voicePlan as transit } from '../src/missions/passenger-transfer/domain/narration.ts';
+
 export const voiceRegistry = [
   { mission: 'fire-rescue', lines: fireLines, source: fireVoiceSource },
-  ...[road, house, traffic, port, mountain].map(plan => ({
+  ...[road, house, traffic, port, mountain, transit].map(plan => ({
     mission: plan.mission, lines: plan.lines, source: id => voiceSource(plan, id),
   })),
 ].map(item => ({ ...item, manifestPath: `src/missions/${item.mission}/voice-assets.json` }));
