@@ -14,6 +14,8 @@ import { createPort, missionStages } from './port-cargo/domain/port.ts';
 import { voicePlan as mountain } from './mountain-clearance/domain/narration.ts';
 import { advance as advanceMountain, createMountain, stages as mountainStages, type MountainState } from './mountain-clearance/domain/mountain.ts';
 
+import { voicePlan as police } from './police-patrol/domain/narration.ts';
+import { createPolice, advance as advancePolice, duration as policeDuration, grab as grabPolice, release as releasePolice, stages as policeStages } from './police-patrol/domain/police.ts';
 import { voicePlan as transit } from './passenger-transfer/domain/narration.ts';
 import { advance as advanceTransit, createTransit, currentVehicle, stages as transitStages, grab as grabTransit, drive as driveTransit } from './passenger-transfer/domain/transit.ts';
 
@@ -130,4 +132,25 @@ test('transfer luggage feedback waits for the suitcase to finish loading', () =>
   const stowed = advanceTransit(moving, 0.7);
   assert.equal(transit.feedback(moving, stowed), 'loaded');
   assert.equal(transit.feedback(stowed, advanceTransit(stowed, 0.1)), undefined);
+});
+
+coverage(police, [0, 1].flatMap(layout => policeStages.map(p => createPolice(p, { layout, color: 0, traffic: 'taxi-first' }))), policeStages, s => s.action === 'ready');
+
+test('police narration follows the chosen motorcycle and waits for loading to finish', () => {
+  const guard = createPolice('guard');
+  assert.equal(police.instruction(guard), 'guard');
+  const selected = grabPolice(guard, 'bike1');
+  assert.equal(police.instruction(selected), 'continue');
+  const cancelled = releasePolice(selected, true);
+  assert.equal(police.instruction(cancelled), 'guard');
+  assert.equal(police.feedback(selected, cancelled), undefined);
+
+  const loading = createPolice('tow-load');
+  const before = { ...loading, elapsed: policeDuration(loading) - 0.15 };
+  const moving = advancePolice(before, 0.1);
+  assert.equal(police.feedback(before, moving), undefined);
+  const departed = advancePolice(moving, 0.1);
+  assert.equal(departed.phase, 'depart');
+  assert.equal(police.feedback(moving, departed), 'loaded');
+  assert.equal(police.feedback(departed, advancePolice(departed, 0.1)), undefined);
 });

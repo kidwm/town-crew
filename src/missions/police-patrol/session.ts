@@ -1,3 +1,6 @@
+import { acquireVoiceControls } from '../../runtime/voice-controls.ts';
+import { voicePlan } from './domain/narration.ts';
+import voiceAssets from './voice-assets.json' with { type: 'json' };
 import { Effect } from 'effect';
 import { policePersistence } from './services.ts';
 import { createAudioUnlocker } from '../../runtime/audio-unlock.ts';
@@ -31,10 +34,13 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     let previous = performance.now(), time = 0, muted = persistence.isMuted(), preferred: Vehicle = 'bike0';
     let bikeHint = createBikeHintClock(state.round.layout), choiceSize = '';
+    const narration = yield* acquireVoiceControls(app, voicePlan, state, voiceAssets, { muted, restored: !!restored, signal: events.signal });
     yield* Effect.addFinalizer(() => Effect.sync(save));
     audio.setMuted(muted);
-    const unlock = createAudioUnlocker('police-patrol', audio, events.signal, dev);
+    const unlockAudio = createAudioUnlocker('police-patrol', audio, events.signal, dev);
+    const unlock = () => { unlockAudio(); narration.unlock(); };
     function update(next: PoliceState) {
+      narration.update(next);
       if (next === state) return;
       if (next.phase !== state.phase) audio.play(next.phase === 'complete' ? 'complete' : next.phase === 'transport' ? 'depart' : 'parked');
       if (next.phase === 'complete' && state.phase !== 'complete' && !dev) persistence.markCompleted();
@@ -59,14 +65,17 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
       end(held, cancelled) { if (state.phase === held.phase && state.active === held.vehicle) update(release(state, cancelled)); save(); },
     }, events.signal);
     yield* Effect.addFinalizer(() => Effect.sync(pointer.cancel));
-    const restart = () => { unlock(); pointer.cancel(); state = createPolice('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); preferred = 'bike0'; bikeHint = createBikeHintClock(state.round.layout); save(); };
+    const restart = () => { unlock(); pointer.cancel(); state = createPolice('intro', dev ? chooseRound(state.round) : persistence.newRound(state.round)); preferred = 'bike0'; bikeHint = createBikeHintClock(state.round.layout); narration.restart(state); save(); };
     app.querySelectorAll('.restart, .finish-restart').forEach(b => b.addEventListener('click', restart, options));
     app.querySelectorAll('.home, .finish-home').forEach(b => b.addEventListener('click', () => { pointer.cancel(); save(); onHome(); }, options));
     const sound = app.querySelector<HTMLButtonElement>('.sound')!;
     function syncSound() { sound.textContent = muted ? '♩' : '♪'; sound.setAttribute('aria-pressed', String(muted)); sound.setAttribute('aria-label', muted ? '開啟音效' : '關閉音效'); }
-    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); syncSound(); }, options);
+    syncSound(); sound.addEventListener('click', () => { unlock(); muted = !muted; persistence.setMuted(muted); audio.setMuted(muted); narration.setMuted(muted); syncSound(); }, options);
+    app.querySelector<HTMLButtonElement>('.voice-replay')!.addEventListener('click', () => {
+      unlock(); muted = false; persistence.setMuted(false); audio.setMuted(false); narration.setMuted(false); syncSound(); narration.replay();
+    }, options);
     const select = app.querySelector<HTMLSelectElement>('#stage'), layout = app.querySelector<HTMLSelectElement>('#layout'), bike = app.querySelector<HTMLSelectElement>('#lead-bike'), traffic = app.querySelector<HTMLSelectElement>('#traffic'), inspection = app.querySelector<HTMLSelectElement>('#inspection');
-    const reset = () => { pointer.cancel(); state = createPolice(select!.value as Stage, { ...state.round, layout: Number(layout!.value), traffic: traffic!.value as PoliceState['round']['traffic'] }, bike!.value as Bike, Number(inspection!.value)); bikeHint = createBikeHintClock(state.round.layout); save(); };
+    const reset = () => { pointer.cancel(); state = createPolice(select!.value as Stage, { ...state.round, layout: Number(layout!.value), traffic: traffic!.value as PoliceState['round']['traffic'] }, bike!.value as Bike, Number(inspection!.value)); bikeHint = createBikeHintClock(state.round.layout); narration.restart(state); save(); };
     select?.addEventListener('change', reset, options); layout?.addEventListener('change', reset, options); bike?.addEventListener('change', reset, options); traffic?.addEventListener('change', reset, options); inspection?.addEventListener('change', reset, options); app.querySelector('.reset-stage')?.addEventListener('click', reset, options);
     document.addEventListener('visibilitychange', () => { previous = performance.now(); if (document.hidden) save(); }, options); window.addEventListener('pagehide', save, options);
     app.querySelector('.loading')!.remove();
@@ -97,7 +106,7 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
       }
       app.dataset.phase = state.phase; app.dataset.action = state.action; app.dataset.layout = String(state.round.layout); app.dataset.traffic = state.round.traffic; app.dataset.checked = String(state.checked); app.dataset.inspection = inspectionKind(state); app.dataset.color = String(state.round.color); app.dataset.selected = state.selected ?? ''; app.dataset.work = JSON.stringify(state.work); app.dataset.active = state.active ?? '';
       const value = progress(state); app.querySelector<HTMLElement>('.progress span')!.style.transform = `scaleX(${value})`; app.querySelector('.progress')!.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-      label('.house-instruction', instruction(state)); label('.house-detail', state.phase === 'guard' ? '另一台重機會留守入口' : state.phase === 'inspect' ? `臨檢車輛 · ${state.checked + 1} / 3` : '');
+      label('.house-instruction', narration.text() ?? instruction(state)); label('.house-detail', state.phase === 'guard' ? '另一台重機會留守入口' : state.phase === 'inspect' ? `臨檢車輛 · ${state.checked + 1} / 3` : '');
       const check = app.querySelector<HTMLElement>('.police-check')!;
       const wanted = state.checked === 2;
       check.hidden = !inspectionCheckVisible(state);
@@ -126,6 +135,7 @@ export function createPoliceSession(app: HTMLDivElement, dev: boolean, onHome: (
       }
       if (dev) { label('#phase', names[state.phase]); label('#action', state.action); layout!.value = String(state.round.layout); traffic!.value = state.round.traffic; inspection!.value = String(state.checked); if (state.selected) bike!.value = state.selected; }
     }
+    narration.start();
     return withAutosave('police-patrol', runFrameLoop('police-patrol', animate), save, 700);
   });
   return { connect, save };
